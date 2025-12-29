@@ -35,12 +35,12 @@ final class DevSemanticInvoker implements InvokerInterface
     public function invoke(AbstractRequest $request): ResourceObject
     {
         $openContext = $this->contextFactory->createOpenContext($request);
-        $openId = $this->logger->open($openContext->getContext());
+        $openId = $this->logger->open($openContext->context);
 
         try {
             $ro = $this->invoker->invoke($request);
             $completeContext = $this->contextFactory->createCompleteContext($ro, $openContext);
-            $this->logger->close($completeContext->getContext(), $openId);
+            $this->logger->close($completeContext->context, $openId);
 
             // Real-time event extraction (if configured)
             $this->extractor?->extract($openContext, $completeContext);
@@ -50,7 +50,7 @@ final class DevSemanticInvoker implements InvokerInterface
             $errorContext = $this->contextFactory->createErrorContext($e, $openContext);
 
             try {
-                $this->logger->close($errorContext->getContext(), $openId);
+                $this->logger->close($errorContext->context, $openId);
             } catch (Throwable) {
                 // Prevent logging failure from masking original exception
             }

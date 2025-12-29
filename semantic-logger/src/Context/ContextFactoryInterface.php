@@ -16,21 +16,21 @@ interface ContextFactoryInterface
     /**
      * Create context for request initiation.
      */
-    public function createOpenContext(AbstractRequest $request): OpenContextInterface;
+    public function createOpenContext(AbstractRequest $request): AbstractOpenContext;
 
     /**
      * Create context for successful completion.
      */
     public function createCompleteContext(
         ResourceObject $ro,
-        OpenContextInterface $openContext,
-    ): CompleteContextInterface;
+        AbstractOpenContext $openContext,
+    ): AbstractCompleteContext;
 
     /**
      * Create context for error/exception.
      */
     public function createErrorContext(
         Throwable $e,
-        ?OpenContextInterface $openContext = null,
-    ): ErrorContextInterface;
+        ?AbstractOpenContext $openContext = null,
+    ): AbstractErrorContext;
 }

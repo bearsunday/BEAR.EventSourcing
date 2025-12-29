@@ -4,38 +4,25 @@ declare(strict_types=1);
 
 namespace BEAR\SemanticLogger\Profile\Verbose;
 
-use BEAR\SemanticLogger\Context\ErrorContextInterface;
-use Koriym\SemanticLogger\AbstractContext;
+use BEAR\SemanticLogger\Context\AbstractErrorContext;
 use Koriym\SemanticLogger\Profiler\Profile;
 use Throwable;
 
 /**
- * Verbose implementation of ErrorContextInterface with profiling.
+ * Verbose implementation of error context with profiling.
  */
-final class ErrorContext implements ErrorContextInterface
+final class ErrorContext extends AbstractErrorContext
 {
-    private readonly ResourceErrorContext $context;
-
     public function __construct(
-        private readonly Throwable $exception,
-        ?Profile $profile = null,
+        Throwable $exception,
+        public readonly ?Profile $profile = null,
         ?string $id = null,
     ) {
-        $this->context = new ResourceErrorContext($exception, $profile, $id);
-    }
-
-    public function getId(): string
-    {
-        return $this->context->id;
-    }
-
-    public function getException(): Throwable
-    {
-        return $this->exception;
-    }
-
-    public function getContext(): AbstractContext
-    {
-        return $this->context;
+        $generatedId = $id ?? sprintf('%08x', crc32($exception->getMessage() . $exception->getFile() . $exception->getLine()));
+        parent::__construct(
+            $exception,
+            new ResourceErrorContext($exception, $profile, $generatedId),
+            $generatedId,
+        );
     }
 }

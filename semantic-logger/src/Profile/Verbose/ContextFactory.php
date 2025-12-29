@@ -6,10 +6,10 @@ namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
-use BEAR\SemanticLogger\Context\CompleteContextInterface;
+use BEAR\SemanticLogger\Context\AbstractCompleteContext;
+use BEAR\SemanticLogger\Context\AbstractErrorContext;
+use BEAR\SemanticLogger\Context\AbstractOpenContext;
 use BEAR\SemanticLogger\Context\ContextFactoryInterface;
-use BEAR\SemanticLogger\Context\ErrorContextInterface;
-use BEAR\SemanticLogger\Context\OpenContextInterface;
 use Koriym\SemanticLogger\Profiler\Profile;
 use Koriym\SemanticLogger\Profiler\XdebugTrace;
 use Koriym\SemanticLogger\Profiler\XHProfResult;
@@ -28,7 +28,7 @@ use function xhprof_disable;
  */
 final class ContextFactory implements ContextFactoryInterface
 {
-    public function createOpenContext(AbstractRequest $request): OpenContextInterface
+    public function createOpenContext(AbstractRequest $request): AbstractOpenContext
     {
         $ro = $request->resourceObject;
         $callSignature = sprintf(
@@ -47,8 +47,8 @@ final class ContextFactory implements ContextFactoryInterface
 
     public function createCompleteContext(
         ResourceObject $ro,
-        OpenContextInterface $openContext,
-    ): CompleteContextInterface {
+        AbstractOpenContext $openContext,
+    ): AbstractCompleteContext {
         // Trigger rendering to capture view
         $view = (string) $ro;
 
@@ -67,8 +67,8 @@ final class ContextFactory implements ContextFactoryInterface
 
     public function createErrorContext(
         Throwable $e,
-        ?OpenContextInterface $openContext = null,
-    ): ErrorContextInterface {
+        ?AbstractOpenContext $openContext = null,
+    ): AbstractErrorContext {
         $profile = $openContext !== null
             ? $this->collectProfile($openContext)
             : null;
@@ -76,7 +76,7 @@ final class ContextFactory implements ContextFactoryInterface
         return new ErrorContext($e, $profile);
     }
 
-    private function collectProfile(OpenContextInterface $openContext): Profile
+    private function collectProfile(AbstractOpenContext $openContext): Profile
     {
         // Stop XHProf and collect data
         $xhprof = null;
@@ -99,7 +99,7 @@ final class ContextFactory implements ContextFactoryInterface
         // Stop PHP profiler
         $phpProfile = null;
         if ($openContext instanceof OpenContext) {
-            $phpProfile = $openContext->getPhpProfile();
+            $phpProfile = $openContext->phpProfile;
             $phpProfile->stop();
         }
 

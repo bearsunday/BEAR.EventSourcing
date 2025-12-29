@@ -6,10 +6,10 @@ namespace BEAR\SemanticLogger\Profile\Compact;
 
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
-use BEAR\SemanticLogger\Context\CompleteContextInterface;
+use BEAR\SemanticLogger\Context\AbstractCompleteContext;
+use BEAR\SemanticLogger\Context\AbstractErrorContext;
+use BEAR\SemanticLogger\Context\AbstractOpenContext;
 use BEAR\SemanticLogger\Context\ContextFactoryInterface;
-use BEAR\SemanticLogger\Context\ErrorContextInterface;
-use BEAR\SemanticLogger\Context\OpenContextInterface;
 use Throwable;
 
 /**
@@ -21,7 +21,7 @@ use Throwable;
  */
 final class ContextFactory implements ContextFactoryInterface
 {
-    public function createOpenContext(AbstractRequest $request): OpenContextInterface
+    public function createOpenContext(AbstractRequest $request): AbstractOpenContext
     {
         $ro = $request->resourceObject;
 
@@ -34,8 +34,8 @@ final class ContextFactory implements ContextFactoryInterface
 
     public function createCompleteContext(
         ResourceObject $ro,
-        OpenContextInterface $openContext,
-    ): CompleteContextInterface {
+        AbstractOpenContext $openContext,
+    ): AbstractCompleteContext {
         // Trigger rendering to capture view
         $view = (string) $ro;
 
@@ -50,8 +50,8 @@ final class ContextFactory implements ContextFactoryInterface
 
     public function createErrorContext(
         Throwable $e,
-        ?OpenContextInterface $openContext = null,
-    ): ErrorContextInterface {
+        ?AbstractOpenContext $openContext = null,
+    ): AbstractErrorContext {
         return new ErrorContext($e);
     }
 }

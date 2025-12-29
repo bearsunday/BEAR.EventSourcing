@@ -4,36 +4,23 @@ declare(strict_types=1);
 
 namespace BEAR\SemanticLogger\Profile\Compact;
 
-use BEAR\SemanticLogger\Context\ErrorContextInterface;
-use Koriym\SemanticLogger\AbstractContext;
+use BEAR\SemanticLogger\Context\AbstractErrorContext;
 use Throwable;
 
 /**
- * Compact implementation of ErrorContextInterface.
+ * Compact implementation of error context.
  */
-final class ErrorContext implements ErrorContextInterface
+final class ErrorContext extends AbstractErrorContext
 {
-    private readonly ResourceErrorContext $context;
-
     public function __construct(
-        private readonly Throwable $exception,
+        Throwable $exception,
         ?string $id = null,
     ) {
-        $this->context = new ResourceErrorContext($exception, $id);
-    }
-
-    public function getId(): string
-    {
-        return $this->context->id;
-    }
-
-    public function getException(): Throwable
-    {
-        return $this->exception;
-    }
-
-    public function getContext(): AbstractContext
-    {
-        return $this->context;
+        $generatedId = $id ?? sprintf('%08x', crc32($exception->getMessage() . $exception->getFile() . $exception->getLine()));
+        parent::__construct(
+            $exception,
+            new ResourceErrorContext($exception, $generatedId),
+            $generatedId,
+        );
     }
 }

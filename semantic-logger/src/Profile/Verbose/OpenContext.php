@@ -4,54 +4,33 @@ declare(strict_types=1);
 
 namespace BEAR\SemanticLogger\Profile\Verbose;
 
-use BEAR\SemanticLogger\Context\OpenContextInterface;
-use Koriym\SemanticLogger\AbstractContext;
+use BEAR\SemanticLogger\Context\AbstractOpenContext;
 use Koriym\SemanticLogger\Profiler\PhpProfile;
 
 /**
- * Verbose implementation of OpenContextInterface with profiling.
+ * Verbose implementation of open context with profiling.
  */
-final class OpenContext implements OpenContextInterface
+final class OpenContext extends AbstractOpenContext
 {
-    private readonly ResourceOpenContext $context;
+    public readonly PhpProfile $phpProfile;
 
     /**
      * @param array<string, mixed> $params
      */
     public function __construct(
-        private readonly string $method,
-        private readonly string $uri,
-        private readonly array $params = [],
-        ?string $callSignature = null,
+        string $method,
+        string $uri,
+        array $params = [],
+        public readonly ?string $callSignature = null,
     ) {
-        $this->context = new ResourceOpenContext($method, $uri, $params, $callSignature);
-    }
+        $resourceContext = new ResourceOpenContext($method, $uri, $params, $callSignature);
+        $this->phpProfile = $resourceContext->phpProfile;
 
-    public function getMethod(): string
-    {
-        return $this->method;
-    }
-
-    public function getUri(): string
-    {
-        return $this->uri;
-    }
-
-    public function getParams(): array
-    {
-        return $this->params;
-    }
-
-    public function getContext(): AbstractContext
-    {
-        return $this->context;
-    }
-
-    /**
-     * Get the PhpProfile for profiling.
-     */
-    public function getPhpProfile(): PhpProfile
-    {
-        return $this->context->phpProfile;
+        parent::__construct(
+            $method,
+            $uri,
+            $params,
+            $resourceContext,
+        );
     }
 }
