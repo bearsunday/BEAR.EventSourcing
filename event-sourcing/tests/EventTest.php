@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing;
 
+use BEAR\EventSourcing\Fake\FakeCompleteContext;
+use BEAR\EventSourcing\Fake\FakeOpenContext;
 use PHPUnit\Framework\TestCase;
 
 final class EventTest extends TestCase
@@ -77,5 +79,31 @@ final class EventTest extends TestCase
         $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
         $this->assertSame('test-id-123', $decoded['id']);
+    }
+
+    public function testFromContexts(): void
+    {
+        $open = new FakeOpenContext('POST', 'app://self/user', ['name' => 'John']);
+        $complete = new FakeCompleteContext('app://self/user', 201, [], ['id' => 1, 'name' => 'John']);
+
+        $event = Event::fromContexts($open, $complete);
+
+        $this->assertSame('app://self/user', $event->uri);
+        $this->assertSame('POST', $event->method);
+        $this->assertSame(['name' => 'John'], $event->params);
+        $this->assertSame(['id' => 1, 'name' => 'John'], $event->result);
+        $this->assertNotEmpty($event->id);
+        $this->assertNotEmpty($event->timestamp);
+    }
+
+    public function testFromContextsGeneratesUniqueId(): void
+    {
+        $open = new FakeOpenContext('POST', 'app://self/user', []);
+        $complete = new FakeCompleteContext('app://self/user', 201, [], null);
+
+        $event1 = Event::fromContexts($open, $complete);
+        $event2 = Event::fromContexts($open, $complete);
+
+        $this->assertNotSame($event1->id, $event2->id);
     }
 }

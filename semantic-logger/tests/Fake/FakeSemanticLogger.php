@@ -15,24 +15,33 @@ final class FakeSemanticLogger implements SemanticLoggerInterface
     /** @var array<array{type: string, context: AbstractContext, id: ?string}> */
     public array $logs = [];
 
+    /** @var array<array{type: string, context: AbstractContext, id: ?string}> */
+    public array $allLogs = [];
+
     private int $idCounter = 0;
 
     public function open(AbstractContext $context): string
     {
         $id = 'open-' . ++$this->idCounter;
-        $this->logs[] = ['type' => 'open', 'context' => $context, 'id' => null];
+        $entry = ['type' => 'open', 'context' => $context, 'id' => null];
+        $this->logs[] = $entry;
+        $this->allLogs[] = $entry;
 
         return $id;
     }
 
     public function close(AbstractContext $context, string $id): void
     {
-        $this->logs[] = ['type' => 'close', 'context' => $context, 'id' => $id];
+        $entry = ['type' => 'close', 'context' => $context, 'id' => $id];
+        $this->logs[] = $entry;
+        $this->allLogs[] = $entry;
     }
 
     public function event(AbstractContext $context): void
     {
-        $this->logs[] = ['type' => 'event', 'context' => $context, 'id' => null];
+        $entry = ['type' => 'event', 'context' => $context, 'id' => null];
+        $this->logs[] = $entry;
+        $this->allLogs[] = $entry;
     }
 
     /** @param array<array{rel: string, href: string, title?: string, type?: string}> $links */

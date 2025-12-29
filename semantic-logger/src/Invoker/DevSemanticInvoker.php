@@ -60,7 +60,7 @@ final class DevSemanticInvoker implements InvokerInterface
             // Persist log to file immediately
             try {
                 $logJson = $this->logger->flush();
-                $this->devLogger->write($logJson);
+                $this->devLogger->saveToFile($logJson);
             } catch (Throwable) {
                 // Prevent persistence failure from affecting the result
             }
