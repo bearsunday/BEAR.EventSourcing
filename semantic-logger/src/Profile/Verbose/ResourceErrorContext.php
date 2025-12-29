@@ -6,12 +6,11 @@ namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use JsonSerializable;
 use Koriym\SemanticLogger\AbstractContext;
+use Koriym\SemanticLogger\Profiler\Profile;
 use Throwable;
 
 /**
  * Verbose context for resource error with profiling data.
- *
- * @psalm-immutable
  */
 final class ResourceErrorContext extends AbstractContext implements JsonSerializable
 {

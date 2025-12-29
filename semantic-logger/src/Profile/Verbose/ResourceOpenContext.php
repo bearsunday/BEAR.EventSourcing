@@ -5,18 +5,17 @@ declare(strict_types=1);
 namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use Koriym\SemanticLogger\AbstractContext;
+use Koriym\SemanticLogger\Profiler\PhpProfile;
 
 /**
  * Verbose context for resource open with profiling initialization.
- *
- * @psalm-immutable
  */
 final class ResourceOpenContext extends AbstractContext
 {
     public const TYPE = 'resource.open';
     public const SCHEMA_URL = '';
 
-    public readonly float $startTime;
+    public readonly PhpProfile $phpProfile;
 
     public function __construct(
         public readonly string $method,
@@ -25,7 +24,8 @@ final class ResourceOpenContext extends AbstractContext
         public readonly array $params = [],
         public readonly ?string $callSignature = null,
     ) {
-        $this->startTime = microtime(true);
+        $this->phpProfile = new PhpProfile();
+        $this->phpProfile->start();
 
         // Start XHProf if available
         if (function_exists('xhprof_enable')) {

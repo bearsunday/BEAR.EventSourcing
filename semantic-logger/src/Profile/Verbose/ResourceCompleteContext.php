@@ -6,11 +6,10 @@ namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use JsonSerializable;
 use Koriym\SemanticLogger\AbstractContext;
+use Koriym\SemanticLogger\Profiler\Profile;
 
 /**
  * Verbose context for resource completion with profiling data.
- *
- * @psalm-immutable
  */
 final class ResourceCompleteContext extends AbstractContext implements JsonSerializable
 {

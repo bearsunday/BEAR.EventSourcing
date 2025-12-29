@@ -6,6 +6,7 @@ namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use BEAR\SemanticLogger\Context\ErrorContextInterface;
 use Koriym\SemanticLogger\AbstractContext;
+use Koriym\SemanticLogger\Profiler\Profile;
 use Throwable;
 
 /**

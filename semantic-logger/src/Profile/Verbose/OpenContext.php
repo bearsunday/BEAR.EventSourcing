@@ -6,6 +6,7 @@ namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use BEAR\SemanticLogger\Context\OpenContextInterface;
 use Koriym\SemanticLogger\AbstractContext;
+use Koriym\SemanticLogger\Profiler\PhpProfile;
 
 /**
  * Verbose implementation of OpenContextInterface with profiling.
@@ -47,10 +48,10 @@ final class OpenContext implements OpenContextInterface
     }
 
     /**
-     * Get the start time for profiling calculation.
+     * Get the PhpProfile for profiling.
      */
-    public function getStartTime(): float
+    public function getPhpProfile(): PhpProfile
     {
-        return $this->context->startTime;
+        return $this->context->phpProfile;
     }
 }

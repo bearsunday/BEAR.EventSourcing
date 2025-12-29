@@ -6,6 +6,7 @@ namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use BEAR\SemanticLogger\Context\CompleteContextInterface;
 use Koriym\SemanticLogger\AbstractContext;
+use Koriym\SemanticLogger\Profiler\Profile;
 
 /**
  * Verbose implementation of CompleteContextInterface with profiling.
