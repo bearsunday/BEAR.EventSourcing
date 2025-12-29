@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\SemanticLogger;
 
-use BEAR\SemanticLogger\Context\CompleteContextInterface;
-use BEAR\SemanticLogger\Context\OpenContextInterface;
+use BEAR\SemanticLogger\Context\AbstractCompleteContext;
+use BEAR\SemanticLogger\Context\AbstractOpenContext;
 
 /**
  * Bridge interface for Event Sourcing integration.
@@ -22,7 +22,7 @@ interface EventExtractorInterface
      * Implementation decides whether to record the event (e.g., skip GET requests).
      */
     public function extract(
-        OpenContextInterface $open,
-        CompleteContextInterface $complete,
+        AbstractOpenContext $open,
+        AbstractCompleteContext $complete,
     ): void;
 }
