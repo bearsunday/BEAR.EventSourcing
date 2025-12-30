@@ -11,6 +11,7 @@ use BEAR\SemanticLogger\Context\ContextFactoryInterface;
 use BEAR\SemanticLogger\EventExtractorInterface;
 use Koriym\SemanticLogger\DevLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Ray\Di\Di\Named;
 use Throwable;
 
 /**
@@ -24,6 +25,7 @@ use Throwable;
 final class DevSemanticInvoker implements InvokerInterface
 {
     public function __construct(
+        #[Named('original')]
         private readonly InvokerInterface $invoker,
         private readonly SemanticLoggerInterface $logger,
         private readonly DevLogger $devLogger,

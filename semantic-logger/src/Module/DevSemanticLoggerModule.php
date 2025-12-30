@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\SemanticLogger\Module;
 
+use BEAR\Resource\Invoker;
 use BEAR\Resource\InvokerInterface;
 use BEAR\SemanticLogger\Context\ContextFactoryInterface;
 use BEAR\SemanticLogger\Invoker\DevSemanticInvoker;
@@ -21,8 +22,6 @@ use Ray\Di\Scope;
  * - Immediate file persistence via DevLogger
  * - MCP server integration support
  * - Configurable log directory
- *
- * @codeCoverageIgnore Decorator module requires parent InvokerInterface binding
  */
 class DevSemanticLoggerModule extends AbstractModule
 {
@@ -49,10 +48,10 @@ class DevSemanticLoggerModule extends AbstractModule
         $this->bind(ContextFactoryInterface::class)
             ->to(ContextFactory::class);
 
-        // Rename original invoker
+        // Bind original invoker for decorator pattern
         $this->bind(InvokerInterface::class)
             ->annotatedWith('original')
-            ->to(InvokerInterface::class);
+            ->to(Invoker::class);
 
         // Wrap with DevSemanticInvoker
         $this->bind(InvokerInterface::class)

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\SemanticLogger\Module;
 
+use BEAR\Resource\Invoker;
 use BEAR\Resource\InvokerInterface;
 use BEAR\SemanticLogger\Context\ContextFactoryInterface;
 use BEAR\SemanticLogger\Invoker\SemanticInvoker;
@@ -20,8 +21,6 @@ use Ray\Di\Scope;
  * - SemanticLoggerInterface -> SemanticLogger (singleton)
  * - ContextFactoryInterface -> Compact\ContextFactory
  * - InvokerInterface -> SemanticInvoker (wrapping original)
- *
- * @codeCoverageIgnore Decorator module requires parent InvokerInterface binding
  */
 class SemanticLoggerModule extends AbstractModule
 {
@@ -36,10 +35,10 @@ class SemanticLoggerModule extends AbstractModule
         $this->bind(ContextFactoryInterface::class)
             ->to(ContextFactory::class);
 
-        // Rename original invoker
+        // Bind original invoker for decorator pattern
         $this->bind(InvokerInterface::class)
             ->annotatedWith('original')
-            ->to(InvokerInterface::class);
+            ->to(Invoker::class);
 
         // Wrap with SemanticInvoker
         $this->bind(InvokerInterface::class)
