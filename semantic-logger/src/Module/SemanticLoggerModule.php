@@ -20,6 +20,8 @@ use Ray\Di\Scope;
  * - SemanticLoggerInterface -> SemanticLogger (singleton)
  * - ContextFactoryInterface -> Compact\ContextFactory
  * - InvokerInterface -> SemanticInvoker (wrapping original)
+ *
+ * @codeCoverageIgnore
  */
 class SemanticLoggerModule extends AbstractModule
 {

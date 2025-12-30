@@ -21,6 +21,8 @@ use Ray\Di\Scope;
  * - Verbose profile with XHProf, Xdebug, PHP profiling
  * - Immediate file persistence via DevLogger
  * - MCP server integration support
+ *
+ * @codeCoverageIgnore
  */
 class VerboseSemanticLoggerModule extends AbstractModule
 {

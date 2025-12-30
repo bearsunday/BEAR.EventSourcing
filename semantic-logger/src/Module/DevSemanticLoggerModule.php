@@ -21,6 +21,8 @@ use Ray\Di\Scope;
  * - Immediate file persistence via DevLogger
  * - MCP server integration support
  * - Configurable log directory
+ *
+ * @codeCoverageIgnore
  */
 class DevSemanticLoggerModule extends AbstractModule
 {

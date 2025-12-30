@@ -80,21 +80,25 @@ final class ContextFactory implements ContextFactoryInterface
     {
         // Stop XHProf and collect data
         $xhprof = null;
+        // @codeCoverageIgnoreStart
         if (function_exists('xhprof_disable')) {
             $xhprofData = xhprof_disable();
             if ($xhprofData !== null) {
                 $xhprof = new XHProfResult($xhprofData);
             }
         }
+        // @codeCoverageIgnoreEnd
 
         // Collect Xdebug trace if available
         $xdebug = null;
+        // @codeCoverageIgnoreStart
         if (function_exists('xdebug_get_tracefile_name')) {
             $traceFile = xdebug_get_tracefile_name();
             if ($traceFile !== null && $traceFile !== false) {
                 $xdebug = new XdebugTrace($traceFile);
             }
         }
+        // @codeCoverageIgnoreEnd
 
         // Stop PHP profiler
         $phpProfile = null;
