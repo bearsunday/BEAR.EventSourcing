@@ -120,4 +120,101 @@ final class DevSemanticInvokerTest extends TestCase
         // Use allLogs because flush() is called in finally block
         $this->assertSame('open-1', $this->logger->allLogs[1]['id']);
     }
+
+    public function testInvokeWithExtractor(): void
+    {
+        $extracted = [];
+        $extractor = new class ($extracted) implements \BEAR\SemanticLogger\EventExtractorInterface {
+            /** @param array<array{open: \BEAR\SemanticLogger\Context\AbstractOpenContext, complete: \BEAR\SemanticLogger\Context\AbstractCompleteContext}> $extracted */
+            public function __construct(private array &$extracted)
+            {
+            }
+
+            public function extract(
+                \BEAR\SemanticLogger\Context\AbstractOpenContext $open,
+                \BEAR\SemanticLogger\Context\AbstractCompleteContext $complete,
+            ): void {
+                $this->extracted[] = ['open' => $open, 'complete' => $complete];
+            }
+        };
+
+        $invoker = new DevSemanticInvoker(
+            new FakeInvoker(),
+            $this->logger,
+            $this->devLogger,
+            new ContextFactory(),
+            $extractor,
+        );
+
+        $ro = new FakeResourceObject();
+        $request = FakeRequest::create($ro, 'get', ['id' => 1]);
+
+        $invoker->invoke($request);
+
+        $this->assertCount(1, $extracted);
+        $this->assertSame('get', $extracted[0]['open']->method);
+    }
+
+    public function testInvokeWithExceptionWhenLoggerCloseThrows(): void
+    {
+        $logger = new class extends FakeSemanticLogger {
+            private bool $firstClose = true;
+
+            public function close(\Koriym\SemanticLogger\AbstractContext $context, string $id): void
+            {
+                if (! $this->firstClose) {
+                    throw new RuntimeException('Logger close failed');
+                }
+
+                $this->firstClose = false;
+                parent::close($context, $id);
+            }
+        };
+
+        $invoker = new DevSemanticInvoker(
+            new class extends FakeInvoker {
+                public function invoke(\BEAR\Resource\AbstractRequest $request): \BEAR\Resource\ResourceObject
+                {
+                    throw new RuntimeException('Original error');
+                }
+            },
+            $logger,
+            $this->devLogger,
+            new ContextFactory(),
+        );
+
+        $ro = new FakeResourceObject();
+        $request = FakeRequest::create($ro, 'get', ['id' => 1]);
+
+        // Original exception should be thrown, not the logging exception
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Original error');
+
+        $invoker->invoke($request);
+    }
+
+    public function testInvokeWhenFlushThrows(): void
+    {
+        $logger = new class extends FakeSemanticLogger {
+            public function flush(array $links = []): \Koriym\SemanticLogger\LogJson
+            {
+                throw new RuntimeException('Flush failed');
+            }
+        };
+
+        $invoker = new DevSemanticInvoker(
+            new FakeInvoker(),
+            $logger,
+            $this->devLogger,
+            new ContextFactory(),
+        );
+
+        $ro = new FakeResourceObject();
+        $request = FakeRequest::create($ro, 'get', ['id' => 1]);
+
+        // Should not throw - flush failure is caught
+        $result = $invoker->invoke($request);
+
+        $this->assertInstanceOf(FakeResourceObject::class, $result);
+    }
 }

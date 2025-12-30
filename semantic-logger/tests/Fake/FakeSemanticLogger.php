@@ -10,7 +10,7 @@ use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\OpenCloseEntry;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 
-final class FakeSemanticLogger implements SemanticLoggerInterface
+class FakeSemanticLogger implements SemanticLoggerInterface
 {
     /** @var array<array{type: string, context: AbstractContext, id: ?string}> */
     public array $logs = [];
