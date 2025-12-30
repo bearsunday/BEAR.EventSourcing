@@ -22,7 +22,7 @@ use Ray\Di\Scope;
  * - Immediate file persistence via DevLogger
  * - MCP server integration support
  *
- * @codeCoverageIgnore Requires BEAR.Resource integration
+ * @codeCoverageIgnore Decorator module requires parent InvokerInterface binding
  */
 class VerboseSemanticLoggerModule extends AbstractModule
 {

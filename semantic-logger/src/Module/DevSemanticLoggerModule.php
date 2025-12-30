@@ -22,7 +22,7 @@ use Ray\Di\Scope;
  * - MCP server integration support
  * - Configurable log directory
  *
- * @codeCoverageIgnore Requires BEAR.Resource integration
+ * @codeCoverageIgnore Decorator module requires parent InvokerInterface binding
  */
 class DevSemanticLoggerModule extends AbstractModule
 {

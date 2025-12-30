@@ -21,7 +21,7 @@ use Ray\Di\Scope;
  * - ContextFactoryInterface -> Compact\ContextFactory
  * - InvokerInterface -> SemanticInvoker (wrapping original)
  *
- * @codeCoverageIgnore Requires BEAR.Resource integration
+ * @codeCoverageIgnore Decorator module requires parent InvokerInterface binding
  */
 class SemanticLoggerModule extends AbstractModule
 {
