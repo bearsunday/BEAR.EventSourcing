@@ -28,6 +28,7 @@ use function xhprof_disable;
  */
 final class ContextFactory implements ContextFactoryInterface
 {
+    #[\Override]
     public function createOpenContext(AbstractRequest $request): AbstractOpenContext
     {
         $ro = $request->resourceObject;
@@ -45,6 +46,7 @@ final class ContextFactory implements ContextFactoryInterface
         );
     }
 
+    #[\Override]
     public function createCompleteContext(
         ResourceObject $ro,
         AbstractOpenContext $openContext,
@@ -65,6 +67,7 @@ final class ContextFactory implements ContextFactoryInterface
         );
     }
 
+    #[\Override]
     public function createErrorContext(
         Throwable $e,
         ?AbstractOpenContext $openContext = null,
@@ -82,10 +85,9 @@ final class ContextFactory implements ContextFactoryInterface
         $xhprof = null;
         // @codeCoverageIgnoreStart
         if (function_exists('xhprof_disable')) {
+            /** @var array<string, mixed> $xhprofData */
             $xhprofData = xhprof_disable();
-            if ($xhprofData !== null) {
-                $xhprof = new XHProfResult($xhprofData);
-            }
+            $xhprof = new XHProfResult($xhprofData);
         }
         // @codeCoverageIgnoreEnd
 
@@ -93,10 +95,9 @@ final class ContextFactory implements ContextFactoryInterface
         $xdebug = null;
         // @codeCoverageIgnoreStart
         if (function_exists('xdebug_get_tracefile_name')) {
+            /** @var string $traceFile */
             $traceFile = xdebug_get_tracefile_name();
-            if ($traceFile !== null && $traceFile !== false) {
-                $xdebug = new XdebugTrace($traceFile);
-            }
+            $xdebug = new XdebugTrace($traceFile);
         }
         // @codeCoverageIgnoreEnd
 

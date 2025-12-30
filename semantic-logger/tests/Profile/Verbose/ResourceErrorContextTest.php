@@ -56,9 +56,11 @@ final class ResourceErrorContextTest extends TestCase
         $data = $context->jsonSerialize();
 
         $this->assertSame($context->id, $data['id']);
-        $this->assertSame(RuntimeException::class, $data['exception']['class']);
-        $this->assertSame('Test error', $data['exception']['message']);
-        $this->assertSame(500, $data['exception']['code']);
+        $this->assertIsArray($data['exception']);
+        $exceptionData = $data['exception'];
+        $this->assertSame(RuntimeException::class, $exceptionData['class']);
+        $this->assertSame('Test error', $exceptionData['message']);
+        $this->assertSame(500, $exceptionData['code']);
     }
 
     public function testJsonSerializeWithProfile(): void

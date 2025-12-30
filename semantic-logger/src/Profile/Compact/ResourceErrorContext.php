@@ -9,8 +9,6 @@ use Throwable;
 
 /**
  * Compact context for resource error.
- *
- * @psalm-immutable
  */
 final class ResourceErrorContext extends AbstractContext
 {

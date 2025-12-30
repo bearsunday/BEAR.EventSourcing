@@ -34,6 +34,7 @@ final class DevSemanticInvoker implements InvokerInterface
     ) {
     }
 
+    #[\Override]
     public function invoke(AbstractRequest $request): ResourceObject
     {
         $openContext = $this->contextFactory->createOpenContext($request);

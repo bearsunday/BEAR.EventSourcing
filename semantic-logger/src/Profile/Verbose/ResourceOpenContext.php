@@ -30,6 +30,7 @@ final class ResourceOpenContext extends AbstractContext
         // Start XHProf if available
         // @codeCoverageIgnoreStart
         if (function_exists('xhprof_enable')) {
+            /** @psalm-suppress UndefinedConstant, MixedArgument */
             xhprof_enable(XHPROF_FLAGS_CPU | XHPROF_FLAGS_MEMORY);
         }
         // @codeCoverageIgnoreEnd

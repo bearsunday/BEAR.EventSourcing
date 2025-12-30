@@ -23,7 +23,7 @@ use Ray\Di\Scope;
  * - Immediate file persistence via DevLogger
  * - MCP server integration support
  */
-class VerboseSemanticLoggerModule extends AbstractModule
+final class VerboseSemanticLoggerModule extends AbstractModule
 {
     public function __construct(
         private readonly ?string $logDir = null,
@@ -32,6 +32,7 @@ class VerboseSemanticLoggerModule extends AbstractModule
         parent::__construct($module);
     }
 
+    #[\Override]
     protected function configure(): void
     {
         // Bind SemanticLogger as singleton

@@ -98,8 +98,10 @@ final class SemanticInvokerTest extends TestCase
         $extracted = [];
         $extractor = new class ($extracted) implements EventExtractorInterface {
             /** @param array<array{open: AbstractOpenContext, complete: AbstractCompleteContext}> $extracted */
-            public function __construct(private array &$extracted)
-            {
+            public function __construct(
+                /** @phpstan-ignore property.onlyWritten */
+                private array &$extracted,
+            ) {
             }
 
             public function extract(AbstractOpenContext $open, AbstractCompleteContext $complete): void

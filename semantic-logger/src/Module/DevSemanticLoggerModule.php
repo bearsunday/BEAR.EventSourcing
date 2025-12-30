@@ -23,7 +23,7 @@ use Ray\Di\Scope;
  * - MCP server integration support
  * - Configurable log directory
  */
-class DevSemanticLoggerModule extends AbstractModule
+final class DevSemanticLoggerModule extends AbstractModule
 {
     public function __construct(
         private readonly ?string $logDir = null,
@@ -32,6 +32,7 @@ class DevSemanticLoggerModule extends AbstractModule
         parent::__construct($module);
     }
 
+    #[\Override]
     protected function configure(): void
     {
         // Bind SemanticLogger as singleton

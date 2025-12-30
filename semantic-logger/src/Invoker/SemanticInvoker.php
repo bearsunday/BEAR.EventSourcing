@@ -22,7 +22,7 @@ use Throwable;
  * 3. close() - Log completion or error
  * 4. extract() - Optionally extract events for Event Sourcing
  */
-class SemanticInvoker implements InvokerInterface
+final class SemanticInvoker implements InvokerInterface
 {
     public function __construct(
         #[Named('original')]
@@ -33,6 +33,7 @@ class SemanticInvoker implements InvokerInterface
     ) {
     }
 
+    #[\Override]
     public function invoke(AbstractRequest $request): ResourceObject
     {
         $openContext = $this->contextFactory->createOpenContext($request);

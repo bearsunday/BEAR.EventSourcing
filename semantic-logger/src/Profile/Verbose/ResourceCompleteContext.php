@@ -27,6 +27,8 @@ final class ResourceCompleteContext extends AbstractContext implements JsonSeria
     ) {
     }
 
+    /** @return array<string, mixed> */
+    #[\Override]
     public function jsonSerialize(): array
     {
         $data = [

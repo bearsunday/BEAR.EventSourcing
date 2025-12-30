@@ -126,7 +126,10 @@ final class DevSemanticInvokerTest extends TestCase
         $extracted = [];
         $extractor = new class ($extracted) implements \BEAR\SemanticLogger\EventExtractorInterface {
             /** @param array<array{open: \BEAR\SemanticLogger\Context\AbstractOpenContext, complete: \BEAR\SemanticLogger\Context\AbstractCompleteContext}> $extracted */
-            public function __construct(private array &$extracted)
+            public function __construct(
+                /** @phpstan-ignore property.onlyWritten */
+                private array &$extracted,
+            )
             {
             }
 

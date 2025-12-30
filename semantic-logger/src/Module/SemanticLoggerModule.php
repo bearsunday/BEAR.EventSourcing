@@ -22,8 +22,9 @@ use Ray\Di\Scope;
  * - ContextFactoryInterface -> Compact\ContextFactory
  * - InvokerInterface -> SemanticInvoker (wrapping original)
  */
-class SemanticLoggerModule extends AbstractModule
+final class SemanticLoggerModule extends AbstractModule
 {
+    #[\Override]
     protected function configure(): void
     {
         // Bind SemanticLogger as singleton

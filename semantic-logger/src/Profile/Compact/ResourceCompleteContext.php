@@ -8,8 +8,6 @@ use Koriym\SemanticLogger\AbstractContext;
 
 /**
  * Compact context for resource completion.
- *
- * @psalm-immutable
  */
 final class ResourceCompleteContext extends AbstractContext
 {

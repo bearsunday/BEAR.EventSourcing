@@ -27,6 +27,8 @@ final class ResourceErrorContext extends AbstractContext implements JsonSerializ
         $this->id = $id ?? sprintf('%08x', crc32($exception->getMessage() . $exception->getFile() . $exception->getLine()));
     }
 
+    /** @return array<string, mixed> */
+    #[\Override]
     public function jsonSerialize(): array
     {
         $data = [

@@ -21,6 +21,7 @@ use Throwable;
  */
 final class ContextFactory implements ContextFactoryInterface
 {
+    #[\Override]
     public function createOpenContext(AbstractRequest $request): AbstractOpenContext
     {
         $ro = $request->resourceObject;
@@ -32,6 +33,7 @@ final class ContextFactory implements ContextFactoryInterface
         );
     }
 
+    #[\Override]
     public function createCompleteContext(
         ResourceObject $ro,
         AbstractOpenContext $openContext,
@@ -48,6 +50,7 @@ final class ContextFactory implements ContextFactoryInterface
         );
     }
 
+    #[\Override]
     public function createErrorContext(
         Throwable $e,
         ?AbstractOpenContext $openContext = null,
