@@ -1,0 +1,53 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BearEccube\Query\Impl;
+
+use Aura\Sql\ExtendedPdo;
+use BearEccube\Query\MailTemplateQueryInterface;
+use DateTimeImmutable;
+
+class MailTemplateQuery implements MailTemplateQueryInterface
+{
+    public function __construct(private readonly ExtendedPdo $pdo) {}
+
+    public function findById(int $id): ?array
+    {
+        return $this->pdo->fetchOne('SELECT * FROM mail_template WHERE id = :id', ['id' => $id]) ?: null;
+    }
+
+    public function findByName(string $name): ?array
+    {
+        return $this->pdo->fetchOne('SELECT * FROM mail_template WHERE name = :name', ['name' => $name]) ?: null;
+    }
+
+    public function findAll(): array
+    {
+        return $this->pdo->fetchAll('SELECT * FROM mail_template ORDER BY id');
+    }
+
+    public function create(array $data): int
+    {
+        $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+        $data['create_date'] = $now;
+        $data['update_date'] = $now;
+        $cols = implode(', ', array_keys($data));
+        $ph = ':' . implode(', :', array_keys($data));
+        $this->pdo->perform("INSERT INTO mail_template ({$cols}) VALUES ({$ph})", $data);
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    public function update(int $id, array $data): void
+    {
+        $data['update_date'] = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+        $sets = array_map(fn($k) => "{$k} = :{$k}", array_keys($data));
+        $data['id'] = $id;
+        $this->pdo->perform('UPDATE mail_template SET ' . implode(', ', $sets) . ' WHERE id = :id', $data);
+    }
+
+    public function delete(int $id): void
+    {
+        $this->pdo->perform('DELETE FROM mail_template WHERE id = :id', ['id' => $id]);
+    }
+}

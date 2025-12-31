@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BearEccube\Query\Impl;
+
+use Aura\Sql\ExtendedPdo;
+use BearEccube\Query\MemberQueryInterface;
+use DateTimeImmutable;
+
+class MemberQuery implements MemberQueryInterface
+{
+    public function __construct(private readonly ExtendedPdo $pdo) {}
+
+    public function findById(int $id): ?array
+    {
+        return $this->pdo->fetchOne('SELECT * FROM member WHERE id = :id', ['id' => $id]) ?: null;
+    }
+
+    public function findByLoginId(string $loginId): ?array
+    {
+        return $this->pdo->fetchOne('SELECT * FROM member WHERE login_id = :login_id', ['login_id' => $loginId]) ?: null;
+    }
+
+    public function findAll(int $limit = 20, int $offset = 0): array
+    {
+        return $this->pdo->fetchAll('SELECT * FROM member ORDER BY sort_no LIMIT :limit OFFSET :offset', ['limit' => $limit, 'offset' => $offset]);
+    }
+
+    public function count(): int
+    {
+        return (int)$this->pdo->fetchValue('SELECT COUNT(*) FROM member');
+    }
+
+    public function create(array $data): int
+    {
+        $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+        $data['create_date'] = $now;
+        $data['update_date'] = $now;
+        $cols = implode(', ', array_keys($data));
+        $ph = ':' . implode(', :', array_keys($data));
+        $this->pdo->perform("INSERT INTO member ({$cols}) VALUES ({$ph})", $data);
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    public function update(int $id, array $data): void
+    {
+        $data['update_date'] = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+        $sets = array_map(fn($k) => "{$k} = :{$k}", array_keys($data));
+        $data['id'] = $id;
+        $this->pdo->perform('UPDATE member SET ' . implode(', ', $sets) . ' WHERE id = :id', $data);
+    }
+
+    public function delete(int $id): void
+    {
+        $this->pdo->perform('DELETE FROM member WHERE id = :id', ['id' => $id]);
+    }
+}
