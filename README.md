@@ -1,255 +1,198 @@
-# BEAR.EventSourcing (WIP)
+# BEAR.Eccube
 
-Event Sourcing for BEAR.Sunday — extracting facts from observations.
+EC-CUBE ported to BEAR.Sunday with Event Sourcing.
 
-## Philosophy
+## Overview
 
-BEAR.Sunday does not provide Event Sourcing as a feature. By following REST and AOP constraints, ES emerges naturally as a result.
+This project is a complete port of [EC-CUBE](https://github.com/EC-CUBE/ec-cube) e-commerce platform to the BEAR.Sunday framework, utilizing Event Sourcing for state management.
 
-> "A framework is a constraint, not a solution."
+## Features
 
-## Concept
+- **Resource-Oriented Architecture**: All entities exposed as RESTful resources
+- **Event Sourcing**: All state changes are recorded as immutable events
+- **Dependency Injection**: Clean separation of concerns using Ray.Di
+- **AOP Integration**: Cross-cutting concerns handled via Ray.Aop
 
-SemanticLogger records meaningful observations. Event Sourcing extracts state-change facts from them.
+## Architecture
 
 ```
-Observation (SemanticLog) → Extraction → Facts (Events)
+┌─────────────────────────────────────────────────────────────┐
+│                      BEAR.Sunday                             │
+├─────────────────────────────────────────────────────────────┤
+│  Resource Layer                                              │
+│  ├── /products      - 商品管理                               │
+│  ├── /customers     - 会員管理                               │
+│  ├── /orders        - 注文管理                               │
+│  ├── /cart          - カート管理                             │
+│  └── /categories    - カテゴリ管理                           │
+├─────────────────────────────────────────────────────────────┤
+│  Query Layer (Ray.Query)                                     │
+│  ├── ProductQuery, CustomerQuery, OrderQuery, etc.           │
+│  └── SQL files in var/sql/                                   │
+├─────────────────────────────────────────────────────────────┤
+│  Entity Layer                                                │
+│  ├── Product, ProductClass, ProductImage, ProductCategory    │
+│  ├── Customer, CustomerAddress                               │
+│  ├── Order, OrderItem, Shipping                              │
+│  ├── Cart, CartItem                                          │
+│  ├── Category, Payment, Delivery                             │
+│  └── Master entities (Pref, Sex, Status, etc.)               │
+├─────────────────────────────────────────────────────────────┤
+│  Event Sourcing Layer                                        │
+│  ├── Event, Events, EventStore                               │
+│  └── EventSourcingInterceptor                                │
+└─────────────────────────────────────────────────────────────┘
 ```
-
-| Layer | Role | Persistence |
-|-------|------|-------------|
-| SemanticLog | Complete observation record | Configurable |
-| Events | State-change facts only | Permanent |
-
-Like a ship's log — observations may be temporary, but they trace the truth when needed.
 
 ## Installation
 
 ```bash
-composer require bear/event-sourcing
+composer install
 ```
 
-Requires `bear/semantic-logger`.
+## Database Setup
 
-## Interfaces
+```bash
+mysql -u root -p < var/sql/schema.sql
+```
 
-### Event
+Or for PostgreSQL, adjust the schema accordingly.
 
-Immutable fact of a state change:
+## Configuration
+
+Set environment variables:
+
+```bash
+export DB_DRIVER=mysql    # or pgsql
+export DB_HOST=localhost
+export DB_PORT=3306
+export DB_NAME=eccube
+export DB_USER=root
+export DB_PASSWORD=
+export DB_CHARSET=utf8mb4
+```
+
+## API Endpoints
+
+### Products
+
+| Method | URI | Description |
+|--------|-----|-------------|
+| GET | /products | 商品一覧取得 |
+| POST | /products | 商品登録 |
+| GET | /products/{id} | 商品詳細取得 |
+| PUT | /products/{id} | 商品更新 |
+| DELETE | /products/{id} | 商品削除 |
+
+### Customers
+
+| Method | URI | Description |
+|--------|-----|-------------|
+| GET | /customers | 会員一覧取得 |
+| POST | /customers | 会員登録 |
+| GET | /customers/{id} | 会員詳細取得 |
+| PUT | /customers/{id} | 会員更新 |
+| DELETE | /customers/{id} | 会員削除 |
+
+### Orders
+
+| Method | URI | Description |
+|--------|-----|-------------|
+| GET | /orders | 注文一覧取得 |
+| GET | /orders/{id} | 注文詳細取得 |
+| PUT | /orders/{id} | 注文ステータス更新 |
+| DELETE | /orders/{id} | 注文キャンセル |
+
+### Cart
+
+| Method | URI | Description |
+|--------|-----|-------------|
+| GET | /cart | カート取得 |
+| POST | /cart | カート作成 |
+| DELETE | /cart | カートクリア |
+| GET | /cart/items | カート内商品取得 |
+| POST | /cart/items | カートに商品追加 |
+| PUT | /cart/items | 数量変更 |
+| DELETE | /cart/items/{id} | 商品削除 |
+| GET | /cart/checkout | 注文プレビュー |
+| POST | /cart/checkout | 注文確定 |
+
+### Categories
+
+| Method | URI | Description |
+|--------|-----|-------------|
+| GET | /categories | カテゴリ一覧取得 |
+| POST | /categories | カテゴリ登録 |
+| GET | /categories/{id} | カテゴリ詳細取得 |
+| PUT | /categories/{id} | カテゴリ更新 |
+| DELETE | /categories/{id} | カテゴリ削除 |
+
+## Event Sourcing
+
+All POST, PUT, DELETE operations are automatically recorded as events:
 
 ```php
-final class Event
+// Events are stored with:
 {
-    public function __construct(
-        public readonly string $id,
-        public readonly string $timestamp,
-        public readonly string $uri,
-        public readonly string $method,
-        public readonly array $params,
-        public readonly mixed $result
-    ) {}
-
-    public static function fromEntry(array $entry): self;
-    public function toArray(): array;
+    "id": "uuid",
+    "timestamp": "2025-01-01 12:00:00.000000",
+    "uri": "/products/1",
+    "method": "PUT",
+    "params": {"name": "Updated Product"},
+    "result": {"id": 1, "name": "Updated Product", ...}
 }
 ```
 
-### EventsInterface
+### Query Events
 
 ```php
-interface EventsInterface extends IteratorAggregate
-{
-    public static function fromSemanticLog(array $semanticLog): self;
-    public static function fromJson(string $json): self;
-    public function toJson(): string;
-    public function play(callable $handler): void;
-}
-```
+// Get all events
+$events = $eventStore->getEvents();
 
-### EventStoreInterface
+// Get events since timestamp
+$events = $eventStore->getEventsSince(new DateTime('2025-01-01'));
 
-```php
-interface EventStoreInterface
-{
-    public function append(Event $event): void;
-    public function getEvents(string $uri): EventsInterface;
-    public function getEventsSince(string $timestamp): EventsInterface;
-}
-```
+// Get events by URI pattern
+$events = $eventStore->getEventsByUri('/orders/*');
 
-## Usage
-
-### Extract from SemanticLog
-
-```php
-$semanticLog = $logger->flush();
-$events = Events::fromSemanticLog($semanticLog);
-```
-
-### Query
-
-```php
-$events = $eventStore->getEvents('/users/1');
-
-foreach ($events as $event) {
-    // process event
-}
-```
-
-### Replay
-
-```php
-$events->play(function(Event $e) use ($resource) {
-    $resource->{$e->method}($e->uri, $e->params);
+// Replay events
+$events->replay(function(Event $e) {
+    echo "Event: {$e->uri} {$e->method}\n";
 });
 ```
 
-### Serialize
-
-```php
-// Export
-file_put_contents('events.json', $events->toJson());
-
-// Import and replay
-Events::fromJson(file_get_contents('events.json'))->play($handler);
-```
-
-### Integration Testing
-
-Replay production events for regression testing:
-
-```php
-$events = Events::fromJson(file_get_contents('production-events.json'));
-
-$events->play(function(Event $e) use ($resource, $test) {
-    $result = $resource->{$e->method}($e->uri, $e->params);
-    $test->assertSame($e->result, $result->body);
-});
-```
-
-Useful for:
-- Bug reproduction
-- Regression testing
-- Production data verification
-
-Assumes idempotency.
-
-## Recording
-
-AOP interceptor records SemanticLog and extracts Events:
-
-```php
-class SemanticLogInterceptor implements MethodInterceptor
-{
-    public function __construct(
-        private SemanticLogger $logger,
-        private EventStoreInterface $eventStore
-    ) {}
-
-    public function invoke(MethodInvocation $invocation)
-    {
-        $request = $invocation->getThis();
-        $openContext = OpenContext::create($request);
-        $this->logger->open($openContext);
-
-        $result = $invocation->proceed();
-
-        $completeContext = CompleteContext::create($result, $openContext);
-        $this->logger->close($completeContext);
-
-        if ($request->method !== 'GET') {
-            $this->eventStore->append(Event::fromCompleteContext($completeContext));
-        }
-
-        return $result;
-    }
-}
-```
-
-### Why AOP?
-
-| Approach | Cost |
-|----------|------|
-| AOP | Only bound resources |
-| Invoker | All requests |
-
-Benefits:
-- Selective application via attributes
-- No cache interceptor conflicts (GET excluded)
-- Failed authentication = no event recorded
-- No global state
-
-## Module
-
-```php
-class EventSourcingModule extends AbstractModule
-{
-    protected function configure(): void
-    {
-        $this->bind(EventStoreInterface::class)->to(RedisEventStore::class);
-        
-        $this->bindInterceptor(
-            $this->matcher->subclassesOf(ResourceObject::class),
-            $this->matcher->annotatedWith(EventSourced::class),
-            [SemanticLogInterceptor::class]
-        );
-    }
-}
-```
-
-## Package Structure
+## Directory Structure
 
 ```
-BEAR.SemanticLogger (observation)
-        ↓
-BEAR.EventSourcing (extraction)
+src/
+├── Entity/              # Domain entities
+│   └── Master/          # Master data entities
+├── Resource/
+│   └── App/             # API resources
+│       ├── Products/    # Product sub-resources
+│       ├── Orders/      # Order sub-resources
+│       └── Cart/        # Cart sub-resources
+├── Query/               # Query interfaces
+│   └── Impl/            # Query implementations
+├── Module/              # DI modules
+├── Service/             # Business logic services
+├── EventSourcing/       # Event sourcing core
+└── Interceptor/         # AOP interceptors
+
+var/
+├── sql/                 # SQL files
+│   └── schema.sql       # Database schema
+├── log/                 # Log files
+└── tmp/                 # Temporary files
 ```
 
-| Package | Responsibility |
-|---------|----------------|
-| BEAR.SemanticLogger | Observations — router, resource, everything |
-| BEAR.EventSourcing | State-change facts — extraction & persistence |
+## Based On
 
-EventSourcing depends on SemanticLogger. Not vice versa.
+- [EC-CUBE](https://github.com/EC-CUBE/ec-cube) - Original e-commerce platform
+- [BEAR.Sunday](https://bearsunday.github.io/) - Resource-oriented framework
+- [Ray.Di](https://github.com/ray-di/Ray.Di) - Dependency injection
+- [Ray.Aop](https://github.com/ray-di/Ray.Aop) - Aspect-oriented programming
 
-## Design Principles
+## License
 
-| Principle | Application |
-|-----------|-------------|
-| WYSIWYG | Observation is truth |
-| Separation | Observation → Fact |
-| Single Responsibility | EventStore stores and retrieves |
-| Symmetry | `fromJson`/`toJson`, `fromSemanticLog` |
-| Transparency | Resources unaware of ES |
-| No Global State | DI injection, no order dependency |
-
-## Vision
-
-SemanticLogger captures micro to macro in one structure:
-
-| Layer | Target |
-|-------|--------|
-| Micro | XHProf, Xdebug, PHP profile |
-| Resource | Request/Response, state changes |
-| Macro | Hypermedia links, workflow intent |
-
-Event Sourcing extracts one aspect: **state changed**.
-
-### Observation vs Fact
-
-| | Nature |
-|---|--------|
-| SemanticLog | Meaning — structure, context, intent |
-| Events | Fact — state changed, nothing more |
-
-Extraction: meaning → fact. Context discarded, essence kept.
-
-Replay needs facts. Analysis needs context. Both complete the picture.
-
-### For Humans and Machines
-
-- JSON Schema typed
-- Self-proving responses
-- AI and developer readable
-
-Same philosophy as "Everything is a Resource" — one abstraction unifies all.
+MIT License
