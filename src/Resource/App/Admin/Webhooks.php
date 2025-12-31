@@ -1,0 +1,101 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BearEccube\Resource\App\Admin;
+
+use BEAR\Resource\ResourceObject;
+use BearEccube\Annotation\RequireAuth;
+use BearEccube\Query\WebhookQueryInterface;
+
+class Webhooks extends ResourceObject
+{
+    public function __construct(
+        private readonly WebhookQueryInterface $query
+    ) {}
+
+    #[RequireAuth(role: 'admin')]
+    public function onGet(?int $id = null): static
+    {
+        if ($id !== null) {
+            $webhook = $this->query->findById($id);
+            if ($webhook === null) {
+                $this->code = 404;
+                $this->body = ['error' => 'Webhook not found'];
+                return $this;
+            }
+            $webhook['logs'] = $this->query->getDeliveryLogs($id, 20);
+            $this->body = $webhook;
+        } else {
+            $this->body = ['webhooks' => $this->query->findAll()];
+        }
+        return $this;
+    }
+
+    #[RequireAuth(role: 'admin')]
+    public function onPost(string $name, string $url, array $events = [], bool $enabled = true): static
+    {
+        $id = $this->query->create([
+            'name' => $name,
+            'url' => $url,
+            'events' => $events,
+            'enabled' => $enabled,
+        ]);
+
+        $webhook = $this->query->findById($id);
+
+        $this->code = 201;
+        $this->body = [
+            'id' => $id,
+            'secret' => $webhook['secret'],
+        ];
+        return $this;
+    }
+
+    #[RequireAuth(role: 'admin')]
+    public function onPut(
+        int $id,
+        ?string $name = null,
+        ?string $url = null,
+        ?array $events = null,
+        ?bool $enabled = null
+    ): static {
+        $webhook = $this->query->findById($id);
+        if ($webhook === null) {
+            $this->code = 404;
+            $this->body = ['error' => 'Webhook not found'];
+            return $this;
+        }
+
+        $data = [];
+        if ($name !== null) $data['name'] = $name;
+        if ($url !== null) $data['url'] = $url;
+        if ($events !== null) $data['events'] = $events;
+        if ($enabled !== null) $data['enabled'] = $enabled ? 1 : 0;
+
+        if (!empty($data)) {
+            $this->query->update($id, $data);
+        }
+
+        $this->code = 200;
+        $this->body = ['id' => $id, 'updated' => true];
+        return $this;
+    }
+
+    #[RequireAuth(role: 'admin')]
+    public function onDelete(int $id): static
+    {
+        $webhook = $this->query->findById($id);
+        if ($webhook === null) {
+            $this->code = 404;
+            $this->body = ['error' => 'Webhook not found'];
+            return $this;
+        }
+
+        $this->query->delete($id);
+
+        $this->code = 200;
+        $this->body = ['deleted' => true];
+        return $this;
+    }
+}
