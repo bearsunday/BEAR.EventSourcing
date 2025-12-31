@@ -29,19 +29,23 @@ class FakeProductQuery implements ProductQueryInterface
     ): array {
         $data = $this->loadJson('list.json');
 
+        // JSON は 'items' キーを使用、API では 'products' として返す
+        $products = $data['items'] ?? $data['products'] ?? [];
+
         // 簡易フィルタリング（Fakeなので完全な実装は不要）
         if ($name !== null) {
-            $data['products'] = array_values(array_filter(
-                $data['products'],
+            $products = array_values(array_filter(
+                $products,
                 fn($p) => str_contains($p['name'], $name)
             ));
-            $data['total'] = count($data['products']);
         }
 
-        $data['limit'] = $limit;
-        $data['offset'] = $offset;
-
-        return $data;
+        return [
+            'products' => $products,
+            'total' => count($products),
+            'limit' => $limit,
+            'offset' => $offset,
+        ];
     }
 
     public function findById(int $id): ?array
@@ -52,7 +56,8 @@ class FakeProductQuery implements ProductQueryInterface
         if ($data['id'] !== $id) {
             // 別のIDの場合はlistから探す
             $list = $this->loadJson('list.json');
-            foreach ($list['products'] as $product) {
+            $items = $list['items'] ?? $list['products'] ?? [];
+            foreach ($items as $product) {
                 if ($product['id'] === $id) {
                     return $product;
                 }

@@ -1,0 +1,57 @@
+{
+    "class": "Category",
+    "properties": [
+        {
+            "name": "id",
+            "type": "integer",
+            "nullable": false
+        },
+        {
+            "name": "category_name",
+            "type": "string",
+            "nullable": false
+        },
+        {
+            "name": "hierarchy",
+            "type": "integer",
+            "nullable": false
+        },
+        {
+            "name": "sort_no",
+            "type": "integer",
+            "nullable": false
+        },
+        {
+            "name": "create_date",
+            "type": "datetimetz",
+            "nullable": false
+        },
+        {
+            "name": "update_date",
+            "type": "datetimetz",
+            "nullable": false
+        }
+    ],
+    "relations": [
+        {
+            "type": "OneToMany",
+            "target": "ProductCategory",
+            "propertyName": "productCategory"
+        },
+        {
+            "type": "OneToMany",
+            "target": "Category",
+            "propertyName": "category"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "Category",
+            "propertyName": "category"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "Member",
+            "propertyName": "member"
+        }
+    ]
+}

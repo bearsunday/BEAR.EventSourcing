@@ -1,87 +1,50 @@
 {
-  "id": 1,
-  "name": "パーコレーター",
-  "note": "コーヒー抽出器具",
-  "description_list": "手軽に本格コーヒー",
-  "description_detail": "パーコレーターは、コーヒーを抽出するための器具です。火にかけてお湯を循環させることで、コーヒーを抽出します。アウトドアやキャンプでも人気のアイテムです。",
-  "search_word": "コーヒー パーコレーター 抽出",
-  "free_area": null,
-  "status": {
     "id": 1,
-    "name": "公開"
-  },
-  "create_date": "2024-01-01T00:00:00+09:00",
-  "update_date": "2024-01-15T10:30:00+09:00",
-  "classes": [
-    {
-      "id": 1,
-      "code": "coffee-001-s",
-      "class_category1": {
+    "name": "サンプル商品",
+    "code": "SAMPLE-001",
+    "note": "サンプルnoteの説明文です。",
+    "description_list": "サンプルdescription_listの説明文です。",
+    "description_detail": null,
+    "search_word": "サンプルsearch_wordの説明文です。",
+    "free_area": null,
+    "create_date": "2024-01-01T00:00:00+09:00",
+    "update_date": "2024-01-01T00:00:00+09:00",
+    "product_categorys": [
+        {
+            "id": 1,
+            "name": "サンプルProductCategory"
+        }
+    ],
+    "product_class": [
+        {
+            "id": 1,
+            "name": "サンプルProductClass"
+        }
+    ],
+    "product_images": [
+        {
+            "id": 1,
+            "name": "サンプルProductImage"
+        }
+    ],
+    "product_tags": [
+        {
+            "id": 1,
+            "name": "サンプルProductTag"
+        }
+    ],
+    "customer_favorite_products": [
+        {
+            "id": 1,
+            "name": "サンプルCustomerFavoriteProduct"
+        }
+    ],
+    "member": {
         "id": 1,
-        "name": "Sサイズ"
-      },
-      "class_category2": null,
-      "price01": 3000,
-      "price02": 2500,
-      "price02_inc_tax": 2750,
-      "stock": 100,
-      "stock_unlimited": false,
-      "sale_type": {
+        "name": "サンプルMember"
+    },
+    "product_status": {
         "id": 1,
-        "name": "通常"
-      }
-    },
-    {
-      "id": 2,
-      "code": "coffee-001-m",
-      "class_category1": {
-        "id": 2,
-        "name": "Mサイズ"
-      },
-      "class_category2": null,
-      "price01": 4000,
-      "price02": 3500,
-      "price02_inc_tax": 3850,
-      "stock": 50,
-      "stock_unlimited": false,
-      "sale_type": {
-        "id": 1,
-        "name": "通常"
-      }
+        "name": "サンプルProductStatus"
     }
-  ],
-  "images": [
-    {
-      "id": 1,
-      "file_name": "percolator-main.jpg",
-      "sort_no": 1
-    },
-    {
-      "id": 2,
-      "file_name": "percolator-sub.jpg",
-      "sort_no": 2
-    }
-  ],
-  "categories": [
-    {
-      "id": 1,
-      "name": "キッチン用品",
-      "level": 1
-    },
-    {
-      "id": 5,
-      "name": "コーヒー器具",
-      "level": 2
-    }
-  ],
-  "tags": [
-    {
-      "id": 1,
-      "name": "おすすめ"
-    },
-    {
-      "id": 3,
-      "name": "新着"
-    }
-  ]
 }

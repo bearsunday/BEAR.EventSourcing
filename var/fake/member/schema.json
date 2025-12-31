@@ -1,0 +1,82 @@
+{
+    "class": "Member",
+    "properties": [
+        {
+            "name": "id",
+            "type": "integer",
+            "nullable": false
+        },
+        {
+            "name": "name",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "department",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "login_id",
+            "type": "string",
+            "nullable": false
+        },
+        {
+            "name": "password",
+            "type": "string",
+            "nullable": false
+        },
+        {
+            "name": "salt",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "sort_no",
+            "type": "smallint",
+            "nullable": false
+        },
+        {
+            "name": "two_factor_auth_key",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "two_factor_auth_enabled",
+            "type": "boolean",
+            "nullable": false
+        },
+        {
+            "name": "create_date",
+            "type": "datetimetz",
+            "nullable": false
+        },
+        {
+            "name": "update_date",
+            "type": "datetimetz",
+            "nullable": false
+        },
+        {
+            "name": "login_date",
+            "type": "datetimetz",
+            "nullable": true
+        }
+    ],
+    "relations": [
+        {
+            "type": "ManyToOne",
+            "target": "Work",
+            "propertyName": "work"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "Authority",
+            "propertyName": "authority"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "Member",
+            "propertyName": "member"
+        }
+    ]
+}

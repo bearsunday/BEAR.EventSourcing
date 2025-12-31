@@ -1,0 +1,227 @@
+{
+    "class": "Order",
+    "properties": [
+        {
+            "name": "id",
+            "type": "integer",
+            "nullable": false
+        },
+        {
+            "name": "pre_order_id",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "order_no",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "message",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "name01",
+            "type": "string",
+            "nullable": false
+        },
+        {
+            "name": "name02",
+            "type": "string",
+            "nullable": false
+        },
+        {
+            "name": "kana01",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "kana02",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "company_name",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "email",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "phone_number",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "postal_code",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "addr01",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "addr02",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "birth",
+            "type": "datetimetz",
+            "nullable": true
+        },
+        {
+            "name": "subtotal",
+            "type": "decimal",
+            "nullable": false
+        },
+        {
+            "name": "discount",
+            "type": "decimal",
+            "nullable": false
+        },
+        {
+            "name": "delivery_fee_total",
+            "type": "decimal",
+            "nullable": false
+        },
+        {
+            "name": "charge",
+            "type": "decimal",
+            "nullable": false
+        },
+        {
+            "name": "tax",
+            "type": "decimal",
+            "nullable": false
+        },
+        {
+            "name": "total",
+            "type": "decimal",
+            "nullable": false
+        },
+        {
+            "name": "payment_total",
+            "type": "decimal",
+            "nullable": false
+        },
+        {
+            "name": "payment_method",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "note",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "create_date",
+            "type": "datetimetz",
+            "nullable": false
+        },
+        {
+            "name": "update_date",
+            "type": "datetimetz",
+            "nullable": false
+        },
+        {
+            "name": "order_date",
+            "type": "datetimetz",
+            "nullable": true
+        },
+        {
+            "name": "payment_date",
+            "type": "datetimetz",
+            "nullable": true
+        },
+        {
+            "name": "currency_code",
+            "type": "string",
+            "nullable": true
+        },
+        {
+            "name": "complete_message",
+            "type": "text",
+            "nullable": true
+        },
+        {
+            "name": "complete_mail_message",
+            "type": "text",
+            "nullable": true
+        }
+    ],
+    "relations": [
+        {
+            "type": "OneToMany",
+            "target": "OrderItem",
+            "propertyName": "orderItem"
+        },
+        {
+            "type": "OneToMany",
+            "target": "Shipping",
+            "propertyName": "shipping"
+        },
+        {
+            "type": "OneToMany",
+            "target": "MailHistory",
+            "propertyName": "mailHistory"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "Customer",
+            "propertyName": "customer"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "Country",
+            "propertyName": "country"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "Pref",
+            "propertyName": "pref"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "Sex",
+            "propertyName": "sex"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "Job",
+            "propertyName": "job"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "Payment",
+            "propertyName": "payment"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "DeviceType",
+            "propertyName": "deviceType"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "CustomerOrderStatus",
+            "propertyName": "customerOrderStatus"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "OrderStatusColor",
+            "propertyName": "orderStatusColor"
+        },
+        {
+            "type": "ManyToOne",
+            "target": "OrderStatus",
+            "propertyName": "orderStatus"
+        }
+    ]
+}

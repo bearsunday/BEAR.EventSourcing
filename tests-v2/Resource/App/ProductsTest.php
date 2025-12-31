@@ -32,11 +32,11 @@ class ProductsTest extends TestCase
 
     public function testOnGetWithNameFilter(): void
     {
-        $ro = $this->resource->onGet(name: 'パーコ');
+        $ro = $this->resource->onGet(name: 'サンプル');
 
         $this->assertSame(200, $ro->code);
         $this->assertCount(1, $ro->body['products']);
-        $this->assertSame('パーコレーター', $ro->body['products'][0]['name']);
+        $this->assertSame('サンプル商品', $ro->body['products'][0]['name']);
     }
 
     public function testOnGetWithLimit(): void
@@ -56,15 +56,15 @@ class ProductsTest extends TestCase
         // 必須フィールドの確認
         $this->assertArrayHasKey('id', $product);
         $this->assertArrayHasKey('name', $product);
-        $this->assertArrayHasKey('status', $product);
+        $this->assertArrayHasKey('product_status', $product);
         $this->assertArrayHasKey('create_date', $product);
         $this->assertArrayHasKey('update_date', $product);
 
         // ネストした構造の確認
-        $this->assertArrayHasKey('id', $product['status']);
-        $this->assertArrayHasKey('name', $product['status']);
-        $this->assertArrayHasKey('classes', $product);
-        $this->assertArrayHasKey('images', $product);
-        $this->assertArrayHasKey('categories', $product);
+        $this->assertArrayHasKey('id', $product['product_status']);
+        $this->assertArrayHasKey('name', $product['product_status']);
+        $this->assertArrayHasKey('product_class', $product);
+        $this->assertArrayHasKey('product_images', $product);
+        $this->assertArrayHasKey('product_categorys', $product);
     }
 }
