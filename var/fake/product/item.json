@@ -1,0 +1,87 @@
+{
+  "id": 1,
+  "name": "パーコレーター",
+  "note": "コーヒー抽出器具",
+  "description_list": "手軽に本格コーヒー",
+  "description_detail": "パーコレーターは、コーヒーを抽出するための器具です。火にかけてお湯を循環させることで、コーヒーを抽出します。アウトドアやキャンプでも人気のアイテムです。",
+  "search_word": "コーヒー パーコレーター 抽出",
+  "free_area": null,
+  "status": {
+    "id": 1,
+    "name": "公開"
+  },
+  "create_date": "2024-01-01T00:00:00+09:00",
+  "update_date": "2024-01-15T10:30:00+09:00",
+  "classes": [
+    {
+      "id": 1,
+      "code": "coffee-001-s",
+      "class_category1": {
+        "id": 1,
+        "name": "Sサイズ"
+      },
+      "class_category2": null,
+      "price01": 3000,
+      "price02": 2500,
+      "price02_inc_tax": 2750,
+      "stock": 100,
+      "stock_unlimited": false,
+      "sale_type": {
+        "id": 1,
+        "name": "通常"
+      }
+    },
+    {
+      "id": 2,
+      "code": "coffee-001-m",
+      "class_category1": {
+        "id": 2,
+        "name": "Mサイズ"
+      },
+      "class_category2": null,
+      "price01": 4000,
+      "price02": 3500,
+      "price02_inc_tax": 3850,
+      "stock": 50,
+      "stock_unlimited": false,
+      "sale_type": {
+        "id": 1,
+        "name": "通常"
+      }
+    }
+  ],
+  "images": [
+    {
+      "id": 1,
+      "file_name": "percolator-main.jpg",
+      "sort_no": 1
+    },
+    {
+      "id": 2,
+      "file_name": "percolator-sub.jpg",
+      "sort_no": 2
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "キッチン用品",
+      "level": 1
+    },
+    {
+      "id": 5,
+      "name": "コーヒー器具",
+      "level": 2
+    }
+  ],
+  "tags": [
+    {
+      "id": 1,
+      "name": "おすすめ"
+    },
+    {
+      "id": 3,
+      "name": "新着"
+    }
+  ]
+}
