@@ -1,0 +1,14 @@
+<?php
+namespace PHPUnit\Framework;
+
+use Prophecy\Prophecy\ObjectProphecy;
+
+abstract class TestCase extends Assert implements Test, SelfDescribing
+{
+    /**
+     * @template T
+     * @param class-string<T> $classOrInterface
+     * @return ObjectProphecy<T>
+     */
+    protected function prophesize($classOrInterface): ObjectProphecy {}
+}

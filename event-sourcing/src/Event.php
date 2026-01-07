@@ -76,6 +76,7 @@ final class Event implements JsonSerializable
     /**
      * @return array{id: string, timestamp: string, uri: string, method: string, params: array<string, mixed>, result: mixed}
      */
+    #[\Override]
     public function jsonSerialize(): array
     {
         return $this->toArray();

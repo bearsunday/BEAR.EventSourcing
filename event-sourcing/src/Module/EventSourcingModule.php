@@ -16,8 +16,9 @@ use Ray\Di\AbstractModule;
  * For production, extend this module or create a custom one
  * that binds a persistent EventStoreInterface implementation.
  */
-class EventSourcingModule extends AbstractModule
+final class EventSourcingModule extends AbstractModule
 {
+    #[\Override]
     protected function configure(): void
     {
         $this->bind(EventStoreInterface::class)

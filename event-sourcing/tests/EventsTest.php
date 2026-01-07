@@ -79,6 +79,7 @@ final class EventsTest extends TestCase
         ]);
 
         $json = $events->toJson();
+        /** @var list<array<string, mixed>> $decoded */
         $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
         $this->assertCount(1, $decoded);

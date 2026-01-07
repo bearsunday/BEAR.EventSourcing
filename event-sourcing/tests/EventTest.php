@@ -76,6 +76,7 @@ final class EventTest extends TestCase
         );
 
         $json = json_encode($event, JSON_THROW_ON_ERROR);
+        /** @var array<string, mixed> $decoded */
         $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
         $this->assertSame('test-id-123', $decoded['id']);

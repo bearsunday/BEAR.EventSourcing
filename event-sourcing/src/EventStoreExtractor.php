@@ -23,6 +23,7 @@ final class EventStoreExtractor implements EventExtractorInterface
     ) {
     }
 
+    #[\Override]
     public function extract(
         AbstractOpenContext $open,
         AbstractCompleteContext $complete,

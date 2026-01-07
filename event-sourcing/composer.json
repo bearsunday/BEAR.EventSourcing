@@ -22,6 +22,7 @@
         "ray/di": "^2.0"
     },
     "require-dev": {
+        "bamarni/composer-bin-plugin": "^1.8",
         "phpunit/phpunit": "^10.5"
     },
     "autoload": {
@@ -38,6 +39,34 @@
         }
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "phpunit",
+        "coverage": "php -dzend_extension=xdebug.so -dxdebug.mode=coverage phpunit --coverage-text --coverage-html=build/coverage",
+        "cs": "phpcs",
+        "cs-fix": "phpcbf src tests",
+        "phpstan": "phpstan analyse -c phpstan.neon",
+        "psalm": "psalm --show-info=false",
+        "sa": [
+            "@phpstan",
+            "@psalm"
+        ],
+        "tests": [
+            "@cs",
+            "@sa",
+            "@test"
+        ],
+        "post-install-cmd": "@composer bin all install --ansi",
+        "post-update-cmd": "@composer bin all update --ansi"
+    },
+    "config": {
+        "allow-plugins": {
+            "bamarni/composer-bin-plugin": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "extra": {
+        "bamarni-bin": {
+            "bin-links": true,
+            "forward-command": true
+        }
     }
 }

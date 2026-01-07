@@ -12,11 +12,13 @@ final class InMemoryEventStore implements EventStoreInterface
     /** @var list<Event> */
     private array $events = [];
 
+    #[\Override]
     public function append(Event $event): void
     {
         $this->events[] = $event;
     }
 
+    #[\Override]
     public function getEvents(string $uri): Events
     {
         $filtered = [];
@@ -29,6 +31,7 @@ final class InMemoryEventStore implements EventStoreInterface
         return new Events($filtered);
     }
 
+    #[\Override]
     public function getEventsSince(string $timestamp): Events
     {
         $filtered = [];
@@ -41,6 +44,7 @@ final class InMemoryEventStore implements EventStoreInterface
         return new Events($filtered);
     }
 
+    #[\Override]
     public function getAllEvents(): Events
     {
         return new Events($this->events);

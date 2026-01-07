@@ -1,0 +1,30 @@
+{
+  "name": "openmetrics-php/exposition-text",
+  "description": "Implementation of the text exposition format of OpenMetrics",
+  "minimum-stability": "stable",
+  "type": "library",
+  "prefer-stable": true,
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Holger Woltersdorf",
+      "email": "hw@hollo.me"
+    }
+  ],
+  "require": {
+    "php": "^7.2 || ^8.0 || ^8.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "OpenMetricsPhp\\Exposition\\Text\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "OpenMetricsPhp\\Exposition\\Text\\Tests\\": "tests/"
+    }
+  },
+  "require-dev": {
+    "ext-xdebug": "*"
+  }
+}

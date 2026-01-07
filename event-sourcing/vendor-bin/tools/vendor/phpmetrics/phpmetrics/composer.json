@@ -1,0 +1,63 @@
+{
+    "name": "phpmetrics/phpmetrics",
+    "replace": {
+        "halleck45/phpmetrics": "*",
+        "halleck45/php-metrics": "*"
+    },
+    "description": "Static analyzer tool for PHP : Coupling, Cyclomatic complexity, Maintainability Index, Halstead's metrics... and more !",
+    "license": "MIT",
+    "keywords": [
+        "quality",
+        "analysis",
+        "testing",
+        "qa"
+    ],
+    "authors": [
+        {
+            "name": "Jean-François Lépine",
+            "email": "lepinejeanfrancois@yahoo.fr",
+            "homepage": "http://www.lepine.pro",
+            "role": "Copyright Holder"
+        }
+    ],
+    "homepage": "http://www.phpmetrics.org",
+    "support": {
+        "issues": "https://github.com/PhpMetrics/PhpMetrics/issues"
+    },
+    "autoload": {"psr-4": {"Hal\\": "src/Hal"}},
+    "autoload-dev": {"psr-4": {"Tests\\Hal\\": "tests"}},
+    "require": {
+        "php": ">=8.1",
+        "ext-tokenizer": "*",
+        "nikic/php-parser": "^5.4",
+        "openmetrics-php/exposition-text": "^0.4.1"
+    },
+    "require-dev": {
+        "phake/phake": "^4.5.3",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpunit/phpunit": "^10.5",
+        "sebastian/comparator": ">=5.0.0",
+        "squizlabs/php_codesniffer": "^3.11",
+        "symfony/dom-crawler": "^6.4",
+        "roave/security-advisories": "dev-latest",
+        "vimeo/psalm": "^6.3"
+    },
+    "bin": [
+        "bin/phpmetrics"
+    ],
+    "config": {
+        "allow-plugins": {
+            "composer/package-versions-deprecated": true,
+            "phpstan/extension-installer": true
+        },
+        "sort-packages": true
+    },
+    "suggest": {
+        "ext-dom": "To allow XML parsing and report results.",
+        "ext-yaml": "To allow yaml parsing of configuration files."
+    }
+}
