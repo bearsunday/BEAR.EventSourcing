@@ -290,6 +290,9 @@ abstract class AbstractPHPParser
         Tokens::T_FALSE,
     ];
 
+    /** @var list<ASTAttribute> */
+    private array $attributes = [];
+
     /**
      * Internal state flag, that will be set to <b>true</b> when the parser has
      * prefixed a qualified name with the actual namespace.
@@ -317,9 +320,6 @@ abstract class AbstractPHPParser
     /** The last parsed doc comment or <b>null</b>. */
     private ?string $docComment = null;
 
-    /** @var list<ASTAttribute> */
-    private array $attributes = [];
-
     /** Bitfield of last parsed modifiers. */
     private int $modifiers = 0;
 
@@ -345,6 +345,9 @@ abstract class AbstractPHPParser
 
     /** True if current statement is echoing (such as after <?=) */
     private bool $echoing = false;
+
+    /** True if current statement is alternative else or elseif */
+    private bool $isAlternativeTerminated = false;
 
     /**
      * Constructs a new source parser.
@@ -470,6 +473,8 @@ abstract class AbstractPHPParser
     {
         $this->consumeComments();
 
+        $this->parseClassModifiers();
+
         if (Tokens::T_CLASS !== $this->tokenizer->peek()) {
             return null;
         }
@@ -491,6 +496,7 @@ abstract class AbstractPHPParser
         );
         $class->setCompilationUnit($this->compilationUnit);
         $class->setUserDefined();
+        $class->setModifiers($this->modifiers);
 
         if ($this->isNextTokenArguments()) {
             $class->addChild($this->parseArguments());
@@ -736,11 +742,6 @@ abstract class AbstractPHPParser
 
                     break;
 
-                case Tokens::T_ATTRIBUTE:
-                    $this->attributes[] = $this->parseAttributeExpression();
-
-                    break;
-
                 default:
                     if (null === $this->parseOptionalStatement()) {
                         // Consume whatever token
@@ -832,8 +833,9 @@ abstract class AbstractPHPParser
     private function parseClassName(): string
     {
         $type = $this->tokenizer->peek();
+        $isNamespace = $this->tokenizer->peekNext() === Tokens::T_BACKSLASH;
 
-        if ($this->isClassName($type)) {
+        if ($this->isClassName($type, $isNamespace)) {
             return $this->consumeToken($type)->image;
         }
 
@@ -845,26 +847,40 @@ abstract class AbstractPHPParser
      * name part.
      *
      * @param int $tokenType The type of a parsed token.
+     * @param bool $isNamespace Allso allow valid namespace elements.
+     *
+     * @see https://www.php.net/manual/en/reserved.other-reserved-words.php
      * @since 0.10.6
      */
-    private function isClassName(int $tokenType): bool
+    private function isClassName(int $tokenType, bool $isNamespace = false): bool
     {
-        return match ($tokenType) {
-            Tokens::T_DIR,
-            Tokens::T_USE,
-            Tokens::T_GOTO,
-            Tokens::T_NULL,
-            Tokens::T_NS_C,
-            Tokens::T_TRUE,
-            Tokens::T_CLONE,
+        if ($isNamespace && in_array($tokenType, [
             Tokens::T_FALSE,
-            Tokens::T_TRAIT,
-            Tokens::T_STRING,
-            Tokens::T_TRAIT_C,
+            Tokens::T_FINAL,
+            Tokens::T_NULL,
+            Tokens::T_PARENT,
+            Tokens::T_TRUE,
+            Tokens::T_SELF,
+        ], true)) {
+            return true;
+        }
+
+        return match ($tokenType) {
+            Tokens::T_ARRAY,
             Tokens::T_CALLABLE,
+            Tokens::T_CLASS,
+            Tokens::T_CLONE,
+            Tokens::T_DIR,
+            Tokens::T_FN,
+            Tokens::T_GOTO,
             Tokens::T_INSTEADOF,
             Tokens::T_NAMESPACE,
-            Tokens::T_READONLY => true,
+            Tokens::T_NS_C,
+            Tokens::T_READONLY,
+            Tokens::T_STRING,
+            Tokens::T_TRAIT,
+            Tokens::T_TRAIT_C,
+            Tokens::T_USE => true,
             default => false,
         };
     }
@@ -892,6 +908,7 @@ abstract class AbstractPHPParser
     protected function isConstantName(int $tokenType): bool
     {
         return match ($tokenType) {
+            Tokens::T_FN,
             Tokens::T_CALLABLE,
             Tokens::T_TRAIT,
             Tokens::T_EXTENDS,
@@ -1043,7 +1060,7 @@ abstract class AbstractPHPParser
         return $trait;
     }
 
-    private function attachAttributes(AbstractASTCallable|AbstractASTNode|AbstractASTType $node): void
+    protected function attachAttributes(AbstractASTCallable|AbstractASTNode|AbstractASTType $node): void
     {
         foreach ($this->attributes as $attribute) {
             $node->addChild($attribute);
@@ -1373,7 +1390,7 @@ abstract class AbstractPHPParser
                     break;
 
                 case Tokens::T_ATTRIBUTE:
-                    $this->attributes[] = $this->parseAttributeExpression();
+                    $this->parseAttributeExpression();
 
                     break;
 
@@ -2527,7 +2544,6 @@ abstract class AbstractPHPParser
         $this->consumeComments();
 
         return match ($this->tokenizer->peek()) {
-            Tokens::T_CURLY_BRACE_OPEN => $this->parseStringIndexExpression($node),
             Tokens::T_SQUARED_BRACKET_OPEN => $this->parseArrayIndexExpression($node),
             default => $node,
         };
@@ -2589,31 +2605,6 @@ abstract class AbstractPHPParser
             $expr,
             Tokens::T_SQUARED_BRACKET_OPEN,
             Tokens::T_SQUARED_BRACKET_CLOSE,
-        );
-    }
-
-    /**
-     * Parses a mandatory array index expression.
-     *
-     * <code>
-     * //     ---
-     * $string{0};
-     * //     ---
-     * </code>
-     *
-     * @param AbstractASTNode $node The context source node.
-     * @since 0.9.12
-     */
-    private function parseStringIndexExpression(AbstractASTNode $node): AbstractASTNode
-    {
-        $expr = $this->builder->buildAstStringIndexExpression();
-        $expr->addChild($node);
-
-        return $this->parseIndexExpression(
-            $node,
-            $expr,
-            Tokens::T_CURLY_BRACE_OPEN,
-            Tokens::T_CURLY_BRACE_CLOSE,
         );
     }
 
@@ -3166,7 +3157,10 @@ abstract class AbstractPHPParser
     private function parseOptionalAlternativeScopeTermination(): void
     {
         $tokenType = $this->tokenizer->peek();
+        $this->isAlternativeTerminated = false;
+
         if ($this->isAlternativeScopeTermination($tokenType)) {
+            $this->isAlternativeTerminated = true;
             $this->parseAlternativeScopeTermination($tokenType);
         }
     }
@@ -3655,7 +3649,7 @@ abstract class AbstractPHPParser
     /**
      * @throws TokenStreamEndException
      */
-    private function parseAttributeExpression(): ASTAttribute
+    protected function parseAttributeExpression(): void
     {
         $start = $this->consumeToken(Tokens::T_ATTRIBUTE);
         $attribute = $this->builder->buildASTAttribute($start->image);
@@ -3667,7 +3661,13 @@ abstract class AbstractPHPParser
                 $allocation->addChild($this->parseArguments());
             }
             $attribute->addChild($allocation);
-            if ($this->tokenizer->peek() !== Tokens::T_COMMA) {
+            $current = $this->tokenizer->peek();
+            if ($current === Tokens::T_COMMA && $this->tokenizer->peekNext() === Tokens::T_SQUARED_BRACKET_CLOSE) {
+                $this->consumeToken(Tokens::T_COMMA);
+
+                break;
+            }
+            if ($current !== Tokens::T_COMMA) {
                 break;
             }
             $this->consumeToken(Tokens::T_COMMA);
@@ -3682,7 +3682,7 @@ abstract class AbstractPHPParser
             $end->endColumn,
         );
 
-        return $attribute;
+        $this->attributes[] = $attribute;
     }
 
     /**
@@ -4203,8 +4203,13 @@ abstract class AbstractPHPParser
         $stmt = $this->builder->buildAstIfStatement($token->image);
         $stmt->addChild($this->parseParenthesisExpression());
 
+        $this->consumeComments();
+        $isAlternative = $this->tokenizer->peek() === Tokens::T_COLON;
+
         $this->parseStatementBody($stmt);
-        $this->parseOptionalElseOrElseIfStatement($stmt);
+        if (!$isAlternative || !$this->isAlternativeTerminated) {
+            $this->parseOptionalElseOrElseIfStatement($stmt);
+        }
 
         return $this->setNodePositionsAndReturn($stmt);
     }
@@ -4222,8 +4227,13 @@ abstract class AbstractPHPParser
         $stmt = $this->builder->buildAstElseIfStatement($token->image);
         $stmt->addChild($this->parseParenthesisExpression());
 
+        $this->consumeComments();
+        $isAlternative = $this->tokenizer->peek() === Tokens::T_COLON;
+
         $this->parseStatementBody($stmt);
-        $this->parseOptionalElseOrElseIfStatement($stmt);
+        if (!$isAlternative || !$this->isAlternativeTerminated) {
+            $this->parseOptionalElseOrElseIfStatement($stmt);
+        }
 
         return $this->setNodePositionsAndReturn($stmt);
     }
@@ -6522,8 +6532,10 @@ abstract class AbstractPHPParser
                 break;
             }
 
-            if ($tokenType === Tokens::T_ATTRIBUTE) {
-                $this->attributes[] = $this->parseAttributeExpression();
+            while ($tokenType === Tokens::T_ATTRIBUTE) {
+                $this->parseAttributeExpression();
+                $this->consumeComments();
+                $tokenType = $this->tokenizer->peek();
             }
 
             $formalParameters->addChild(
@@ -6815,10 +6827,6 @@ abstract class AbstractPHPParser
         $parameter = $this->builder->buildAstFormalParameter();
 
         $peek = $this->tokenizer->peek();
-
-        if (Tokens::T_ATTRIBUTE === $peek) {
-            $parameter->addChild($this->parseAttributeExpression());
-        }
 
         if (Tokens::T_ELLIPSIS === $peek) {
             $this->consumeToken(Tokens::T_ELLIPSIS);
@@ -7246,6 +7254,11 @@ abstract class AbstractPHPParser
 
             case Tokens::T_YIELD:
                 return $this->parseYield(true);
+
+            case Tokens::T_ATTRIBUTE:
+                $this->parseAttributeExpression();
+
+                return $this->parseOptionalStatement();
         }
 
         $this->tokenStack->push();
@@ -7448,6 +7461,7 @@ abstract class AbstractPHPParser
         // Consume comments and fetch first token type
         $this->consumeComments();
         $tokenType = $this->tokenizer->peek();
+        $isNamespace = $this->tokenizer->peekNext() === Tokens::T_BACKSLASH;
 
         $qualifiedName = [];
 
@@ -7461,7 +7475,7 @@ abstract class AbstractPHPParser
 
             // Set prefixed flag to true
             $this->namespacePrefixReplaced = true;
-        } elseif ($this->isClassName($tokenType)) {
+        } elseif ($this->isClassName($tokenType, $isNamespace)) {
             $qualifiedName[] = $this->parseClassName();
 
             $this->consumeComments();

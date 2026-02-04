@@ -27,7 +27,7 @@ final class ContextFactory implements ContextFactoryInterface
         $ro = $request->resourceObject;
 
         return new OpenContext(
-            method: $request->method,
+            method: $request->method->value,
             uri: (string) $ro->uri,
             params: $request->query,
         );

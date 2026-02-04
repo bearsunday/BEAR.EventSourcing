@@ -12,7 +12,7 @@ class FakeInvoker implements InvokerInterface
 {
     public function invoke(AbstractRequest $request): ResourceObject
     {
-        $method = 'on' . ucfirst(strtolower($request->method));
+        $method = 'on' . ucfirst($request->method->value);
         $ro = $request->resourceObject;
 
         if (method_exists($ro, $method)) {

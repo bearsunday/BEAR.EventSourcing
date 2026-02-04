@@ -35,11 +35,11 @@ final class ContextFactory implements ContextFactoryInterface
         $callSignature = sprintf(
             '%s::%s',
             $ro::class,
-            'on' . ucfirst(strtolower($request->method)),
+            'on' . ucfirst($request->method->value),
         );
 
         return new OpenContext(
-            method: $request->method,
+            method: $request->method->value,
             uri: (string) $ro->uri,
             params: $request->query,
             callSignature: $callSignature,
