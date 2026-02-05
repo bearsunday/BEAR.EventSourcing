@@ -12,8 +12,11 @@ use BEAR\SemanticLogger\Profile\Compact\ContextFactory;
 use Koriym\SemanticLogger\DevLogger;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
+
+use function sys_get_temp_dir;
 
 /**
  * Module for development semantic logging with file persistence.
@@ -22,17 +25,19 @@ use Ray\Di\Scope;
  * - Immediate file persistence via DevLogger
  * - MCP server integration support
  * - Configurable log directory
+ *
+ * @psalm-api
  */
 final class DevSemanticLoggerModule extends AbstractModule
 {
     public function __construct(
-        private readonly ?string $logDir = null,
-        ?AbstractModule $module = null,
+        private readonly string|null $logDir = null,
+        AbstractModule|null $module = null,
     ) {
         parent::__construct($module);
     }
 
-    #[\Override]
+    #[Override]
     protected function configure(): void
     {
         // Bind SemanticLogger as singleton

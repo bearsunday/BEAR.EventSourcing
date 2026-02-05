@@ -6,9 +6,16 @@
     xmlns="https://getpsalm.org/schema/config"
     xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
     findUnusedBaselineEntry="true"
-    findUnusedCode="false"
+    findUnusedCode="true"
 >
     <projectFiles>
         <directory name="src" />
     </projectFiles>
+    <issueHandlers>
+        <PossiblyUnusedProperty>
+            <errorLevel type="suppress">
+                <directory name="src" />
+            </errorLevel>
+        </PossiblyUnusedProperty>
+    </issueHandlers>
 </psalm>

@@ -8,6 +8,17 @@
             "email": "akihito.koriyama@gmail.com"
         }
     ],
+    "keywords": [
+        "event-sourcing",
+        "CQRS",
+        "domain-events",
+        "BEAR.Sunday"
+    ],
+    "homepage": "https://github.com/bearsunday/BEAR.EventSourcing/tree/main/event-sourcing",
+    "support": {
+        "issues": "https://github.com/bearsunday/BEAR.EventSourcing/issues",
+        "source": "https://github.com/bearsunday/BEAR.EventSourcing/tree/main/event-sourcing"
+    },
     "minimum-stability": "dev",
     "prefer-stable": true,
     "repositories": [

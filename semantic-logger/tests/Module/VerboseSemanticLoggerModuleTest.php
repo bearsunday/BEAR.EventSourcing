@@ -15,6 +15,13 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
+use function glob;
+use function mkdir;
+use function rmdir;
+use function sys_get_temp_dir;
+use function uniqid;
+use function unlink;
+
 final class VerboseSemanticLoggerModuleTest extends TestCase
 {
     private string $tempDir;
@@ -33,6 +40,7 @@ final class VerboseSemanticLoggerModuleTest extends TestCase
                 unlink($file);
             }
         }
+
         rmdir($this->tempDir);
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing;
 
 use ArrayIterator;
+use Override;
 use Traversable;
 
 use function array_filter;
@@ -17,12 +18,12 @@ use const JSON_THROW_ON_ERROR;
 
 /**
  * Collection of events with replay capabilities.
+ *
+ * @psalm-api
  */
 final class Events implements EventsInterface
 {
-    /**
-     * @param list<Event> $events
-     */
+    /** @param list<Event> $events */
     public function __construct(
         private readonly array $events = [],
     ) {
@@ -44,28 +45,26 @@ final class Events implements EventsInterface
         return new self($events);
     }
 
-    #[\Override]
+    #[Override]
     public function toJson(): string
     {
         return json_encode($this->events, JSON_THROW_ON_ERROR);
     }
 
-    /**
-     * @return Traversable<int, Event>
-     */
-    #[\Override]
+    /** @return Traversable<int, Event> */
+    #[Override]
     public function getIterator(): Traversable
     {
         return new ArrayIterator($this->events);
     }
 
-    #[\Override]
+    #[Override]
     public function count(): int
     {
         return count($this->events);
     }
 
-    #[\Override]
+    #[Override]
     public function play(callable $handler): void
     {
         foreach ($this->events as $event) {
@@ -73,7 +72,7 @@ final class Events implements EventsInterface
         }
     }
 
-    #[\Override]
+    #[Override]
     public function filter(callable $predicate): EventsInterface
     {
         return new self(array_values(array_filter($this->events, $predicate)));

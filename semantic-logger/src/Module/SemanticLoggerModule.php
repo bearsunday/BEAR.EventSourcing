@@ -11,6 +11,7 @@ use BEAR\SemanticLogger\Invoker\SemanticInvoker;
 use BEAR\SemanticLogger\Profile\Compact\ContextFactory;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
@@ -21,10 +22,12 @@ use Ray\Di\Scope;
  * - SemanticLoggerInterface -> SemanticLogger (singleton)
  * - ContextFactoryInterface -> Compact\ContextFactory
  * - InvokerInterface -> SemanticInvoker (wrapping original)
+ *
+ * @psalm-api
  */
 final class SemanticLoggerModule extends AbstractModule
 {
-    #[\Override]
+    #[Override]
     protected function configure(): void
     {
         // Bind SemanticLogger as singleton

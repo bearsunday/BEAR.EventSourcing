@@ -10,6 +10,7 @@ use BEAR\Resource\ResourceObject;
 use BEAR\SemanticLogger\Context\ContextFactoryInterface;
 use BEAR\SemanticLogger\EventExtractorInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
 use Ray\Di\Di\Named;
 use Throwable;
 
@@ -21,6 +22,8 @@ use Throwable;
  * 2. invoke() - Execute the resource operation
  * 3. close() - Log completion or error
  * 4. extract() - Optionally extract events for Event Sourcing
+ *
+ * @psalm-api
  */
 final class SemanticInvoker implements InvokerInterface
 {
@@ -29,11 +32,11 @@ final class SemanticInvoker implements InvokerInterface
         private readonly InvokerInterface $invoker,
         private readonly SemanticLoggerInterface $logger,
         private readonly ContextFactoryInterface $contextFactory,
-        private readonly ?EventExtractorInterface $extractor = null,
+        private readonly EventExtractorInterface|null $extractor = null,
     ) {
     }
 
-    #[\Override]
+    #[Override]
     public function invoke(AbstractRequest $request): ResourceObject
     {
         $openContext = $this->contextFactory->createOpenContext($request);

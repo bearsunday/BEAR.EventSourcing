@@ -8,6 +8,17 @@
             "email": "akihito.koriyama@gmail.com"
         }
     ],
+    "keywords": [
+        "logging",
+        "semantic",
+        "profiling",
+        "BEAR.Sunday"
+    ],
+    "homepage": "https://github.com/bearsunday/BEAR.EventSourcing/tree/main/semantic-logger",
+    "support": {
+        "issues": "https://github.com/bearsunday/BEAR.EventSourcing/issues",
+        "source": "https://github.com/bearsunday/BEAR.EventSourcing/tree/main/semantic-logger"
+    },
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require": {

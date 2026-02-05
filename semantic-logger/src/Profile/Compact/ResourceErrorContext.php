@@ -7,6 +7,9 @@ namespace BEAR\SemanticLogger\Profile\Compact;
 use Koriym\SemanticLogger\AbstractContext;
 use Throwable;
 
+use function crc32;
+use function sprintf;
+
 /**
  * Compact context for resource error.
  */
@@ -19,7 +22,7 @@ final class ResourceErrorContext extends AbstractContext
 
     public function __construct(
         public readonly Throwable $exception,
-        ?string $id = null,
+        string|null $id = null,
     ) {
         $this->id = $id ?? sprintf('%08x', crc32($exception->getMessage() . $exception->getFile() . $exception->getLine()));
     }

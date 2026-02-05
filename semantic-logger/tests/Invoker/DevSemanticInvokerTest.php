@@ -4,14 +4,28 @@ declare(strict_types=1);
 
 namespace BEAR\SemanticLogger\Invoker;
 
+use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\ResourceObject;
+use BEAR\SemanticLogger\Context\AbstractCompleteContext;
+use BEAR\SemanticLogger\Context\AbstractOpenContext;
+use BEAR\SemanticLogger\EventExtractorInterface;
 use BEAR\SemanticLogger\Fake\FakeInvoker;
 use BEAR\SemanticLogger\Fake\FakeRequest;
 use BEAR\SemanticLogger\Fake\FakeResourceObject;
 use BEAR\SemanticLogger\Fake\FakeSemanticLogger;
 use BEAR\SemanticLogger\Profile\Compact\ContextFactory;
+use Koriym\SemanticLogger\AbstractContext;
 use Koriym\SemanticLogger\DevLogger;
+use Koriym\SemanticLogger\LogJson;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+
+use function glob;
+use function mkdir;
+use function rmdir;
+use function sys_get_temp_dir;
+use function uniqid;
+use function unlink;
 
 final class DevSemanticInvokerTest extends TestCase
 {
@@ -44,6 +58,7 @@ final class DevSemanticInvokerTest extends TestCase
                 unlink($file);
             }
         }
+
         rmdir($this->tempDir);
     }
 
@@ -86,7 +101,7 @@ final class DevSemanticInvokerTest extends TestCase
     {
         $invoker = new DevSemanticInvoker(
             new class extends FakeInvoker {
-                public function invoke(\BEAR\Resource\AbstractRequest $request): \BEAR\Resource\ResourceObject
+                public function invoke(AbstractRequest $request): ResourceObject
                 {
                     throw new RuntimeException('Test error');
                 }
@@ -124,18 +139,17 @@ final class DevSemanticInvokerTest extends TestCase
     public function testInvokeWithExtractor(): void
     {
         $extracted = [];
-        $extractor = new class ($extracted) implements \BEAR\SemanticLogger\EventExtractorInterface {
-            /** @param array<array{open: \BEAR\SemanticLogger\Context\AbstractOpenContext, complete: \BEAR\SemanticLogger\Context\AbstractCompleteContext}> $extracted */
+        $extractor = new class ($extracted) implements EventExtractorInterface {
+            /** @param array<array{open: AbstractOpenContext, complete: AbstractCompleteContext}> $extracted */
             public function __construct(
                 /** @phpstan-ignore property.onlyWritten */
                 private array &$extracted,
-            )
-            {
+            ) {
             }
 
             public function extract(
-                \BEAR\SemanticLogger\Context\AbstractOpenContext $open,
-                \BEAR\SemanticLogger\Context\AbstractCompleteContext $complete,
+                AbstractOpenContext $open,
+                AbstractCompleteContext $complete,
             ): void {
                 $this->extracted[] = ['open' => $open, 'complete' => $complete];
             }
@@ -163,20 +177,21 @@ final class DevSemanticInvokerTest extends TestCase
         $logger = new class extends FakeSemanticLogger {
             private bool $firstClose = true;
 
-            public function close(\Koriym\SemanticLogger\AbstractContext $context, string $id): void
+            public function close(AbstractContext $context, string $id): void
             {
                 if (! $this->firstClose) {
                     throw new RuntimeException('Logger close failed');
                 }
 
                 $this->firstClose = false;
+
                 parent::close($context, $id);
             }
         };
 
         $invoker = new DevSemanticInvoker(
             new class extends FakeInvoker {
-                public function invoke(\BEAR\Resource\AbstractRequest $request): \BEAR\Resource\ResourceObject
+                public function invoke(AbstractRequest $request): ResourceObject
                 {
                     throw new RuntimeException('Original error');
                 }
@@ -199,7 +214,8 @@ final class DevSemanticInvokerTest extends TestCase
     public function testInvokeWhenFlushThrows(): void
     {
         $logger = new class extends FakeSemanticLogger {
-            public function flush(array $links = []): \Koriym\SemanticLogger\LogJson
+            /** @param list<array{rel: string, href: string, title?: string, type?: string}> $links */
+            public function flush(array $links = []): LogJson
             {
                 throw new RuntimeException('Flush failed');
             }

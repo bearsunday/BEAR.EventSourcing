@@ -11,9 +11,7 @@ use Koriym\SemanticLogger\AbstractContext;
  */
 abstract class AbstractOpenContext
 {
-    /**
-     * @param array<string, mixed> $params
-     */
+    /** @param array<string, mixed> $params */
     public function __construct(
         public readonly string $method,
         public readonly string $uri,

@@ -20,7 +20,7 @@ final class ResourceCompleteContext extends AbstractContext
         /** @var array<string, string> */
         public readonly array $headers,
         public readonly mixed $body,
-        public readonly ?string $view = null,
+        public readonly string|null $view = null,
     ) {
     }
 }

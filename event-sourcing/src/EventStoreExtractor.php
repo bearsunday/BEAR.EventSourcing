@@ -7,6 +7,7 @@ namespace BEAR\EventSourcing;
 use BEAR\SemanticLogger\Context\AbstractCompleteContext;
 use BEAR\SemanticLogger\Context\AbstractOpenContext;
 use BEAR\SemanticLogger\EventExtractorInterface;
+use Override;
 
 use function strtoupper;
 
@@ -15,6 +16,8 @@ use function strtoupper;
  *
  * This class bridges BEAR.SemanticLogger with BEAR.EventSourcing,
  * implementing the EventExtractorInterface defined in SemanticLogger.
+ *
+ * @psalm-api
  */
 final class EventStoreExtractor implements EventExtractorInterface
 {
@@ -23,7 +26,7 @@ final class EventStoreExtractor implements EventExtractorInterface
     ) {
     }
 
-    #[\Override]
+    #[Override]
     public function extract(
         AbstractOpenContext $open,
         AbstractCompleteContext $complete,

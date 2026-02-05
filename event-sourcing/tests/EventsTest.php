@@ -6,6 +6,10 @@ namespace BEAR\EventSourcing;
 
 use PHPUnit\Framework\TestCase;
 
+use function json_decode;
+
+use const JSON_THROW_ON_ERROR;
+
 final class EventsTest extends TestCase
 {
     private function createEvent(string $id, string $method = 'POST'): Event
@@ -52,7 +56,7 @@ final class EventsTest extends TestCase
         ]);
 
         $played = [];
-        $events->play(function (Event $event) use (&$played): void {
+        $events->play(static function (Event $event) use (&$played): void {
             $played[] = $event->id;
         });
 
@@ -67,7 +71,7 @@ final class EventsTest extends TestCase
             $this->createEvent('3', 'POST'),
         ]);
 
-        $filtered = $events->filter(fn (Event $e): bool => $e->method === 'POST');
+        $filtered = $events->filter(static fn (Event $e): bool => $e->method === 'POST');
 
         $this->assertCount(2, $filtered);
     }

@@ -11,6 +11,7 @@ use IteratorAggregate;
  * Interface for event collections.
  *
  * @extends IteratorAggregate<int, Event>
+ * @psalm-api
  */
 interface EventsInterface extends IteratorAggregate, Countable
 {

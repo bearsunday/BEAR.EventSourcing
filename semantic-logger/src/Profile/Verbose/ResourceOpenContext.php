@@ -7,6 +7,8 @@ namespace BEAR\SemanticLogger\Profile\Verbose;
 use Koriym\SemanticLogger\AbstractContext;
 use Koriym\SemanticLogger\Profiler\PhpProfile;
 
+use function function_exists;
+
 /**
  * Verbose context for resource open with profiling initialization.
  */
@@ -22,7 +24,7 @@ final class ResourceOpenContext extends AbstractContext
         public readonly string $uri,
         /** @var array<string, mixed> */
         public readonly array $params = [],
-        public readonly ?string $callSignature = null,
+        public readonly string|null $callSignature = null,
     ) {
         $this->phpProfile = new PhpProfile();
         $this->phpProfile->start();

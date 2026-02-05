@@ -10,6 +10,7 @@ use BEAR\SemanticLogger\Context\AbstractCompleteContext;
 use BEAR\SemanticLogger\Context\AbstractErrorContext;
 use BEAR\SemanticLogger\Context\AbstractOpenContext;
 use BEAR\SemanticLogger\Context\ContextFactoryInterface;
+use Override;
 use Throwable;
 
 /**
@@ -21,7 +22,7 @@ use Throwable;
  */
 final class ContextFactory implements ContextFactoryInterface
 {
-    #[\Override]
+    #[Override]
     public function createOpenContext(AbstractRequest $request): AbstractOpenContext
     {
         $ro = $request->resourceObject;
@@ -33,7 +34,7 @@ final class ContextFactory implements ContextFactoryInterface
         );
     }
 
-    #[\Override]
+    #[Override]
     public function createCompleteContext(
         ResourceObject $ro,
         AbstractOpenContext $openContext,
@@ -50,10 +51,10 @@ final class ContextFactory implements ContextFactoryInterface
         );
     }
 
-    #[\Override]
+    #[Override]
     public function createErrorContext(
         Throwable $e,
-        ?AbstractOpenContext $openContext = null,
+        AbstractOpenContext|null $openContext = null,
     ): AbstractErrorContext {
         return new ErrorContext($e);
     }

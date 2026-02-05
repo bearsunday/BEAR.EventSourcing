@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\SemanticLogger\Invoker;
 
+use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\ResourceObject;
 use BEAR\SemanticLogger\Context\AbstractCompleteContext;
 use BEAR\SemanticLogger\Context\AbstractOpenContext;
 use BEAR\SemanticLogger\EventExtractorInterface;
@@ -68,7 +70,7 @@ final class SemanticInvokerTest extends TestCase
     {
         $invoker = new SemanticInvoker(
             new class extends FakeInvoker {
-                public function invoke(\BEAR\Resource\AbstractRequest $request): \BEAR\Resource\ResourceObject
+                public function invoke(AbstractRequest $request): ResourceObject
                 {
                     throw new RuntimeException('Test error');
                 }
@@ -138,13 +140,14 @@ final class SemanticInvokerTest extends TestCase
                 }
 
                 $this->firstClose = false;
+
                 parent::close($context, $id);
             }
         };
 
         $invoker = new SemanticInvoker(
             new class extends FakeInvoker {
-                public function invoke(\BEAR\Resource\AbstractRequest $request): \BEAR\Resource\ResourceObject
+                public function invoke(AbstractRequest $request): ResourceObject
                 {
                     throw new RuntimeException('Original error');
                 }

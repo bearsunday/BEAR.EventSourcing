@@ -12,16 +12,14 @@ use Koriym\SemanticLogger\Profiler\Profile;
  */
 final class CompleteContext extends AbstractCompleteContext
 {
-    /**
-     * @param array<string, string> $headers
-     */
+    /** @param array<string, string> $headers */
     public function __construct(
         string $uri,
         int $code,
         array $headers,
         mixed $body,
-        ?string $view = null,
-        public readonly ?Profile $profile = null,
+        string|null $view = null,
+        public readonly Profile|null $profile = null,
     ) {
         parent::__construct(
             $uri,

@@ -11,15 +11,13 @@ use BEAR\SemanticLogger\Context\AbstractCompleteContext;
  */
 final class CompleteContext extends AbstractCompleteContext
 {
-    /**
-     * @param array<string, string> $headers
-     */
+    /** @param array<string, string> $headers */
     public function __construct(
         string $uri,
         int $code,
         array $headers,
         mixed $body,
-        ?string $view = null,
+        string|null $view = null,
     ) {
         parent::__construct(
             $uri,

@@ -4,21 +4,25 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing;
 
+use Override;
+
 /**
  * In-memory event store for testing and development.
+ *
+ * @psalm-api
  */
 final class InMemoryEventStore implements EventStoreInterface
 {
     /** @var list<Event> */
     private array $events = [];
 
-    #[\Override]
+    #[Override]
     public function append(Event $event): void
     {
         $this->events[] = $event;
     }
 
-    #[\Override]
+    #[Override]
     public function getEvents(string $uri): Events
     {
         $filtered = [];
@@ -31,7 +35,7 @@ final class InMemoryEventStore implements EventStoreInterface
         return new Events($filtered);
     }
 
-    #[\Override]
+    #[Override]
     public function getEventsSince(string $timestamp): Events
     {
         $filtered = [];
@@ -44,7 +48,7 @@ final class InMemoryEventStore implements EventStoreInterface
         return new Events($filtered);
     }
 
-    #[\Override]
+    #[Override]
     public function getAllEvents(): Events
     {
         return new Events($this->events);

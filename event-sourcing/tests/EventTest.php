@@ -8,6 +8,11 @@ use BEAR\EventSourcing\Fake\FakeCompleteContext;
 use BEAR\EventSourcing\Fake\FakeOpenContext;
 use PHPUnit\Framework\TestCase;
 
+use function json_decode;
+use function json_encode;
+
+use const JSON_THROW_ON_ERROR;
+
 final class EventTest extends TestCase
 {
     public function testConstructor(): void

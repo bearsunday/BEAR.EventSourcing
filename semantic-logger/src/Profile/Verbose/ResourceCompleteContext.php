@@ -7,6 +7,7 @@ namespace BEAR\SemanticLogger\Profile\Verbose;
 use JsonSerializable;
 use Koriym\SemanticLogger\AbstractContext;
 use Koriym\SemanticLogger\Profiler\Profile;
+use Override;
 
 /**
  * Verbose context for resource completion with profiling data.
@@ -22,13 +23,13 @@ final class ResourceCompleteContext extends AbstractContext implements JsonSeria
         /** @var array<string, string> */
         public readonly array $headers,
         public readonly mixed $body,
-        public readonly ?string $view = null,
-        public readonly ?Profile $profile = null,
+        public readonly string|null $view = null,
+        public readonly Profile|null $profile = null,
     ) {
     }
 
     /** @return array<string, mixed> */
-    #[\Override]
+    #[Override]
     public function jsonSerialize(): array
     {
         $data = [

@@ -7,6 +7,9 @@ namespace BEAR\SemanticLogger\Context;
 use Koriym\SemanticLogger\AbstractContext;
 use Throwable;
 
+use function crc32;
+use function sprintf;
+
 /**
  * Abstract base for error context capturing exception details.
  */
@@ -17,7 +20,7 @@ abstract class AbstractErrorContext
     public function __construct(
         public readonly Throwable $exception,
         public readonly AbstractContext $context,
-        ?string $id = null,
+        string|null $id = null,
     ) {
         $this->id = $id ?? sprintf('%08x', crc32($exception->getMessage() . $exception->getFile() . $exception->getLine()));
     }

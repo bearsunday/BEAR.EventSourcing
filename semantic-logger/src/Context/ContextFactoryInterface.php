@@ -31,6 +31,6 @@ interface ContextFactoryInterface
      */
     public function createErrorContext(
         Throwable $e,
-        ?AbstractOpenContext $openContext = null,
+        AbstractOpenContext|null $openContext = null,
     ): AbstractErrorContext;
 }

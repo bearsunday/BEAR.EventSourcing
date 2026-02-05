@@ -11,6 +11,7 @@ use BEAR\SemanticLogger\Context\ContextFactoryInterface;
 use BEAR\SemanticLogger\EventExtractorInterface;
 use Koriym\SemanticLogger\DevLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
 use Ray\Di\Di\Named;
 use Throwable;
 
@@ -21,6 +22,8 @@ use Throwable;
  * - Immediate file persistence via DevLogger
  * - MCP server integration support
  * - Detailed profiling data (when using Verbose profile)
+ *
+ * @psalm-api
  */
 final class DevSemanticInvoker implements InvokerInterface
 {
@@ -30,11 +33,11 @@ final class DevSemanticInvoker implements InvokerInterface
         private readonly SemanticLoggerInterface $logger,
         private readonly DevLogger $devLogger,
         private readonly ContextFactoryInterface $contextFactory,
-        private readonly ?EventExtractorInterface $extractor = null,
+        private readonly EventExtractorInterface|null $extractor = null,
     ) {
     }
 
-    #[\Override]
+    #[Override]
     public function invoke(AbstractRequest $request): ResourceObject
     {
         $openContext = $this->contextFactory->createOpenContext($request);

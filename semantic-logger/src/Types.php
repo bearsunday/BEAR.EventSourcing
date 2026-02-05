@@ -22,30 +22,20 @@ use Koriym\SemanticLogger\AbstractContext;
  * @psalm-type CompleteContext = AbstractCompleteContext
  * @psalm-type ErrorContext = AbstractErrorContext
  * @psalm-type Context = AbstractContext
- *
- * Resource Types
  * @psalm-type HttpMethod = 'get'|'post'|'put'|'patch'|'delete'|'head'|'options'
  * @psalm-type HttpCode = int<100, 599>
  * @psalm-type Headers = array<string, string>
  * @psalm-type RequestParams = array<string, mixed>
  * @psalm-type ResourceUri = non-empty-string
- *
- * Logging Types
  * @psalm-type LogId = non-empty-string
  * @psalm-type LogType = 'resource.open'|'resource.complete'|'resource.error'
  * @psalm-type LogEntry = array{type: LogType, context: Context, id: ?string}
  * @psalm-type LogEntries = list<LogEntry>
- *
- * Event Extraction Types
  * @psalm-type ExtractedEvent = array{open: OpenContext, complete: CompleteContext}
  * @psalm-type ExtractedEvents = list<ExtractedEvent>
- *
- * Profile Types
  * @psalm-type ProfileType = 'compact'|'verbose'
  * @psalm-type XHProfData = array<string, mixed>
  * @psalm-type TraceFile = non-empty-string
- *
- * Exception Types
  * @psalm-type ExceptionData = array{
  *   class: class-string,
  *   message: string,
@@ -53,8 +43,6 @@ use Koriym\SemanticLogger\AbstractContext;
  *   file: string,
  *   line: int
  * }
- *
- * JSON Serialization Types
  * @psalm-type ResourceOpenJson = array{
  *   method: HttpMethod,
  *   uri: ResourceUri,

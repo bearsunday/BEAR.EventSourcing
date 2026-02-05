@@ -14,14 +14,12 @@ final class OpenContext extends AbstractOpenContext
 {
     public readonly PhpProfile $phpProfile;
 
-    /**
-     * @param array<string, mixed> $params
-     */
+    /** @param array<string, mixed> $params */
     public function __construct(
         string $method,
         string $uri,
         array $params = [],
-        public readonly ?string $callSignature = null,
+        public readonly string|null $callSignature = null,
     ) {
         $resourceContext = new ResourceOpenContext($method, $uri, $params, $callSignature);
         $this->phpProfile = $resourceContext->phpProfile;

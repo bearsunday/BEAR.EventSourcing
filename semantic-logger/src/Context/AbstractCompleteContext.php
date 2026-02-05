@@ -11,15 +11,13 @@ use Koriym\SemanticLogger\AbstractContext;
  */
 abstract class AbstractCompleteContext
 {
-    /**
-     * @param array<string, string> $headers
-     */
+    /** @param array<string, string> $headers */
     public function __construct(
         public readonly string $uri,
         public readonly int $code,
         public readonly array $headers,
         public readonly mixed $body,
-        public readonly ?string $view,
+        public readonly string|null $view,
         public readonly AbstractContext $context,
     ) {
     }

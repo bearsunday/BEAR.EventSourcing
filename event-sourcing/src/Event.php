@@ -8,6 +8,11 @@ use BEAR\SemanticLogger\Context\AbstractCompleteContext;
 use BEAR\SemanticLogger\Context\AbstractOpenContext;
 use DateTimeImmutable;
 use JsonSerializable;
+use Override;
+
+use function random_int;
+use function sprintf;
+use function time;
 
 /**
  * Immutable event representing a state change.
@@ -16,9 +21,7 @@ use JsonSerializable;
  */
 final class Event implements JsonSerializable
 {
-    /**
-     * @param array<string, mixed> $params
-     */
+    /** @param array<string, mixed> $params */
     public function __construct(
         public readonly string $id,
         public readonly string $timestamp,
@@ -43,9 +46,7 @@ final class Event implements JsonSerializable
         );
     }
 
-    /**
-     * @param array{id: string, timestamp: string, uri: string, method: string, params: array<string, mixed>, result: mixed} $data
-     */
+    /** @param array{id: string, timestamp: string, uri: string, method: string, params: array<string, mixed>, result: mixed} $data */
     public static function fromArray(array $data): self
     {
         return new self(
@@ -58,9 +59,7 @@ final class Event implements JsonSerializable
         );
     }
 
-    /**
-     * @return array{id: string, timestamp: string, uri: string, method: string, params: array<string, mixed>, result: mixed}
-     */
+    /** @return array{id: string, timestamp: string, uri: string, method: string, params: array<string, mixed>, result: mixed} */
     public function toArray(): array
     {
         return [
@@ -73,10 +72,8 @@ final class Event implements JsonSerializable
         ];
     }
 
-    /**
-     * @return array{id: string, timestamp: string, uri: string, method: string, params: array<string, mixed>, result: mixed}
-     */
-    #[\Override]
+    /** @return array{id: string, timestamp: string, uri: string, method: string, params: array<string, mixed>, result: mixed} */
+    #[Override]
     public function jsonSerialize(): array
     {
         return $this->toArray();

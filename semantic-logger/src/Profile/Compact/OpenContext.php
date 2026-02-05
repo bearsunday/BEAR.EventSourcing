@@ -11,9 +11,7 @@ use BEAR\SemanticLogger\Context\AbstractOpenContext;
  */
 final class OpenContext extends AbstractOpenContext
 {
-    /**
-     * @param array<string, mixed> $params
-     */
+    /** @param array<string, mixed> $params */
     public function __construct(
         string $method,
         string $uri,

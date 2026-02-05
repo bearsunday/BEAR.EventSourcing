@@ -19,8 +19,6 @@ namespace BEAR\EventSourcing;
  * @psalm-type ResourceUri = non-empty-string
  * @psalm-type EventParams = array<string, mixed>
  * @psalm-type EventResult = mixed
- *
- * Event Data Types
  * @psalm-type EventData = array{
  *   id: EventId,
  *   timestamp: Timestamp,
@@ -31,19 +29,13 @@ namespace BEAR\EventSourcing;
  * }
  * @psalm-type EventList = list<Event>
  * @psalm-type EventDataList = list<EventData>
- *
- * Event Store Types
  * @psalm-type StoreQuery = array{
  *   uri?: ResourceUri,
  *   since?: Timestamp,
  *   method?: EventMethod
  * }
- *
- * Handler Types
  * @psalm-type EventHandler = callable(Event): void
  * @psalm-type EventPredicate = callable(Event): bool
- *
- * Replay Types
  * @psalm-type ReplayState = array<string, mixed>
  * @psalm-type StateReducer = callable(ReplayState, Event): ReplayState
  */

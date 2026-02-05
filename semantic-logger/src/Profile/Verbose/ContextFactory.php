@@ -13,9 +13,12 @@ use BEAR\SemanticLogger\Context\ContextFactoryInterface;
 use Koriym\SemanticLogger\Profiler\Profile;
 use Koriym\SemanticLogger\Profiler\XdebugTrace;
 use Koriym\SemanticLogger\Profiler\XHProfResult;
+use Override;
 use Throwable;
 
 use function function_exists;
+use function sprintf;
+use function ucfirst;
 use function xhprof_disable;
 
 /**
@@ -28,7 +31,7 @@ use function xhprof_disable;
  */
 final class ContextFactory implements ContextFactoryInterface
 {
-    #[\Override]
+    #[Override]
     public function createOpenContext(AbstractRequest $request): AbstractOpenContext
     {
         $ro = $request->resourceObject;
@@ -46,7 +49,7 @@ final class ContextFactory implements ContextFactoryInterface
         );
     }
 
-    #[\Override]
+    #[Override]
     public function createCompleteContext(
         ResourceObject $ro,
         AbstractOpenContext $openContext,
@@ -67,10 +70,10 @@ final class ContextFactory implements ContextFactoryInterface
         );
     }
 
-    #[\Override]
+    #[Override]
     public function createErrorContext(
         Throwable $e,
-        ?AbstractOpenContext $openContext = null,
+        AbstractOpenContext|null $openContext = null,
     ): AbstractErrorContext {
         $profile = $openContext !== null
             ? $this->collectProfile($openContext)
@@ -89,16 +92,18 @@ final class ContextFactory implements ContextFactoryInterface
             $xhprofData = xhprof_disable();
             $xhprof = new XHProfResult($xhprofData);
         }
+
         // @codeCoverageIgnoreEnd
 
         // Collect Xdebug trace if available
         $xdebug = null;
         // @codeCoverageIgnoreStart
         if (function_exists('xdebug_get_tracefile_name')) {
-            /** @var string $traceFile */
+            /** @psalm-suppress UnnecessaryVarAnnotation @var string $traceFile */
             $traceFile = xdebug_get_tracefile_name();
             $xdebug = new XdebugTrace($traceFile);
         }
+
         // @codeCoverageIgnoreEnd
 
         // Stop PHP profiler

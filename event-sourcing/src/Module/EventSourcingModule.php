@@ -8,6 +8,7 @@ use BEAR\EventSourcing\EventStoreExtractor;
 use BEAR\EventSourcing\EventStoreInterface;
 use BEAR\EventSourcing\InMemoryEventStore;
 use BEAR\SemanticLogger\EventExtractorInterface;
+use Override;
 use Ray\Di\AbstractModule;
 
 /**
@@ -15,10 +16,12 @@ use Ray\Di\AbstractModule;
  *
  * For production, extend this module or create a custom one
  * that binds a persistent EventStoreInterface implementation.
+ *
+ * @psalm-api
  */
 final class EventSourcingModule extends AbstractModule
 {
-    #[\Override]
+    #[Override]
     protected function configure(): void
     {
         $this->bind(EventStoreInterface::class)

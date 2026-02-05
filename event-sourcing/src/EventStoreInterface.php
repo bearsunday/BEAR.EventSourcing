@@ -12,6 +12,8 @@ namespace BEAR\EventSourcing;
  * - File (JSON files)
  * - PDO (SQL databases)
  * - Redis
+ *
+ * @psalm-api
  */
 interface EventStoreInterface
 {
