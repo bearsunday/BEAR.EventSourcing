@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use Koriym\SemanticLogger\AbstractContext;
-use Koriym\SemanticLogger\Profiler\PhpProfile;
-use Koriym\SemanticLogger\Profiler\Profile;
+use Koriym\SemanticLogger\Profiler\OperationProfile;
 use PHPUnit\Framework\TestCase;
 
 final class CompleteContextTest extends TestCase
@@ -31,8 +30,7 @@ final class CompleteContextTest extends TestCase
 
     public function testWithProfile(): void
     {
-        $phpProfile = new PhpProfile();
-        $profile = new Profile(null, null, $phpProfile);
+        $profile = new OperationProfile(0.0);
 
         $context = new CompleteContext(
             'app://self/user',

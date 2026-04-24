@@ -48,9 +48,9 @@ class FakeSemanticLogger implements SemanticLoggerInterface
     public function flush(array $links = []): LogJson
     {
         $open = new OpenCloseEntry('open-1', 'open', '', []);
-        $close = new EventEntry('close-1', 'close', '', []);
+        $close = new EventEntry('close-1', 'close', '', [], 'open-1');
         $this->logs = [];
 
-        return new LogJson('', $open, $close, [], $links);
+        return new LogJson('', [$open], [$close], [], $links);
     }
 }

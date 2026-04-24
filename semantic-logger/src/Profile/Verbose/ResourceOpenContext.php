@@ -26,8 +26,7 @@ final class ResourceOpenContext extends AbstractContext
         public readonly array $params = [],
         public readonly string|null $callSignature = null,
     ) {
-        $this->phpProfile = new PhpProfile();
-        $this->phpProfile->start();
+        $this->phpProfile = PhpProfile::start();
 
         // Start XHProf if available
         // @codeCoverageIgnoreStart

@@ -23,7 +23,7 @@
     "prefer-stable": true,
     "require": {
         "php": "^8.2",
-        "koriym/semantic-logger": "^1.0@dev",
+        "koriym/semantic-logger": "^0.8",
         "bear/resource": "^1.0",
         "ray/di": "^2.0"
     },

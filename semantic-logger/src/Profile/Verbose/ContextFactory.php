@@ -10,7 +10,7 @@ use BEAR\SemanticLogger\Context\AbstractCompleteContext;
 use BEAR\SemanticLogger\Context\AbstractErrorContext;
 use BEAR\SemanticLogger\Context\AbstractOpenContext;
 use BEAR\SemanticLogger\Context\ContextFactoryInterface;
-use Koriym\SemanticLogger\Profiler\Profile;
+use Koriym\SemanticLogger\Profiler\OperationProfile;
 use Koriym\SemanticLogger\Profiler\XdebugTrace;
 use Koriym\SemanticLogger\Profiler\XHProfResult;
 use Override;
@@ -82,37 +82,36 @@ final class ContextFactory implements ContextFactoryInterface
         return new ErrorContext($e, $profile);
     }
 
-    private function collectProfile(AbstractOpenContext $openContext): Profile
+    private function collectProfile(AbstractOpenContext $openContext): OperationProfile
     {
         // Stop XHProf and collect data
-        $xhprof = null;
+        $xhprofProfile = [];
         // @codeCoverageIgnoreStart
         if (function_exists('xhprof_disable')) {
             /** @var array<string, mixed> $xhprofData */
             $xhprofData = xhprof_disable();
-            $xhprof = new XHProfResult($xhprofData);
+            $xhprofProfile[] = new XHProfResult($xhprofData);
         }
 
         // @codeCoverageIgnoreEnd
 
         // Collect Xdebug trace if available
-        $xdebug = null;
+        $xdebugTrace = [];
         // @codeCoverageIgnoreStart
         if (function_exists('xdebug_get_tracefile_name')) {
             /** @psalm-suppress UnnecessaryVarAnnotation @var string $traceFile */
             $traceFile = xdebug_get_tracefile_name();
-            $xdebug = new XdebugTrace($traceFile);
+            $xdebugTrace[] = new XdebugTrace(filePath: $traceFile);
         }
 
         // @codeCoverageIgnoreEnd
 
-        // Stop PHP profiler
-        $phpProfile = null;
+        // Stop PHP profiler and capture wall time
+        $wallTime = 0.0;
         if ($openContext instanceof OpenContext) {
-            $phpProfile = $openContext->phpProfile;
-            $phpProfile->stop();
+            $wallTime = $openContext->phpProfile->stop()->wallTime;
         }
 
-        return new Profile($xhprof, $xdebug, $phpProfile);
+        return new OperationProfile($wallTime, $xdebugTrace, $xhprofProfile);
     }
 }

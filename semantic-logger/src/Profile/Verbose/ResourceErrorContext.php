@@ -6,7 +6,7 @@ namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use JsonSerializable;
 use Koriym\SemanticLogger\AbstractContext;
-use Koriym\SemanticLogger\Profiler\Profile;
+use Koriym\SemanticLogger\Profiler\OperationProfile;
 use Override;
 use Throwable;
 
@@ -25,7 +25,7 @@ final class ResourceErrorContext extends AbstractContext implements JsonSerializ
 
     public function __construct(
         public readonly Throwable $exception,
-        public readonly Profile|null $profile = null,
+        public readonly OperationProfile|null $profile = null,
         string|null $id = null,
     ) {
         $this->id = $id ?? sprintf('%08x', crc32($exception->getMessage() . $exception->getFile() . $exception->getLine()));

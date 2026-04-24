@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use BEAR\SemanticLogger\Context\AbstractCompleteContext;
-use Koriym\SemanticLogger\Profiler\Profile;
+use Koriym\SemanticLogger\Profiler\OperationProfile;
 
 /**
  * Verbose implementation of complete context with profiling.
@@ -19,7 +19,7 @@ final class CompleteContext extends AbstractCompleteContext
         array $headers,
         mixed $body,
         string|null $view = null,
-        public readonly Profile|null $profile = null,
+        public readonly OperationProfile|null $profile = null,
     ) {
         parent::__construct(
             $uri,
