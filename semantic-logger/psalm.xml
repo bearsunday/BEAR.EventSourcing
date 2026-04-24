@@ -17,10 +17,5 @@
                 <directory name="src" />
             </errorLevel>
         </PossiblyUnusedProperty>
-        <InvalidClassConstantType>
-            <errorLevel type="suppress">
-                <directory name="src" />
-            </errorLevel>
-        </InvalidClassConstantType>
     </issueHandlers>
 </psalm>

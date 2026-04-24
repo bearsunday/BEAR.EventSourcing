@@ -18,6 +18,7 @@ use function sprintf;
  */
 final class ResourceErrorContext extends AbstractContext implements JsonSerializable
 {
+    /** @psalm-suppress InvalidClassConstantType upstream parent declares const as literal '' */
     public const TYPE = 'resource.error';
     public const SCHEMA_URL = '';
 

@@ -6,6 +6,8 @@ namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use Koriym\SemanticLogger\AbstractContext;
 use Koriym\SemanticLogger\Profiler\PhpProfile;
+use Koriym\SemanticLogger\Profiler\XdebugTrace;
+use Koriym\SemanticLogger\Profiler\XHProfResult;
 use PHPUnit\Framework\TestCase;
 
 final class OpenContextTest extends TestCase
@@ -32,6 +34,20 @@ final class OpenContextTest extends TestCase
         $context = new OpenContext('get', 'app://self/user');
 
         $this->assertInstanceOf(PhpProfile::class, $context->phpProfile);
+    }
+
+    public function testHasXhprofResult(): void
+    {
+        $context = new OpenContext('get', 'app://self/user');
+
+        $this->assertInstanceOf(XHProfResult::class, $context->xhprofResult);
+    }
+
+    public function testHasXdebugTrace(): void
+    {
+        $context = new OpenContext('get', 'app://self/user');
+
+        $this->assertInstanceOf(XdebugTrace::class, $context->xdebugTrace);
     }
 
     public function testEmptyParams(): void

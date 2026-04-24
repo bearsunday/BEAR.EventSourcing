@@ -9,6 +9,7 @@ use Koriym\SemanticLogger\EventEntry;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\OpenCloseEntry;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
 
 class FakeSemanticLogger implements SemanticLoggerInterface
 {
@@ -20,6 +21,7 @@ class FakeSemanticLogger implements SemanticLoggerInterface
 
     private int $idCounter = 0;
 
+    #[Override]
     public function open(AbstractContext $context): string
     {
         $id = 'open-' . ++$this->idCounter;
@@ -30,6 +32,7 @@ class FakeSemanticLogger implements SemanticLoggerInterface
         return $id;
     }
 
+    #[Override]
     public function close(AbstractContext $context, string $id): void
     {
         $entry = ['type' => 'close', 'context' => $context, 'id' => $id];
@@ -37,6 +40,7 @@ class FakeSemanticLogger implements SemanticLoggerInterface
         $this->allLogs[] = $entry;
     }
 
+    #[Override]
     public function event(AbstractContext $context): void
     {
         $entry = ['type' => 'event', 'context' => $context, 'id' => null];
@@ -45,6 +49,7 @@ class FakeSemanticLogger implements SemanticLoggerInterface
     }
 
     /** @param array<array{rel: string, href: string, title?: string, type?: string}> $links */
+    #[Override]
     public function flush(array $links = []): LogJson
     {
         $open = new OpenCloseEntry('open-1', 'open', '', []);

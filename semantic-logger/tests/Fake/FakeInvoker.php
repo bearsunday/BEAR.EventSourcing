@@ -7,9 +7,11 @@ namespace BEAR\SemanticLogger\Fake;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\ResourceObject;
+use Override;
 
 class FakeInvoker implements InvokerInterface
 {
+    #[Override]
     public function invoke(AbstractRequest $request): ResourceObject
     {
         $method = 'on' . ucfirst($request->method->value);

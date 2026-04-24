@@ -14,6 +14,7 @@ use Override;
  */
 final class ResourceCompleteContext extends AbstractContext implements JsonSerializable
 {
+    /** @psalm-suppress InvalidClassConstantType upstream parent declares const as literal '' */
     public const TYPE = 'resource.complete';
     public const SCHEMA_URL = '';
 

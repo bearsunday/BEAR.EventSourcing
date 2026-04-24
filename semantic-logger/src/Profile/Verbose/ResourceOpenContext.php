@@ -6,18 +6,24 @@ namespace BEAR\SemanticLogger\Profile\Verbose;
 
 use Koriym\SemanticLogger\AbstractContext;
 use Koriym\SemanticLogger\Profiler\PhpProfile;
-
-use function function_exists;
+use Koriym\SemanticLogger\Profiler\XdebugTrace;
+use Koriym\SemanticLogger\Profiler\XHProfResult;
 
 /**
  * Verbose context for resource open with profiling initialization.
+ *
+ * Starts PHP / XHProf / Xdebug profilers; matching stops happen in
+ * ContextFactory::collectProfile() when the operation completes.
  */
 final class ResourceOpenContext extends AbstractContext
 {
+    /** @psalm-suppress InvalidClassConstantType upstream parent declares const as literal '' */
     public const TYPE = 'resource.open';
     public const SCHEMA_URL = '';
 
     public readonly PhpProfile $phpProfile;
+    public readonly XHProfResult $xhprofResult;
+    public readonly XdebugTrace $xdebugTrace;
 
     public function __construct(
         public readonly string $method,
@@ -27,13 +33,7 @@ final class ResourceOpenContext extends AbstractContext
         public readonly string|null $callSignature = null,
     ) {
         $this->phpProfile = PhpProfile::start();
-
-        // Start XHProf if available
-        // @codeCoverageIgnoreStart
-        if (function_exists('xhprof_enable')) {
-            /** @psalm-suppress UndefinedConstant, MixedArgument */
-            xhprof_enable(XHPROF_FLAGS_CPU | XHPROF_FLAGS_MEMORY);
-        }
-        // @codeCoverageIgnoreEnd
+        $this->xhprofResult = XHProfResult::start();
+        $this->xdebugTrace = XdebugTrace::start();
     }
 }

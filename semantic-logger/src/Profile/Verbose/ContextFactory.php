@@ -11,15 +11,11 @@ use BEAR\SemanticLogger\Context\AbstractErrorContext;
 use BEAR\SemanticLogger\Context\AbstractOpenContext;
 use BEAR\SemanticLogger\Context\ContextFactoryInterface;
 use Koriym\SemanticLogger\Profiler\OperationProfile;
-use Koriym\SemanticLogger\Profiler\XdebugTrace;
-use Koriym\SemanticLogger\Profiler\XHProfResult;
 use Override;
 use Throwable;
 
-use function function_exists;
 use function sprintf;
 use function ucfirst;
-use function xhprof_disable;
 
 /**
  * Factory for Verbose profile contexts with full profiling.
@@ -84,34 +80,14 @@ final class ContextFactory implements ContextFactoryInterface
 
     private function collectProfile(AbstractOpenContext $openContext): OperationProfile
     {
-        // Stop XHProf and collect data
-        $xhprofProfile = [];
-        // @codeCoverageIgnoreStart
-        if (function_exists('xhprof_disable')) {
-            /** @var array<string, mixed> $xhprofData */
-            $xhprofData = xhprof_disable();
-            $xhprofProfile[] = new XHProfResult($xhprofData);
+        if (! $openContext instanceof OpenContext) {
+            return new OperationProfile(0.0);
         }
 
-        // @codeCoverageIgnoreEnd
-
-        // Collect Xdebug trace if available
-        $xdebugTrace = [];
-        // @codeCoverageIgnoreStart
-        if (function_exists('xdebug_get_tracefile_name')) {
-            /** @psalm-suppress UnnecessaryVarAnnotation @var string $traceFile */
-            $traceFile = xdebug_get_tracefile_name();
-            $xdebugTrace[] = new XdebugTrace(filePath: $traceFile);
-        }
-
-        // @codeCoverageIgnoreEnd
-
-        // Stop PHP profiler and capture wall time
-        $wallTime = 0.0;
-        if ($openContext instanceof OpenContext) {
-            $wallTime = $openContext->phpProfile->stop()->wallTime;
-        }
-
-        return new OperationProfile($wallTime, $xdebugTrace, $xhprofProfile);
+        return new OperationProfile(
+            wallTime: $openContext->phpProfile->stop()->wallTime,
+            xdebugTrace: [$openContext->xdebugTrace->stop()],
+            xhprofProfile: [$openContext->xhprofResult->stop($openContext->uri)],
+        );
     }
 }

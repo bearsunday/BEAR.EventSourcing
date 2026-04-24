@@ -11,6 +11,7 @@ use Koriym\SemanticLogger\AbstractContext;
  */
 final class ResourceCompleteContext extends AbstractContext
 {
+    /** @psalm-suppress InvalidClassConstantType upstream parent declares const as literal '' */
     public const TYPE = 'resource.complete';
     public const SCHEMA_URL = '';
 
