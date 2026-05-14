@@ -9,6 +9,7 @@ use BEAR\SemanticLogger\Context\AbstractOpenContext;
 use BEAR\SemanticLogger\EventExtractorInterface;
 use Override;
 
+use function in_array;
 use function strtoupper;
 
 /**
@@ -21,6 +22,8 @@ use function strtoupper;
  */
 final class EventStoreExtractor implements EventExtractorInterface
 {
+    private const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS', 'TRACE'];
+
     public function __construct(
         private readonly EventStoreInterface $eventStore,
     ) {
@@ -31,8 +34,7 @@ final class EventStoreExtractor implements EventExtractorInterface
         AbstractOpenContext $open,
         AbstractCompleteContext $complete,
     ): void {
-        // Skip GET requests - they don't change state
-        if (strtoupper($open->method) === 'GET') {
+        if (in_array(strtoupper($open->method), self::SAFE_METHODS, true)) {
             return;
         }
 

@@ -25,6 +25,6 @@ final class ResourceErrorContext extends AbstractContext
         public readonly Throwable $exception,
         string|null $id = null,
     ) {
-        $this->id = $id ?? sprintf('%08x', crc32($exception->getMessage() . $exception->getFile() . $exception->getLine()));
+        $this->id = $id ?? sprintf('%08x', crc32($exception->getMessage() . '|' . $exception->getFile() . '|' . $exception->getLine()));
     }
 }

@@ -29,7 +29,7 @@ final class ResourceErrorContext extends AbstractContext implements JsonSerializ
         public readonly OperationProfile|null $profile = null,
         string|null $id = null,
     ) {
-        $this->id = $id ?? sprintf('%08x', crc32($exception->getMessage() . $exception->getFile() . $exception->getLine()));
+        $this->id = $id ?? sprintf('%08x', crc32($exception->getMessage() . '|' . $exception->getFile() . '|' . $exception->getLine()));
     }
 
     /** @return array<string, mixed> */

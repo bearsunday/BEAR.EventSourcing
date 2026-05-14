@@ -78,4 +78,23 @@ final class EventStoreExtractorTest extends TestCase
         $events = $this->store->getAllEvents();
         $this->assertCount(0, $events);
     }
+
+    /**
+     * @return list<array{0: string}>
+     */
+    public static function safeMethodsProvider(): array
+    {
+        return [['HEAD'], ['OPTIONS'], ['TRACE']];
+    }
+
+    /** @dataProvider safeMethodsProvider */
+    public function testSkipsSafeMethod(string $method): void
+    {
+        $open = new FakeOpenContext($method, 'app://self/user', ['id' => 1]);
+        $complete = new FakeCompleteContext('app://self/user', 200, [], null);
+
+        $this->extractor->extract($open, $complete);
+
+        $this->assertCount(0, $this->store->getAllEvents());
+    }
 }

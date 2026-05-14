@@ -10,7 +10,7 @@ SemanticLogger captures **meaningful observations** of resource operations — n
 
 ## Concept
 
-```
+```text
 Resource Request → SemanticInvoker → Observation (LogJson)
                                           ↓
                               EventExtractorInterface (optional)

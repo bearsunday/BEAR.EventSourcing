@@ -2,7 +2,7 @@
 
 ## パッケージ構成
 
-```
+```text
 koriym/semantic-logger (既存・汎用ロギング基盤)
         ↓
 bear/semantic-logger (BEAR.Sunday用の観察レイヤー) ← 別リポジトリ
@@ -12,7 +12,7 @@ bear/event-sourcing (状態変更の抽出・永続化) ← このリポジト�
 
 ### 依存関係
 
-```
+```text
 bear/event-sourcing
 ├── requires: bear/semantic-logger
 ├── requires: bear/resource (ResourceObjectの型のため)
@@ -189,7 +189,7 @@ class EventSourcingModule extends AbstractModule
 
 ## ディレクトリ構造
 
-```
+```text
 BEAR.EventSourcing/
 ├── src/
 │   ├── Event.php
@@ -228,7 +228,7 @@ BEAR.EventSourcing/
 
 PR #338の内容を `bearsunday/BEAR.SemanticLogger` に移行：
 
-```
+```text
 BEAR.SemanticLogger/
 ├── src/
 │   ├── Context/
