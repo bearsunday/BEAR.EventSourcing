@@ -4,22 +4,21 @@ declare(strict_types=1);
 
 namespace BearEccube\Resource\App;
 
+use BEAR\Resource\Annotation\JsonSchema;
+use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use BearEccube\Query\ProductQueryInterface;
 
-/**
- * Product Resource (Single Item)
- */
 class Product extends ResourceObject
 {
     public function __construct(
         private readonly ProductQueryInterface $productQuery
-    ) {}
+    ) {
+    }
 
-    /**
-     * 商品詳細
-     */
+    #[Link(rel: 'collection', href: '/products')]
+    #[JsonSchema('product.get.json')]
     public function onGet(int $id): static
     {
         $product = $this->productQuery->findById($id);

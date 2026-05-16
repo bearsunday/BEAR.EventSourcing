@@ -5,24 +5,18 @@ declare(strict_types=1);
 namespace BearEccube\Resource\App;
 
 use BEAR\Resource\Annotation\JsonSchema;
+use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
 use BearEccube\Query\ProductQueryInterface;
 
-/**
- * Products Resource
- *
- * Outside-In: FakeQueryで動作確認済み。
- * 本物のQuery実装に切り替えても同じレスポンス形式。
- */
 class Products extends ResourceObject
 {
     public function __construct(
         private readonly ProductQueryInterface $productQuery
-    ) {}
+    ) {
+    }
 
-    /**
-     * 商品一覧
-     */
+    #[Link(rel: 'item', href: '/product{?id}')]
     #[JsonSchema('products.get.json')]
     public function onGet(
         ?string $name = null,

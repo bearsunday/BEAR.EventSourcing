@@ -4,25 +4,22 @@ declare(strict_types=1);
 
 namespace BearEccube\Resource\App;
 
+use BEAR\Resource\Annotation\JsonSchema;
+use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\Code;
 use BEAR\Resource\ResourceObject;
 use BearEccube\Query\CustomerQueryInterface;
 
-/**
- * Customer Resource
- *
- * 個別顧客を返すリソース。
- */
 class Customer extends ResourceObject
 {
     public function __construct(
-        private CustomerQueryInterface $query
+        private readonly CustomerQueryInterface $query
     ) {
     }
 
-    /**
-     * IDで顧客を取得
-     */
+    #[Link(rel: 'collection', href: '/customers')]
+    #[Link(rel: 'orders', href: '/orders{?customer_id}')]
+    #[JsonSchema('customer.get.json')]
     public function onGet(int $id): static
     {
         $customer = $this->query->findById($id);

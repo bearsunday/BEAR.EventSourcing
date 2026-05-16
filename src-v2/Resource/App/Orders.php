@@ -4,24 +4,20 @@ declare(strict_types=1);
 
 namespace BearEccube\Resource\App;
 
+use BEAR\Resource\Annotation\JsonSchema;
+use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
 use BearEccube\Query\OrderQueryInterface;
 
-/**
- * Orders Resource
- *
- * 注文一覧を返すリソース。
- */
 class Orders extends ResourceObject
 {
     public function __construct(
-        private OrderQueryInterface $query
+        private readonly OrderQueryInterface $query
     ) {
     }
 
-    /**
-     * 注文一覧を取得
-     */
+    #[Link(rel: 'item', href: '/order{?id}')]
+    #[JsonSchema('orders.get.json')]
     public function onGet(
         ?int $customer_id = null,
         ?int $status_id = null,
