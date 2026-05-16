@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace BearEccube\Module;
 
+use BearEccube\Query\CustomerQueryInterface;
+use BearEccube\Query\Fake\FakeCustomerQuery;
+use BearEccube\Query\Fake\FakeOrderQuery;
 use BearEccube\Query\Fake\FakeProductQuery;
+use BearEccube\Query\OrderQueryInterface;
 use BearEccube\Query\ProductQueryInterface;
 use Ray\Di\AbstractModule;
 
@@ -19,9 +23,7 @@ class FakeQueryModule extends AbstractModule
     protected function configure(): void
     {
         $this->bind(ProductQueryInterface::class)->to(FakeProductQuery::class);
-
-        // 他のQueryも同様に追加
-        // $this->bind(CustomerQueryInterface::class)->to(FakeCustomerQuery::class);
-        // $this->bind(OrderQueryInterface::class)->to(FakeOrderQuery::class);
+        $this->bind(CustomerQueryInterface::class)->to(FakeCustomerQuery::class);
+        $this->bind(OrderQueryInterface::class)->to(FakeOrderQuery::class);
     }
 }

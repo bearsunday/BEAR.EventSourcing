@@ -8,7 +8,7 @@
     "products": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/ProductSummary"
+        "$ref": "#/definitions/Product"
       }
     },
     "total": {
@@ -26,124 +26,50 @@
     }
   },
   "definitions": {
-    "ProductSummary": {
+    "Product": {
       "type": "object",
-      "required": ["id", "name", "status", "create_date", "update_date"],
+      "required": ["id", "name", "product_status", "create_date", "update_date"],
       "properties": {
-        "id": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string",
-          "maxLength": 255
-        },
-        "note": {
-          "type": ["string", "null"]
-        },
-        "description_list": {
-          "type": ["string", "null"]
-        },
-        "description_detail": {
-          "type": ["string", "null"]
-        },
-        "search_word": {
-          "type": ["string", "null"]
-        },
-        "free_area": {
-          "type": ["string", "null"]
-        },
-        "status": {
-          "$ref": "#/definitions/Status"
-        },
-        "create_date": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "update_date": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "classes": {
+        "id": {"type": "integer"},
+        "name": {"type": "string", "maxLength": 255},
+        "code": {"type": ["string", "null"]},
+        "note": {"type": ["string", "null"]},
+        "description_list": {"type": ["string", "null"]},
+        "description_detail": {"type": ["string", "null"]},
+        "search_word": {"type": ["string", "null"]},
+        "free_area": {"type": ["string", "null"]},
+        "create_date": {"type": "string", "format": "date-time"},
+        "update_date": {"type": "string", "format": "date-time"},
+        "product_status": {"$ref": "#/definitions/Reference"},
+        "member": {"$ref": "#/definitions/Reference"},
+        "product_class": {
           "type": "array",
-          "items": {
-            "$ref": "#/definitions/ProductClassSummary"
-          }
+          "items": {"$ref": "#/definitions/Reference"}
         },
-        "images": {
+        "product_images": {
           "type": "array",
-          "items": {
-            "$ref": "#/definitions/ProductImage"
-          }
+          "items": {"$ref": "#/definitions/Reference"}
         },
-        "categories": {
+        "product_categorys": {
           "type": "array",
-          "items": {
-            "$ref": "#/definitions/CategorySummary"
-          }
+          "items": {"$ref": "#/definitions/Reference"}
+        },
+        "product_tags": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/Reference"}
+        },
+        "customer_favorite_products": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/Reference"}
         }
       }
     },
-    "Status": {
+    "Reference": {
       "type": "object",
       "required": ["id", "name"],
       "properties": {
-        "id": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        }
-      }
-    },
-    "ProductClassSummary": {
-      "type": "object",
-      "required": ["id", "price02"],
-      "properties": {
-        "id": {
-          "type": "integer"
-        },
-        "code": {
-          "type": ["string", "null"]
-        },
-        "price01": {
-          "type": ["number", "null"]
-        },
-        "price02": {
-          "type": "number"
-        },
-        "stock": {
-          "type": ["integer", "null"]
-        },
-        "stock_unlimited": {
-          "type": "boolean"
-        }
-      }
-    },
-    "ProductImage": {
-      "type": "object",
-      "required": ["id", "file_name", "sort_no"],
-      "properties": {
-        "id": {
-          "type": "integer"
-        },
-        "file_name": {
-          "type": "string"
-        },
-        "sort_no": {
-          "type": "integer"
-        }
-      }
-    },
-    "CategorySummary": {
-      "type": "object",
-      "required": ["id", "name"],
-      "properties": {
-        "id": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        }
+        "id": {"type": "integer"},
+        "name": {"type": "string"}
       }
     }
   }
