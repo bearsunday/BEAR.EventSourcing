@@ -31,29 +31,50 @@ class SchemaValidationTest extends TestCase
     public static function listProvider(): array
     {
         return [
-            'products' => ['products.get.json', fn() => (new FakeProductQuery())->findList()],
-            'customers' => ['customers.get.json', fn() => (new FakeCustomerQuery())->findList()],
-            'orders' => ['orders.get.json', fn() => (new FakeOrderQuery())->findList()],
+            'products' => ['products.get.json', static fn() => (new FakeProductQuery())->findList()],
+            'customers' => ['customers.get.json', static fn() => (new FakeCustomerQuery())->findList()],
+            'orders' => ['orders.get.json', static fn() => (new FakeOrderQuery())->findList()],
+        ];
+    }
+
+    public static function itemProvider(): array
+    {
+        return [
+            'product' => ['product.get.json', static fn() => (new FakeProductQuery())->findById(1)],
+            'customer' => ['customer.get.json', static fn() => (new FakeCustomerQuery())->findById(1)],
+            'order' => ['order.get.json', static fn() => (new FakeOrderQuery())->findById(1)],
         ];
     }
 
     #[DataProvider('listProvider')]
     public function testListResponseMatchesSchema(string $schemaFile, callable $query): void
     {
-        $response = $query();
-        $data = json_decode(json_encode($response));
+        $this->assertSchemaMatch($schemaFile, $query());
+    }
 
+    #[DataProvider('itemProvider')]
+    public function testItemResponseMatchesSchema(string $schemaFile, callable $query): void
+    {
+        $item = $query();
+        $this->assertNotNull($item, "FakeQuery returned null for id=1");
+        $this->assertSchemaMatch($schemaFile, $item);
+    }
+
+    private function assertSchemaMatch(string $schemaFile, array $response): void
+    {
         $schemaPath = realpath($this->schemaDir . '/' . $schemaFile);
         $this->assertNotFalse($schemaPath, "Schema file not found: {$schemaFile}");
 
         $storage = new SchemaStorage();
         $schema = $storage->getSchema('file://' . $schemaPath);
 
+        $data = json_decode(json_encode($response));
+
         $validator = new Validator(new Factory($storage));
         $validator->validate($data, $schema);
 
         $errors = array_map(
-            fn($e) => ($e['property'] ?: '(root)') . ': ' . $e['message'],
+            static fn($e) => ($e['property'] ?: '(root)') . ': ' . $e['message'],
             $validator->getErrors()
         );
 
