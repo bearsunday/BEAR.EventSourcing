@@ -11,7 +11,9 @@
     ],
     "require": {
         "php": "^8.1",
+        "aura/sql": "^5.0",
         "bear/resource": "^1.0",
+        "ramsey/uuid": "^4.0",
         "ray/aop": "^2.0",
         "ray/di": "^2.0"
     },
