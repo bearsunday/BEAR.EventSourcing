@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Service;
+namespace BEAR\EventSourcing\Service;
 
-use BearEccube\Query\ProductClassQueryInterface;
+use BEAR\EventSourcing\Query\ProductClassQueryInterface;
 
 /**
  * Stock management service

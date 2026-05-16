@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity\Master;
+namespace BEAR\EventSourcing\Entity\Master;
 
 /**
  * Authority master entity (権限)

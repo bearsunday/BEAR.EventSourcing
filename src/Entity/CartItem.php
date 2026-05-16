@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity;
+namespace BEAR\EventSourcing\Entity;
 
 /**
  * Cart item entity (カート明細)

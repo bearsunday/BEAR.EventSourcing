@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity;
+namespace BEAR\EventSourcing\Entity;
 
 /**
  * Product category relation entity (商品カテゴリ関連)

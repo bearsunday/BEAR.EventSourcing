@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App;
+namespace BEAR\EventSourcing\Resource\App;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Annotation\RequireAuth;
-use BearEccube\Query\PointQueryInterface;
+use BEAR\EventSourcing\Annotation\RequireAuth;
+use BEAR\EventSourcing\Query\PointQueryInterface;
 
 class Points extends ResourceObject
 {

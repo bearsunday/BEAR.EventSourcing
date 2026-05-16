@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Service;
+namespace BEAR\EventSourcing\Service;
 
-use BearEccube\Entity\Master\RoundingType;
-use BearEccube\Query\TaxRuleQueryInterface;
+use BEAR\EventSourcing\Entity\Master\RoundingType;
+use BEAR\EventSourcing\Query\TaxRuleQueryInterface;
 
 /**
  * Tax calculation service

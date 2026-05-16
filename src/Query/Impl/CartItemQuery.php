@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Query\Impl;
+namespace BEAR\EventSourcing\Query\Impl;
 
 use Aura\Sql\ExtendedPdo;
-use BearEccube\Query\CartItemQueryInterface;
-use BearEccube\Query\CartQueryInterface;
+use BEAR\EventSourcing\Query\CartItemQueryInterface;
+use BEAR\EventSourcing\Query\CartQueryInterface;
 use DateTimeImmutable;
 
 class CartItemQuery implements CartItemQueryInterface

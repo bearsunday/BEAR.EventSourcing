@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Exception;
+namespace BEAR\EventSourcing\Exception;
 
 use RuntimeException;
 

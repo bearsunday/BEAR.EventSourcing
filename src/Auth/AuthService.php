@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Auth;
+namespace BEAR\EventSourcing\Auth;
 
-use BearEccube\Query\CustomerQueryInterface;
-use BearEccube\Query\MemberQueryInterface;
+use BEAR\EventSourcing\Query\CustomerQueryInterface;
+use BEAR\EventSourcing\Query\MemberQueryInterface;
 use DateTimeImmutable;
 use Ramsey\Uuid\Uuid;
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\EventSourcing;
+namespace BEAR\EventSourcing\EventSourcing;
 
 use Countable;
 use IteratorAggregate;

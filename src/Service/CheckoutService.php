@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Service;
+namespace BEAR\EventSourcing\Service;
 
-use BearEccube\Entity\Master\OrderStatus;
-use BearEccube\Query\CustomerQueryInterface;
-use BearEccube\Query\DeliveryQueryInterface;
-use BearEccube\Query\OrderItemQueryInterface;
-use BearEccube\Query\OrderQueryInterface;
-use BearEccube\Query\PaymentQueryInterface;
-use BearEccube\Query\ProductClassQueryInterface;
-use BearEccube\Query\ShippingQueryInterface;
+use BEAR\EventSourcing\Entity\Master\OrderStatus;
+use BEAR\EventSourcing\Query\CustomerQueryInterface;
+use BEAR\EventSourcing\Query\DeliveryQueryInterface;
+use BEAR\EventSourcing\Query\OrderItemQueryInterface;
+use BEAR\EventSourcing\Query\OrderQueryInterface;
+use BEAR\EventSourcing\Query\PaymentQueryInterface;
+use BEAR\EventSourcing\Query\ProductClassQueryInterface;
+use BEAR\EventSourcing\Query\ShippingQueryInterface;
 use DateTimeImmutable;
 use Ramsey\Uuid\Uuid;
 

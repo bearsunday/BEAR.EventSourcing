@@ -1,7 +1,7 @@
 {
-    "name": "bear/eccube",
-    "description": "EC-CUBE ported to BEAR.Sunday with Event Sourcing",
-    "type": "project",
+    "name": "bear/event-sourcing",
+    "description": "Event Sourcing library for BEAR.Sunday",
+    "type": "library",
     "license": "MIT",
     "authors": [
         {
@@ -11,41 +11,33 @@
     ],
     "require": {
         "php": "^8.1",
-        "bear/package": "^1.0",
         "bear/resource": "^1.0",
-        "bear/sunday": "^1.0",
         "ray/aop": "^2.0",
-        "ray/di": "^2.0",
-        "ray/media-query": "^1.1"
+        "ray/di": "^2.0"
     },
     "require-dev": {
-        "justinrainbow/json-schema": "^6.8",
         "phpstan/phpstan": "^1.0 || ^2.0",
         "phpunit/phpunit": "^10.0 || ^11.0",
         "squizlabs/php_codesniffer": "^3.0"
     },
     "autoload": {
         "psr-4": {
-            "BearEccube\\": ["src-v2/", "src/"]
+            "BEAR\\EventSourcing\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "BearEccube\\Tests\\": ["tests/", "tests-v2/"]
+            "BEAR\\EventSourcing\\": "tests/"
         }
     },
     "scripts": {
         "test": "phpunit",
         "cs": "phpcs",
         "cs-fix": "phpcbf",
-        "stan": "phpstan analyse",
-        "psalm": "psalm"
+        "stan": "phpstan analyse"
     },
     "config": {
-        "sort-packages": true,
-        "allow-plugins": {
-            "composer/package-versions-deprecated": true
-        }
+        "sort-packages": true
     },
     "minimum-stability": "stable"
 }

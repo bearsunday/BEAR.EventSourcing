@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Service;
+namespace BEAR\EventSourcing\Service;
 
-use BearEccube\Query\MailTemplateQueryInterface;
-use BearEccube\Query\OrderQueryInterface;
+use BEAR\EventSourcing\Query\MailTemplateQueryInterface;
+use BEAR\EventSourcing\Query\OrderQueryInterface;
 use DateTimeImmutable;
 
 /**

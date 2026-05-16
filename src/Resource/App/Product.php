@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App;
+namespace BEAR\EventSourcing\Resource\App;
 
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BearEccube\Query\ProductQueryInterface;
+use BEAR\EventSourcing\Query\ProductQueryInterface;
 use Ray\Di\Di\Inject;
 
 /**

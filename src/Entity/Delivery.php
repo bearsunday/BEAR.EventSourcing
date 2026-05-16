@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity;
+namespace BEAR\EventSourcing\Entity;
 
-use BearEccube\Entity\Master\SaleType;
+use BEAR\EventSourcing\Entity\Master\SaleType;
 
 /**
  * Delivery entity (配送方法)

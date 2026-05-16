@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity;
+namespace BEAR\EventSourcing\Entity;
 
-use BearEccube\Entity\Master\RoundingType;
+use BEAR\EventSourcing\Entity\Master\RoundingType;
 use DateTimeImmutable;
 
 /**

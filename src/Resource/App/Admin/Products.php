@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App\Admin;
+namespace BEAR\EventSourcing\Resource\App\Admin;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Annotation\RequireAuth;
-use BearEccube\Query\ProductQueryInterface;
-use BearEccube\Query\ProductClassQueryInterface;
-use BearEccube\Query\ProductImageQueryInterface;
-use BearEccube\Query\ProductCategoryQueryInterface;
+use BEAR\EventSourcing\Annotation\RequireAuth;
+use BEAR\EventSourcing\Query\ProductQueryInterface;
+use BEAR\EventSourcing\Query\ProductClassQueryInterface;
+use BEAR\EventSourcing\Query\ProductImageQueryInterface;
+use BEAR\EventSourcing\Query\ProductCategoryQueryInterface;
 
 class Products extends ResourceObject
 {

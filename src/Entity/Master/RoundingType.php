@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity\Master;
+namespace BEAR\EventSourcing\Entity\Master;
 
 /**
  * Rounding type master entity (端数処理)

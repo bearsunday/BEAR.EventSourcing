@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App\Admin;
+namespace BEAR\EventSourcing\Resource\App\Admin;
 
 use Aura\Sql\ExtendedPdo;
 use BEAR\Resource\ResourceObject;
-use BearEccube\Annotation\RequireAuth;
+use BEAR\EventSourcing\Annotation\RequireAuth;
 use DateTimeImmutable;
 
 class BaseInfo extends ResourceObject

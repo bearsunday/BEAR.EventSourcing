@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Module;
+namespace BEAR\EventSourcing\Module;
 
-use BearEccube\Validation\Validator;
-use BearEccube\Validation\ValidatorInterface;
+use BEAR\EventSourcing\Validation\Validator;
+use BEAR\EventSourcing\Validation\ValidatorInterface;
 use Ray\Di\AbstractModule;
 
 /**

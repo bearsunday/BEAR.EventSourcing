@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity;
+namespace BEAR\EventSourcing\Entity;
 
-use BearEccube\Entity\Master\CustomerStatus;
-use BearEccube\Entity\Master\Pref;
-use BearEccube\Entity\Master\Sex;
+use BEAR\EventSourcing\Entity\Master\CustomerStatus;
+use BEAR\EventSourcing\Entity\Master\Pref;
+use BEAR\EventSourcing\Entity\Master\Sex;
 use DateTimeImmutable;
 
 /**

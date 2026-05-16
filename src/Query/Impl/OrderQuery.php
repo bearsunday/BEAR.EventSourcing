@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Query\Impl;
+namespace BEAR\EventSourcing\Query\Impl;
 
 use Aura\Sql\ExtendedPdo;
-use BearEccube\Entity\Master\OrderStatus;
-use BearEccube\Query\OrderQueryInterface;
+use BEAR\EventSourcing\Entity\Master\OrderStatus;
+use BEAR\EventSourcing\Query\OrderQueryInterface;
 use DateTimeImmutable;
 
 class OrderQuery implements OrderQueryInterface

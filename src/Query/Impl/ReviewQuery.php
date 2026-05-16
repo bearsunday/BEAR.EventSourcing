@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Query\Impl;
+namespace BEAR\EventSourcing\Query\Impl;
 
 use Aura\Sql\ExtendedPdo;
-use BearEccube\Entity\Master\ReviewStatus;
-use BearEccube\Query\ReviewQueryInterface;
+use BEAR\EventSourcing\Entity\Master\ReviewStatus;
+use BEAR\EventSourcing\Query\ReviewQueryInterface;
 use DateTimeImmutable;
 
 class ReviewQuery implements ReviewQueryInterface

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App\Cart;
+namespace BEAR\EventSourcing\Resource\App\Cart;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Query\CartItemQueryInterface;
+use BEAR\EventSourcing\Query\CartItemQueryInterface;
 use Ray\Di\Di\Inject;
 
 /**

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Module;
+namespace BEAR\EventSourcing\Module;
 
 use Aura\Sql\ExtendedPdo;
 use Ray\Di\Di\Named;

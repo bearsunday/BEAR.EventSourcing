@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Query;
+namespace BEAR\EventSourcing\Query;
 
 interface FavoriteQueryInterface
 {

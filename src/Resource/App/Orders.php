@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App;
+namespace BEAR\EventSourcing\Resource\App;
 
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BearEccube\Query\OrderQueryInterface;
+use BEAR\EventSourcing\Query\OrderQueryInterface;
 use Ray\Di\Di\Inject;
 
 /**

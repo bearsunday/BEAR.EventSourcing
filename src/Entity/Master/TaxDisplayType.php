@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity\Master;
+namespace BEAR\EventSourcing\Entity\Master;
 
 /**
  * Tax display type master entity (税表示区分)

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Interceptor;
+namespace BEAR\EventSourcing\Interceptor;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Auth\AuthServiceInterface;
+use BEAR\EventSourcing\Auth\AuthServiceInterface;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 

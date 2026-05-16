@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity;
+namespace BEAR\EventSourcing\Entity;
 
-use BearEccube\Entity\Master\OrderItemType;
-use BearEccube\Entity\Master\TaxDisplayType;
-use BearEccube\Entity\Master\TaxType;
+use BEAR\EventSourcing\Entity\Master\OrderItemType;
+use BEAR\EventSourcing\Entity\Master\TaxDisplayType;
+use BEAR\EventSourcing\Entity\Master\TaxType;
 
 /**
  * Order item entity (注文明細)

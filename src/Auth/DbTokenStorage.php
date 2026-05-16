@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Auth;
+namespace BEAR\EventSourcing\Auth;
 
 use Aura\Sql\ExtendedPdo;
 use DateTimeImmutable;

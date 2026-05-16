@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Module;
+namespace BEAR\EventSourcing\Module;
 
-use BearEccube\Annotation\RequireAuth;
-use BearEccube\Auth\AuthService;
-use BearEccube\Auth\AuthServiceInterface;
-use BearEccube\Auth\DbTokenStorage;
-use BearEccube\Auth\TokenStorageInterface;
-use BearEccube\Interceptor\AuthInterceptor;
+use BEAR\EventSourcing\Annotation\RequireAuth;
+use BEAR\EventSourcing\Auth\AuthService;
+use BEAR\EventSourcing\Auth\AuthServiceInterface;
+use BEAR\EventSourcing\Auth\DbTokenStorage;
+use BEAR\EventSourcing\Auth\TokenStorageInterface;
+use BEAR\EventSourcing\Interceptor\AuthInterceptor;
 use Ray\Di\AbstractModule;
 
 /**

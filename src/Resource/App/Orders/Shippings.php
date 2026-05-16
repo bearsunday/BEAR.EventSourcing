@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App\Orders;
+namespace BEAR\EventSourcing\Resource\App\Orders;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Query\ShippingQueryInterface;
+use BEAR\EventSourcing\Query\ShippingQueryInterface;
 use Ray\Di\Di\Inject;
 
 /**

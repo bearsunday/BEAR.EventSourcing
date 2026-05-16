@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App\Admin;
+namespace BEAR\EventSourcing\Resource\App\Admin;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Annotation\RequireAuth;
-use BearEccube\Query\TaxRuleQueryInterface;
+use BEAR\EventSourcing\Annotation\RequireAuth;
+use BEAR\EventSourcing\Query\TaxRuleQueryInterface;
 
 class TaxRules extends ResourceObject
 {

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity;
+namespace BEAR\EventSourcing\Entity;
 
-use BearEccube\Entity\Master\PageType;
+use BEAR\EventSourcing\Entity\Master\PageType;
 
 /**
  * Page entity (ページ)

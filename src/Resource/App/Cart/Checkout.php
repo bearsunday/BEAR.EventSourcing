@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App\Cart;
+namespace BEAR\EventSourcing\Resource\App\Cart;
 
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BearEccube\Query\CartQueryInterface;
-use BearEccube\Query\OrderQueryInterface;
-use BearEccube\Service\CheckoutServiceInterface;
+use BEAR\EventSourcing\Query\CartQueryInterface;
+use BEAR\EventSourcing\Query\OrderQueryInterface;
+use BEAR\EventSourcing\Service\CheckoutServiceInterface;
 use Ray\Di\Di\Inject;
 
 /**

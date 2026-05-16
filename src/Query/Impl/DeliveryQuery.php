@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Query\Impl;
+namespace BEAR\EventSourcing\Query\Impl;
 
 use Aura\Sql\ExtendedPdo;
-use BearEccube\Query\DeliveryQueryInterface;
+use BEAR\EventSourcing\Query\DeliveryQueryInterface;
 
 class DeliveryQuery implements DeliveryQueryInterface
 {

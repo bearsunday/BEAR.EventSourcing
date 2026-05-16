@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App;
+namespace BEAR\EventSourcing\Resource\App;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Query\CouponQueryInterface;
+use BEAR\EventSourcing\Query\CouponQueryInterface;
 use Ray\Di\Di\Inject;
 
 /**

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity\Master;
+namespace BEAR\EventSourcing\Entity\Master;
 
 /**
  * Work status master entity (稼働状態)

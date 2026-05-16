@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Service;
+namespace BEAR\EventSourcing\Service;
 
 interface StockServiceInterface
 {

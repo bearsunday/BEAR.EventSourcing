@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity\Master;
+namespace BEAR\EventSourcing\Entity\Master;
 
 /**
  * Product status master entity (商品ステータス)

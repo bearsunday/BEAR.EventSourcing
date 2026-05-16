@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity;
+namespace BEAR\EventSourcing\Entity;
 
-use BearEccube\Entity\Master\ReviewStatus;
+use BEAR\EventSourcing\Entity\Master\ReviewStatus;
 
 /**
  * Product review entity (商品レビュー)

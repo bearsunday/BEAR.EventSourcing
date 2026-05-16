@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App\Admin;
+namespace BEAR\EventSourcing\Resource\App\Admin;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Annotation\RequireAuth;
-use BearEccube\Query\OrderQueryInterface;
-use BearEccube\Query\OrderItemQueryInterface;
-use BearEccube\Query\ShippingQueryInterface;
+use BEAR\EventSourcing\Annotation\RequireAuth;
+use BEAR\EventSourcing\Query\OrderQueryInterface;
+use BEAR\EventSourcing\Query\OrderItemQueryInterface;
+use BEAR\EventSourcing\Query\ShippingQueryInterface;
 
 class Orders extends ResourceObject
 {

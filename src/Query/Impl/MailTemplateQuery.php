@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Query\Impl;
+namespace BEAR\EventSourcing\Query\Impl;
 
 use Aura\Sql\ExtendedPdo;
-use BearEccube\Query\MailTemplateQueryInterface;
+use BEAR\EventSourcing\Query\MailTemplateQueryInterface;
 use DateTimeImmutable;
 
 class MailTemplateQuery implements MailTemplateQueryInterface

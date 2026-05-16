@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity\Master;
+namespace BEAR\EventSourcing\Entity\Master;
 
-use BearEccube\Entity\AbstractEntity;
+use BEAR\EventSourcing\Entity\AbstractEntity;
 
 /**
  * Base class for master entities

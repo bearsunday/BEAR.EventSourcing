@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App\Products;
+namespace BEAR\EventSourcing\Resource\App\Products;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Query\ProductClassQueryInterface;
+use BEAR\EventSourcing\Query\ProductClassQueryInterface;
 use Ray\Di\Di\Inject;
 
 /**

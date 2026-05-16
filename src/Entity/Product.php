@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity;
+namespace BEAR\EventSourcing\Entity;
 
-use BearEccube\Entity\Master\ProductStatus;
+use BEAR\EventSourcing\Entity\Master\ProductStatus;
 
 /**
  * Product entity (商品)

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Entity;
+namespace BEAR\EventSourcing\Entity;
 
-use BearEccube\Entity\Master\Authority;
-use BearEccube\Entity\Master\Work;
+use BEAR\EventSourcing\Entity\Master\Authority;
+use BEAR\EventSourcing\Entity\Master\Work;
 use DateTimeImmutable;
 
 /**

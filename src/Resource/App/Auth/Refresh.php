@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App\Auth;
+namespace BEAR\EventSourcing\Resource\App\Auth;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Auth\AuthServiceInterface;
+use BEAR\EventSourcing\Auth\AuthServiceInterface;
 use Ray\Di\Di\Inject;
 
 /**

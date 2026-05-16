@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Query\Impl;
+namespace BEAR\EventSourcing\Query\Impl;
 
 use Aura\Sql\ExtendedPdo;
-use BearEccube\Query\NewsQueryInterface;
+use BEAR\EventSourcing\Query\NewsQueryInterface;
 use DateTimeImmutable;
 
 class NewsQuery implements NewsQueryInterface

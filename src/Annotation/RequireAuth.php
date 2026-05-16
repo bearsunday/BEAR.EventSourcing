@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Annotation;
+namespace BEAR\EventSourcing\Annotation;
 
 use Attribute;
 

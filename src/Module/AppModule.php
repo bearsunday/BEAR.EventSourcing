@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Module;
+namespace BEAR\EventSourcing\Module;
 
 use BEAR\Package\AbstractAppModule;
 use BEAR\Package\PackageModule;

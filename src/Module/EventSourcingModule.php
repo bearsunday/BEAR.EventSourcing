@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Module;
+namespace BEAR\EventSourcing\Module;
 
-use BearEccube\EventSourcing\Event;
-use BearEccube\EventSourcing\EventStore;
-use BearEccube\EventSourcing\EventStoreInterface;
-use BearEccube\EventSourcing\Events;
-use BearEccube\EventSourcing\EventsInterface;
-use BearEccube\Interceptor\EventSourcingInterceptor;
+use BEAR\EventSourcing\EventSourcing\Event;
+use BEAR\EventSourcing\EventSourcing\EventStore;
+use BEAR\EventSourcing\EventSourcing\EventStoreInterface;
+use BEAR\EventSourcing\EventSourcing\Events;
+use BEAR\EventSourcing\EventSourcing\EventsInterface;
+use BEAR\EventSourcing\Interceptor\EventSourcingInterceptor;
 use Ray\Aop\Matcher;
 use Ray\Di\AbstractModule;
 

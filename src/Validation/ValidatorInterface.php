@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Validation;
+namespace BEAR\EventSourcing\Validation;
 
 interface ValidatorInterface
 {

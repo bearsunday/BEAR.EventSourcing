@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App\Admin;
+namespace BEAR\EventSourcing\Resource\App\Admin;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Auth\AuthServiceInterface;
+use BEAR\EventSourcing\Auth\AuthServiceInterface;
 
 class Login extends ResourceObject
 {

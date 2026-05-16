@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Module;
+namespace BEAR\EventSourcing\Module;
 
-use BearEccube\Service\CheckoutService;
-use BearEccube\Service\CheckoutServiceInterface;
-use BearEccube\Service\MailerInterface;
-use BearEccube\Service\MailService;
-use BearEccube\Service\MailServiceInterface;
-use BearEccube\Service\SmtpMailer;
-use BearEccube\Service\StockService;
-use BearEccube\Service\StockServiceInterface;
-use BearEccube\Service\TaxService;
-use BearEccube\Service\TaxServiceInterface;
+use BEAR\EventSourcing\Service\CheckoutService;
+use BEAR\EventSourcing\Service\CheckoutServiceInterface;
+use BEAR\EventSourcing\Service\MailerInterface;
+use BEAR\EventSourcing\Service\MailService;
+use BEAR\EventSourcing\Service\MailServiceInterface;
+use BEAR\EventSourcing\Service\SmtpMailer;
+use BEAR\EventSourcing\Service\StockService;
+use BEAR\EventSourcing\Service\StockServiceInterface;
+use BEAR\EventSourcing\Service\TaxService;
+use BEAR\EventSourcing\Service\TaxServiceInterface;
 use Ray\Di\AbstractModule;
 
 /**

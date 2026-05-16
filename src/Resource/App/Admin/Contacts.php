@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace BearEccube\Resource\App\Admin;
+namespace BEAR\EventSourcing\Resource\App\Admin;
 
 use BEAR\Resource\ResourceObject;
-use BearEccube\Annotation\RequireAuth;
-use BearEccube\Query\ContactQueryInterface;
-use BearEccube\Service\MailServiceInterface;
+use BEAR\EventSourcing\Annotation\RequireAuth;
+use BEAR\EventSourcing\Query\ContactQueryInterface;
+use BEAR\EventSourcing\Service\MailServiceInterface;
 
 class Contacts extends ResourceObject
 {
