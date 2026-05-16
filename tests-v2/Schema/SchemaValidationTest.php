@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace BearEccube\Tests\Schema;
 
+use BearEccube\Query\Fake\FakeCartQuery;
+use BearEccube\Query\Fake\FakeCategoryQuery;
 use BearEccube\Query\Fake\FakeCustomerQuery;
+use BearEccube\Query\Fake\FakeMemberQuery;
 use BearEccube\Query\Fake\FakeOrderQuery;
 use BearEccube\Query\Fake\FakeProductQuery;
 use JsonSchema\Constraints\Factory;
@@ -34,6 +37,9 @@ class SchemaValidationTest extends TestCase
             'products' => ['products.get.json', static fn() => (new FakeProductQuery())->findList()],
             'customers' => ['customers.get.json', static fn() => (new FakeCustomerQuery())->findList()],
             'orders' => ['orders.get.json', static fn() => (new FakeOrderQuery())->findList()],
+            'categories' => ['categories.get.json', static fn() => (new FakeCategoryQuery())->findList()],
+            'carts' => ['carts.get.json', static fn() => (new FakeCartQuery())->findList()],
+            'members' => ['members.get.json', static fn() => (new FakeMemberQuery())->findList()],
         ];
     }
 
@@ -43,6 +49,9 @@ class SchemaValidationTest extends TestCase
             'product' => ['product.get.json', static fn() => (new FakeProductQuery())->findById(1)],
             'customer' => ['customer.get.json', static fn() => (new FakeCustomerQuery())->findById(1)],
             'order' => ['order.get.json', static fn() => (new FakeOrderQuery())->findById(1)],
+            'category' => ['category.get.json', static fn() => (new FakeCategoryQuery())->findById(1)],
+            'cart' => ['cart.get.json', static fn() => (new FakeCartQuery())->findById(1)],
+            'member' => ['member.get.json', static fn() => (new FakeMemberQuery())->findById(1)],
         ];
     }
 

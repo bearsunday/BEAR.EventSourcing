@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "category.get.json",
+  "type": "object",
+  "title": "Category Detail Response",
+  "required": ["id", "name", "create_date", "update_date"],
+  "properties": {
+    "id": {"type": "integer"},
+    "name": {"type": "string"},
+    "category_name": {"type": ["string", "null"]},
+    "hierarchy": {"type": ["integer", "null"]},
+    "sort_no": {"type": ["integer", "null"]},
+    "create_date": {"type": "string", "format": "date-time"},
+    "update_date": {"type": "string", "format": "date-time"},
+    "category": {"$ref": "#/definitions/Reference"},
+    "member": {"$ref": "#/definitions/Reference"},
+    "categorys": {"type": "array", "items": {"$ref": "#/definitions/Reference"}},
+    "product_categorys": {"type": "array", "items": {"$ref": "#/definitions/Reference"}}
+  },
+  "definitions": {
+    "Reference": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}
+    }
+  }
+}

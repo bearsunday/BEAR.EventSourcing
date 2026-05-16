@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "cart.get.json",
+  "type": "object",
+  "title": "Cart Detail Response",
+  "required": ["id", "total_price", "create_date", "update_date"],
+  "properties": {
+    "id": {"type": "integer"},
+    "cart_key": {"type": ["string", "null"]},
+    "pre_order_id": {"type": ["string", "null"]},
+    "total_price": {"type": "number"},
+    "delivery_fee_total": {"type": "number"},
+    "sort_no": {"type": ["integer", "null"]},
+    "create_date": {"type": "string", "format": "date-time"},
+    "update_date": {"type": "string", "format": "date-time"},
+    "customer": {"$ref": "#/definitions/Reference"},
+    "cart_items": {"type": "array", "items": {"$ref": "#/definitions/Reference"}}
+  },
+  "definitions": {
+    "Reference": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}
+    }
+  }
+}
