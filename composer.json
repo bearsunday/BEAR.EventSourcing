@@ -11,10 +11,11 @@
     ],
     "require": {
         "php": "^8.1",
-        "aura/sql": "^5.0",
-        "bear/resource": "^1.0",
+        "ext-pdo": "*",
+        "aura/sql": "^6.0",
+        "bear/semantic-logger": "@dev",
+        "koriym/semantic-logger": "^1.0@dev",
         "ramsey/uuid": "^4.0",
-        "ray/aop": "^2.0",
         "ray/di": "^2.0"
     },
     "require-dev": {
@@ -22,6 +23,15 @@
         "phpunit/phpunit": "^10.0 || ^11.0",
         "squizlabs/php_codesniffer": "^3.0"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "./vendor-slogger",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
     "autoload": {
         "psr-4": {
             "BEAR\\EventSourcing\\": "src/"
@@ -41,5 +51,6 @@
     "config": {
         "sort-packages": true
     },
-    "minimum-stability": "stable"
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }

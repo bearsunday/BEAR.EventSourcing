@@ -7,54 +7,80 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Composer scripts (PHP 8.1+):
 
 - `composer test` — run the PHPUnit suite
-- `composer stan` — PHPStan static analysis
-- `composer cs` / `composer cs-fix` — PHP_CodeSniffer check / auto-fix
-- Run a single test: `vendor/bin/phpunit --filter testCreate tests/EventSourcing/EventTest.php`
+- `composer stan` — PHPStan static analysis (level 0 by default)
+- `composer cs` / `composer cs-fix` — PHP_CodeSniffer (PSR-12) check / auto-fix
+- Single test: `vendor/bin/phpunit --filter testAppendAndGetEventsRoundTrip tests/EventStoreTest.php`
 
-`vendor/` is gitignored — run `composer install` before any of the above.
+`vendor/` is gitignored — run `composer install` first.
+
+For the companion package, repeat inside `vendor-slogger/`:
+
+```bash
+cd vendor-slogger && composer install && composer test
+```
 
 ## Architecture
 
-This is an Event Sourcing library for BEAR.Sunday. The core idea: BEAR.Sunday does not provide Event Sourcing as a feature — it emerges from REST + AOP constraints. Events are state-change facts extracted from resource method invocations.
-
-### Data flow
+Event Sourcing library for BEAR.Sunday, designed as a three-layer cake:
 
 ```
-ResourceObject method call (non-GET)
-  → EventSourcingInterceptor (Ray.Aop)
-  → Event::create(uri, method, params, result)
-  → EventStoreInterface::append()
+koriym/semantic-logger      Generic tree-shaped structured log (open/close/event)
+        ▲
+bear/semantic-logger        Lives in this repo at vendor-slogger/. Bridges BEAR.Resource
+                            via LoggerInterface → emits ResourceRequest/ResponseContext
+                            pairs into the SemanticLog tree.
+        ▲
+bear/event-sourcing         This package. Events::fromSemanticLog(array) walks the tree
+                            for resource_request/resource_response pairs and produces
+                            Event objects; EventStore persists/queries them.
 ```
 
-Reading back:
+### Why no AOP interceptor
+
+Recording is wired through BEAR.Resource's existing `LoggerInterface` (a per-resource
+post-call hook used by `NullLogger` / `ProdLogger` / etc.). `bear/semantic-logger` ships
+`SemanticLogger implements LoggerInterface` and is bound via `SemanticLoggerModule`.
+This means `bear/event-sourcing` itself does not depend on `bear/resource` or `ray/aop`.
+
+### Reading back
 
 ```
-EventStore::getEvents*()  →  Events (collection)  →  replay($handler) / toJson()
+EventStore::getEvents*()  →  Events  →  replay($handler) | toJson()
 ```
 
-`Events::fromJson()` / `toJson()` are symmetric — events serialized in production can be replayed in tests for regression / bug reproduction (assumes idempotency).
-
-### Module wiring (`src/Module/EventSourcingModule.php`)
-
-`EventSourcingModule` binds `EventStoreInterface → EventStore` and `EventsInterface → Events`, then binds `EventSourcingInterceptor` to any `ResourceObject` method starting with `onPost`, `onPut`, or `onDelete`. `onGet` is deliberately excluded — read-only methods produce no events, which also avoids cache interceptor conflicts.
-
-The interceptor itself (`src/Interceptor/EventSourcingInterceptor.php`) re-checks for `onGet` as a safety net and derives the HTTP verb from the method name prefix (`onPost` → `POST`, etc.).
+`Events::fromJson()` / `toJson()` are symmetric. Production events can be replayed in
+tests for regression / bug reproduction (assumes idempotency).
 
 ### Storage
 
-`EventStore` uses `Aura\Sql\ExtendedPdo` against a single `event_store` table (`createTable()` provisions it). URI-pattern queries convert glob (`*`, `?`) to SQL `LIKE` (`%`, `_`). `getEventsByAggregateId($type, $id)` is a convention-based helper that matches URIs like `/{type}/{id}%`.
+`EventStore` uses `Aura\Sql\ExtendedPdo` against a single user-supplied table
+(default `event_store`). It uses only standard SQL (`INSERT`, `SELECT … WHERE … LIKE …
+ESCAPE '\\'`) so SQLite, MySQL, and Postgres all work. Migration is the caller's
+responsibility (`createTable()` is intentionally absent).
 
-### Namespace quirk
+URI glob lookups (`*`, `?`) are converted to SQL LIKE with `%`/`_` escaping; user
+input cannot inject wildcards.
 
-PSR-4 maps `BEAR\EventSourcing\` → `src/`, but source files live under `src/EventSourcing/` and `src/Interceptor/`, so the actual namespaces are **`BEAR\EventSourcing\EventSourcing`** (double segment) and `BEAR\EventSourcing\Interceptor`. The `autoload-dev` block maps the same `BEAR\EventSourcing\` prefix to `tests/`, so test classes mirror the doubled namespace (e.g. `BEAR\EventSourcing\EventSourcing\EventTest`).
+### Monorepo-style development layout
+
+`vendor-slogger/` is a self-contained package (`bear/semantic-logger`) — own
+`composer.json`, `src/`, `tests/`. The root `composer.json` declares a path
+repository `./vendor-slogger` so `composer install` symlinks it into
+`vendor/bear/semantic-logger`. Eventually `vendor-slogger/` will split out
+into `bearsunday/BEAR.SemanticLogger`.
 
 ### Design invariants
 
-- `Event` is immutable (`final`, `readonly` properties, private constructor — construct only via `Event::create()` or `Event::fromArray()`).
-- `Events` collection methods (`add`, `filterByUri`, `filterByMethod`, `since`) return new instances — never mutate.
+- `Event` is immutable (`final`, `readonly` properties, private constructor — construct
+  only via `Event::create()` or `Event::fromArray()`). `fromArray` validates required keys.
+- Timestamps round-trip as `Y-m-d\TH:i:s.uP` (microseconds + offset) — lossless across
+  `fromArray`/`toArray`.
+- `Events` collection methods (`add`, `filterByUri`, `filterByMethod`, `since`) return new
+  instances — never mutate.
 - `EventStore` only appends and reads; events are never updated or deleted.
-- Resources stay unaware of Event Sourcing — recording is purely an AOP concern.
+- Resources stay unaware of Event Sourcing — recording is purely a `LoggerInterface` concern.
 
 ## Git workflow
 
-Development branch for this work: `claude/init-project-setup-49Jtg` (per task instructions). Push with `git push -u origin <branch>` and open a draft PR after pushing.
+Development branch: `claude/init-project-setup-49Jtg`. Push with `git push -u origin <branch>`
+and open a draft PR after pushing.

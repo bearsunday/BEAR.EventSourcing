@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace BEAR\EventSourcing\EventSourcing;
+namespace BEAR\EventSourcing;
 
 use DateTimeImmutable;
+use InvalidArgumentException;
 use JsonSerializable;
 use Ramsey\Uuid\Uuid;
 
-/**
- * Immutable Event class representing a state change
- */
 final class Event implements JsonSerializable
 {
+    public const TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
+
     private function __construct(
         public readonly string $id,
         public readonly DateTimeImmutable $timestamp,
@@ -24,18 +24,13 @@ final class Event implements JsonSerializable
     }
 
     /**
-     * Create a new event from a resource request
-     *
-     * @param string              $uri    Resource URI
-     * @param string              $method HTTP method
-     * @param array<string,mixed> $params Request parameters
-     * @param mixed               $result Request result
+     * @param array<string, mixed> $params
      */
     public static function create(
         string $uri,
         string $method,
         array $params,
-        mixed $result
+        mixed $result,
     ): self {
         return new self(
             Uuid::uuid4()->toString(),
@@ -43,37 +38,39 @@ final class Event implements JsonSerializable
             $uri,
             $method,
             $params,
-            $result
+            $result,
         );
     }
 
     /**
-     * Create an event from array data
-     *
      * @param array<string, mixed> $data
      */
     public static function fromArray(array $data): self
     {
+        foreach (['id', 'timestamp', 'uri', 'method'] as $required) {
+            if (! array_key_exists($required, $data)) {
+                throw new InvalidArgumentException(sprintf('Missing required key: %s', $required));
+            }
+        }
+
         return new self(
             $data['id'],
             new DateTimeImmutable($data['timestamp']),
             $data['uri'],
             $data['method'],
             $data['params'] ?? [],
-            $data['result'] ?? null
+            $data['result'] ?? null,
         );
     }
 
     /**
-     * Convert to array representation
-     *
      * @return array<string, mixed>
      */
     public function toArray(): array
     {
         return [
             'id' => $this->id,
-            'timestamp' => $this->timestamp->format('Y-m-d H:i:s.u'),
+            'timestamp' => $this->timestamp->format(Event::TIMESTAMP_FORMAT),
             'uri' => $this->uri,
             'method' => $this->method,
             'params' => $this->params,

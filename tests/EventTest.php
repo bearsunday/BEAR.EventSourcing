@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace BEAR\EventSourcing\EventSourcing;
+namespace BEAR\EventSourcing;
 
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
-class EventTest extends TestCase
+final class EventTest extends TestCase
 {
     public function testCreate(): void
     {
@@ -21,16 +22,16 @@ class EventTest extends TestCase
 
     public function testFromArray(): void
     {
-        $data = [
+        $event = Event::fromArray(
+            [
             'id' => 'test-uuid',
-            'timestamp' => '2025-01-01 12:00:00.000000',
+            'timestamp' => '2025-01-01T12:00:00+00:00',
             'uri' => '/orders/1',
             'method' => 'PUT',
             'params' => ['status' => 'shipped'],
             'result' => ['success' => true],
-        ];
-
-        $event = Event::fromArray($data);
+            ]
+        );
 
         $this->assertSame('test-uuid', $event->id);
         $this->assertSame('/orders/1', $event->uri);
@@ -38,24 +39,35 @@ class EventTest extends TestCase
         $this->assertSame(['status' => 'shipped'], $event->params);
     }
 
-    public function testToArray(): void
+    public function testFromArrayMissingKeyThrows(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        Event::fromArray(['id' => 'x', 'uri' => '/x', 'method' => 'POST']);
+    }
+
+    public function testToArrayProducesIso8601Timestamp(): void
     {
         $event = Event::create('/products/1', 'DELETE', [], null);
         $array = $event->toArray();
 
-        $this->assertArrayHasKey('id', $array);
-        $this->assertArrayHasKey('timestamp', $array);
         $this->assertSame('/products/1', $array['uri']);
         $this->assertSame('DELETE', $array['method']);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}[+-]\d{2}:\d{2}$/', $array['timestamp']);
     }
 
     public function testJsonSerialize(): void
     {
         $event = Event::create('/test', 'POST', ['key' => 'value'], 'result');
-        $json = json_encode($event);
+        $decoded = json_decode((string) json_encode($event), true);
 
-        $this->assertIsString($json);
-        $decoded = json_decode($json, true);
         $this->assertSame('/test', $decoded['uri']);
+    }
+
+    public function testRoundTripFromArrayToArray(): void
+    {
+        $event = Event::create('/users/1', 'POST', ['x' => 1], ['ok' => true]);
+        $copy = Event::fromArray($event->toArray());
+
+        $this->assertEquals($event, $copy);
     }
 }
