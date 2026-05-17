@@ -59,6 +59,16 @@ final class EventStoreTest extends TestCase
         $this->assertCount(2, $events);
     }
 
+    public function testGetEventsSinceNormalizesTimezone(): void
+    {
+        $this->insertWithTimestamp('a', '/a', '2025-06-01T00:00:00.000000+00:00');
+
+        $sinceInOtherZone = new DateTimeImmutable('2025-06-01T05:30:00.000000+05:30');
+        $events = $this->store->getEventsSince($sinceInOtherZone);
+
+        $this->assertCount(1, $events);
+    }
+
     public function testGetEventsByUriGlob(): void
     {
         $this->store->append(Event::create('/users/1', 'POST', [], null));

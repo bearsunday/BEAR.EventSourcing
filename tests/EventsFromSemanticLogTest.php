@@ -6,6 +6,8 @@ namespace BEAR\EventSourcing;
 
 use BEAR\Resource\ResourceObject;
 use BEAR\Resource\Uri;
+use BEAR\SemanticLogger\ResourceRequestContext;
+use BEAR\SemanticLogger\ResourceResponseContext;
 use BEAR\SemanticLogger\SemanticLogger as BearSemanticLogger;
 use Koriym\SemanticLogger\SemanticLogger;
 use PHPUnit\Framework\TestCase;
@@ -49,6 +51,21 @@ final class EventsFromSemanticLogTest extends TestCase
         $events = Events::fromSemanticLog([]);
 
         $this->assertCount(0, $events);
+    }
+
+    public function testExtractsNestedEvents(): void
+    {
+        $koriymLogger = new SemanticLogger();
+        $outerId = $koriymLogger->open(new ResourceRequestContext('app://self/orders', 'POST', []));
+        $innerId = $koriymLogger->open(new ResourceRequestContext('app://self/inventory/1', 'PUT', []));
+        $koriymLogger->close(new ResourceResponseContext(200, ['ok' => true]), $innerId);
+        $koriymLogger->close(new ResourceResponseContext(201, ['id' => 1]), $outerId);
+
+        $events = Events::fromSemanticLog($koriymLogger->flush()->toArray());
+
+        $this->assertCount(2, $events);
+        $uris = array_map(static fn (Event $e): string => $e->uri, $events->all());
+        $this->assertSame(['app://self/orders', 'app://self/inventory/1'], $uris);
     }
 
     /**

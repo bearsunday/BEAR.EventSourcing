@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing;
 
 use Aura\Sql\ExtendedPdo;
+use DateTimeImmutable;
 use DateTimeInterface;
+use DateTimeZone;
 use InvalidArgumentException;
 
 final class EventStore implements EventStoreInterface
@@ -28,7 +30,7 @@ final class EventStore implements EventStoreInterface
             ),
             [
                 'id' => $event->id,
-                'timestamp' => $event->timestamp->format(Event::TIMESTAMP_FORMAT),
+                'timestamp' => $this->formatTimestampUtc($event->timestamp),
                 'uri' => $event->uri,
                 'method' => $event->method,
                 'params' => json_encode($event->params, JSON_THROW_ON_ERROR),
@@ -48,7 +50,7 @@ final class EventStore implements EventStoreInterface
     {
         $rows = $this->pdo->fetchAll(
             sprintf('SELECT * FROM %s WHERE timestamp >= :since ORDER BY timestamp ASC', $this->table),
-            ['since' => $since->format(Event::TIMESTAMP_FORMAT)],
+            ['since' => $this->formatTimestampUtc($since)],
         );
 
         return $this->hydrate($rows);
@@ -57,19 +59,24 @@ final class EventStore implements EventStoreInterface
     public function getEventsByUri(string $pattern): EventsInterface
     {
         $rows = $this->pdo->fetchAll(
-            sprintf("SELECT * FROM %s WHERE uri LIKE :pattern ESCAPE '\\' ORDER BY timestamp ASC", $this->table),
+            sprintf("SELECT * FROM %s WHERE uri LIKE :pattern ESCAPE '!' ORDER BY timestamp ASC", $this->table),
             ['pattern' => $this->globToLike($pattern)],
         );
 
         return $this->hydrate($rows);
     }
 
+    /**
+     * Both arguments are treated as literal strings (no wildcards allowed in `$aggregateId`).
+     * The query matches URIs starting with `/{aggregateType}/{aggregateId}` to also include
+     * sub-resources such as `/orders/123/items`.
+     */
     public function getEventsByAggregateId(string $aggregateType, string $aggregateId): EventsInterface
     {
         $pattern = '/' . $this->escapeLike($aggregateType) . '/' . $this->escapeLike($aggregateId) . '%';
 
         $rows = $this->pdo->fetchAll(
-            sprintf("SELECT * FROM %s WHERE uri LIKE :pattern ESCAPE '\\' ORDER BY timestamp ASC", $this->table),
+            sprintf("SELECT * FROM %s WHERE uri LIKE :pattern ESCAPE '!' ORDER BY timestamp ASC", $this->table),
             ['pattern' => $pattern],
         );
 
@@ -83,30 +90,37 @@ final class EventStore implements EventStoreInterface
     {
         return new Events(
             array_map(
-                static fn (array $row): Event => Event::fromArray(
-                    [
+                static fn (array $row): Event => Event::fromArray([
                     'id' => $row['id'],
                     'timestamp' => $row['timestamp'],
                     'uri' => $row['uri'],
                     'method' => $row['method'],
                     'params' => json_decode($row['params'] ?? '[]', true, 512, JSON_THROW_ON_ERROR),
                     'result' => json_decode($row['result'] ?? 'null', true, 512, JSON_THROW_ON_ERROR),
-                    ]
-                ),
+                ]),
                 $rows,
-            )
+            ),
         );
     }
 
     private function globToLike(string $pattern): string
     {
-        $escaped = $this->escapeLike($pattern);
-
-        return strtr($escaped, ['*' => '%', '?' => '_']);
+        return strtr($this->escapeLike($pattern), ['*' => '%', '?' => '_']);
     }
 
     private function escapeLike(string $input): string
     {
-        return strtr($input, ['\\' => '\\\\', '%' => '\\%', '_' => '\\_']);
+        return strtr($input, ['!' => '!!', '%' => '!%', '_' => '!_']);
+    }
+
+    /**
+     * Timestamps are normalized to UTC for storage / comparison so two `DateTimeImmutable`s
+     * representing the same instant in different zones compare equal as strings.
+     */
+    private function formatTimestampUtc(DateTimeInterface $ts): string
+    {
+        return DateTimeImmutable::createFromInterface($ts)
+            ->setTimezone(new DateTimeZone('UTC'))
+            ->format(Event::TIMESTAMP_FORMAT);
     }
 }
