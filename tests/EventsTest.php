@@ -83,6 +83,19 @@ final class EventsTest extends TestCase
         $this->assertCount(2, $events->filterByMethod('POST'));
     }
 
+    public function testFilterByMethodIsCaseInsensitive(): void
+    {
+        $events = new Events(
+            [
+            Event::create('/a', 'POST', [], null),
+            Event::create('/b', 'put', [], null),
+            ]
+        );
+
+        $this->assertCount(1, $events->filterByMethod('post'));
+        $this->assertCount(1, $events->filterByMethod('PUT'));
+    }
+
     public function testSinceFiltersByTimestamp(): void
     {
         $events = new Events(

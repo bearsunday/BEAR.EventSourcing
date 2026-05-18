@@ -13,11 +13,15 @@ final class ResourceRequestContext extends AbstractContext
 
     /**
      * @param array<string, mixed> $query
+     * @param string               $timestamp ISO 8601 (Y-m-d\TH:i:s.uP) — when the call happened.
+     *                                        Empty string means "unknown / capture-time" and
+     *                                        downstream consumers should fall back to "now".
      */
     public function __construct(
         public readonly string $uri,
         public readonly string $method,
         public readonly array $query = [],
+        public readonly string $timestamp = '',
     ) {
     }
 }

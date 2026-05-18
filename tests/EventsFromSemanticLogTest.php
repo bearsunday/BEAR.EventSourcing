@@ -9,6 +9,7 @@ use BEAR\Resource\Uri;
 use BEAR\SemanticLogger\ResourceRequestContext;
 use BEAR\SemanticLogger\ResourceResponseContext;
 use BEAR\SemanticLogger\SemanticLogger as BearSemanticLogger;
+use DateTimeImmutable;
 use Koriym\SemanticLogger\SemanticLogger;
 use PHPUnit\Framework\TestCase;
 
@@ -51,6 +52,26 @@ final class EventsFromSemanticLogTest extends TestCase
         $events = Events::fromSemanticLog([]);
 
         $this->assertCount(0, $events);
+    }
+
+    public function testPreservesOriginalTimestampFromContext(): void
+    {
+        $koriymLogger = new SemanticLogger();
+        $original = '2025-06-01T12:34:56.789012+00:00';
+        $openId = $koriymLogger->open(new ResourceRequestContext(
+            uri: 'app://self/users',
+            method: 'POST',
+            timestamp: $original,
+        ));
+        $koriymLogger->close(new ResourceResponseContext(201, ['id' => 1]), $openId);
+
+        $events = Events::fromSemanticLog($koriymLogger->flush()->toArray());
+
+        $this->assertCount(1, $events);
+        $this->assertEquals(
+            new DateTimeImmutable($original),
+            $events->all()[0]->timestamp,
+        );
     }
 
     public function testExtractsNestedEvents(): void

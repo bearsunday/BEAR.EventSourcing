@@ -34,6 +34,10 @@ final class SemanticLoggerTest extends TestCase
         $this->assertSame(ResourceRequestContext::TYPE, $open['type']);
         $this->assertSame('app://self/users', $open['context']['uri']);
         $this->assertSame('POST', $open['context']['method']);
+        $this->assertMatchesRegularExpression(
+            '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}[+-]\d{2}:\d{2}$/',
+            $open['context']['timestamp'],
+        );
 
         $this->assertArrayHasKey('close', $open);
         $this->assertSame(ResourceResponseContext::TYPE, $open['close']['type']);
@@ -51,14 +55,24 @@ final class SemanticLoggerTest extends TestCase
         $this->koriymLogger->flush();
     }
 
-    public function testRecordsPut(): void
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function unsafeMethodProvider(): iterable
     {
-        $ro = $this->makeResource('app://self/users/1', method: 'put', code: 200, body: null);
+        yield 'put' => ['put'];
+        yield 'patch' => ['patch'];
+        yield 'delete' => ['delete'];
+    }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('unsafeMethodProvider')]
+    public function testRecordsUnsafeMethod(string $method): void
+    {
+        $ro = $this->makeResource('app://self/users/1', method: $method);
         ($this->logger)($ro);
 
         $log = $this->koriymLogger->flush()->toArray();
-        $this->assertSame('PUT', $log['open'][0]['context']['method']);
+        $this->assertSame(strtoupper($method), $log['open'][0]['context']['method']);
     }
 
     /**

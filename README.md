@@ -160,6 +160,8 @@ cd vendor-slogger && composer install && composer test
   arbitrary request bodies requires a future hook in BEAR.Resource.
 - `EventStoreInterface::getEvents()` returns all events without pagination —
   intended for small stores or batch processing only.
+- `composer.json` declares `minimum-stability: dev` because `koriym/semantic-logger`
+  has no stable release yet. Tighten when upstream cuts 1.0.
 
 ## Design Principles
 

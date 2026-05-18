@@ -6,11 +6,13 @@ namespace BEAR\SemanticLogger;
 
 use BEAR\Resource\LoggerInterface;
 use BEAR\Resource\ResourceObject;
+use DateTimeImmutable;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 
 final class SemanticLogger implements LoggerInterface
 {
     private const RECORDED_METHODS = ['post', 'put', 'patch', 'delete'];
+    private const TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
 
     public function __construct(
         private readonly SemanticLoggerInterface $logger,
@@ -28,6 +30,7 @@ final class SemanticLogger implements LoggerInterface
             uri: (string) $ro->uri,
             method: strtoupper($method),
             query: $ro->uri->query,
+            timestamp: (new DateTimeImmutable())->format(self::TIMESTAMP_FORMAT),
         ));
 
         $this->logger->close(

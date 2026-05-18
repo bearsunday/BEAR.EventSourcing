@@ -31,10 +31,11 @@ final class Event implements JsonSerializable
         string $method,
         array $params,
         mixed $result,
+        DateTimeImmutable|null $timestamp = null,
     ): self {
         return new self(
             Uuid::uuid4()->toString(),
-            new DateTimeImmutable(),
+            $timestamp ?? new DateTimeImmutable(),
             $uri,
             $method,
             $params,

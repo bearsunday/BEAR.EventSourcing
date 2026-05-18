@@ -67,12 +67,17 @@ final class EventStore implements EventStoreInterface
     }
 
     /**
-     * Both arguments are treated as literal strings (no wildcards allowed in `$aggregateId`).
+     * Both arguments are treated as literal strings (no wildcards allowed). Neither may
+     * contain '/' — that would silently broaden the matched URI scope.
      * The query matches URIs starting with `/{aggregateType}/{aggregateId}` to also include
      * sub-resources such as `/orders/123/items`.
      */
     public function getEventsByAggregateId(string $aggregateType, string $aggregateId): EventsInterface
     {
+        if (str_contains($aggregateType, '/') || str_contains($aggregateId, '/')) {
+            throw new InvalidArgumentException('aggregateType and aggregateId must not contain "/"');
+        }
+
         $pattern = '/' . $this->escapeLike($aggregateType) . '/' . $this->escapeLike($aggregateId) . '%';
 
         $rows = $this->pdo->fetchAll(

@@ -102,6 +102,18 @@ final class EventStoreTest extends TestCase
         $this->assertCount(2, $events);
     }
 
+    public function testAggregateTypeWithSlashRejected(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->store->getEventsByAggregateId('orders/sub', '123');
+    }
+
+    public function testAggregateIdWithSlashRejected(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->store->getEventsByAggregateId('orders', '123/items');
+    }
+
     public function testInvalidTableNameRejected(): void
     {
         $this->expectException(InvalidArgumentException::class);

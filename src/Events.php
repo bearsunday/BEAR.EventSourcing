@@ -7,6 +7,7 @@ namespace BEAR\EventSourcing;
 use ArrayIterator;
 use BEAR\SemanticLogger\ResourceRequestContext;
 use BEAR\SemanticLogger\ResourceResponseContext;
+use DateTimeImmutable;
 use DateTimeInterface;
 use InvalidArgumentException;
 use Traversable;
@@ -132,11 +133,16 @@ final class Events implements EventsInterface
             if (($entry['type'] ?? null) === ResourceRequestContext::TYPE) {
                 $close = $entry['close'] ?? null;
                 if (is_array($close) && ($close['type'] ?? null) === ResourceResponseContext::TYPE) {
+                    $timestampString = $entry['context']['timestamp'] ?? '';
+                    $timestamp = is_string($timestampString) && $timestampString !== ''
+                        ? new DateTimeImmutable($timestampString)
+                        : null;
                     $events[] = Event::create(
                         (string) ($entry['context']['uri'] ?? ''),
                         (string) ($entry['context']['method'] ?? ''),
                         (array) ($entry['context']['query'] ?? []),
                         $close['context']['body'] ?? null,
+                        $timestamp,
                     );
                 }
             }
