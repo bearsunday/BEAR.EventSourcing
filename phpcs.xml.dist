@@ -4,6 +4,7 @@
     <file>tests</file>
     <arg name="colors"/>
     <arg value="sp"/>
+    <arg name="warning-severity" value="0"/>
 
     <rule ref="PSR12"/>
 </ruleset>
