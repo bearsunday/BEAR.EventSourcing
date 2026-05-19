@@ -42,6 +42,20 @@ is wired through the existing `BEAR\Resource\LoggerInterface` hook.
 composer require bear/event-sourcing
 ```
 
+## End-to-end demo
+
+A self-contained, runnable demo lives at [`demo/record-and-replay.php`](demo/record-and-replay.php).
+It POSTs a couple of resources, flushes the SemanticLog, extracts Events,
+persists them in SQLite, then resets the world and replays — verifying the
+replay reproduces the originals. Run it after `composer install`:
+
+```bash
+php demo/record-and-replay.php
+```
+
+Exits 0 when the replay matches the originals. The same flow is exercised
+by `tests/EndToEndTest.php` so regressions are caught by `composer test`.
+
 ## Usage
 
 ### Extract from SemanticLog
