@@ -156,8 +156,6 @@ cd vendor-slogger && composer install && composer test
 
 - `SCHEMA_URL` constants in `BEAR\SemanticLogger\Resource*Context` point at
   placeholder URLs — actual JSON Schemas will be published separately.
-- POST/PUT request bodies are recorded via `$ro->uri->query` only. Capturing
-  arbitrary request bodies requires a future hook in BEAR.Resource.
 - `EventStoreInterface::getEvents()` returns all events without pagination —
   intended for small stores or batch processing only.
 - `composer.json` declares `minimum-stability: dev` because `koriym/semantic-logger`

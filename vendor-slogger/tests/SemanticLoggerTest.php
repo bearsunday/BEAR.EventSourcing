@@ -75,6 +75,22 @@ final class SemanticLoggerTest extends TestCase
         $this->assertSame(strtoupper($method), $log['open'][0]['context']['method']);
     }
 
+    public function testCapturesPostBodyViaUriQuery(): void
+    {
+        $ro = $this->makeResource('app://self/users', method: 'post', code: 201, body: ['id' => 1]);
+        // In BEAR.Sunday, Request::withQuery / form body / JSON body all land in
+        // $ro->uri->query before the resource method is invoked.
+        $ro->uri->query = ['name' => 'Alice', 'age' => 30];
+
+        ($this->logger)($ro);
+
+        $log = $this->koriymLogger->flush()->toArray();
+        $this->assertSame(
+            ['name' => 'Alice', 'age' => 30],
+            $log['open'][0]['context']['query'],
+        );
+    }
+
     /**
      * @param array<string, mixed>|null $body
      */

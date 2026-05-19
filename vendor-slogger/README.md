@@ -27,12 +27,19 @@ This package provides:
 Only state-changing methods are recorded (matching `BEAR\Resource\ProdLogger`):
 `POST`, `PUT`, `PATCH`, `DELETE`. `GET`/`HEAD`/`OPTIONS` are skipped.
 
+## Parameter capture
+
+`$ro->uri->query` is BEAR.Sunday's unified parameter store — URL query string, form
+body, and JSON body all land here before the resource method is invoked. The bridge
+records this field, so `Resource​RequestContext.query` captures the full input
+regardless of HTTP method.
+
 ## Limitations
 
 - `SCHEMA_URL` constants are placeholders. Real JSON Schemas will be published later.
-- The `BEAR\Resource\LoggerInterface` fires once per call with the completed `ResourceObject`,
-  so `open()` and `close()` are emitted back-to-back. Request bodies beyond `$ro->uri->query`
-  are not captured (limitation of the current LoggerInterface contract).
+- `BEAR\Resource\LoggerInterface` fires once per call with the completed `ResourceObject`,
+  so `open()` and `close()` are emitted back-to-back with the same timestamp. Profile
+  / timing data is not captured.
 
 ## Development
 
