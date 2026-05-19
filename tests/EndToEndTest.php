@@ -48,9 +48,7 @@ final class EndToEndTest extends TestCase
             )
         SQL);
         $store = new EventStore($pdo);
-        foreach ($events as $event) {
-            $store->append($event);
-        }
+        $store->appendAll($events);
 
         // Phase 4: read back
         $stored = $store->getEventsByUri('app://self/users*');

@@ -74,22 +74,63 @@ $events = Events::fromSemanticLog($logJson->toArray());
 ### Persist & query
 
 ```php
-foreach ($events as $event) {
-    $eventStore->append($event);
-}
+$eventStore->appendAll($events);          // single transaction
 
 $eventStore->getEventsByUri('/users/*');
 $eventStore->getEventsByAggregateId('orders', '123');
 $eventStore->getEventsSince(new DateTimeImmutable('-1 day'));
 ```
 
+`appendAll` wraps the batch in a transaction; `append` is the single-event
+form. Use whichever fits.
+
 ### Replay
+
+`$events->replay($handler)` iterates events in chronological order and
+hands each to your handler. The library does not prescribe **how** to
+re-apply an event — that is intentional, because the right strategy
+depends on whether your read model is rebuilt from events or kept in
+sync with a separate write side. Three common patterns:
+
+**(a) Re-invoke the resource via the resource client.** Cleanest, exercises
+the same code path as the original call. Requires a wired BEAR.Sunday
+injector.
 
 ```php
 $events->replay(function (Event $e) use ($resource) {
-    $resource->{strtolower($e->method)}->withQuery($e->params)->eager()->request($e->uri);
+    $resource->{strtolower($e->method)}->withQuery($e->params)
+        ->eager()->request($e->uri);
 });
 ```
+
+**(b) Call the resource method directly.** Useful in tests / scripts where
+spinning up DI is overkill. The handler maps HTTP method → resource
+method name itself.
+
+```php
+$events->replay(function (Event $e) use ($container): void {
+    $ro = $container->newInstance(parse_url($e->uri, PHP_URL_HOST) . '...');
+    $ro->{'on' . ucfirst(strtolower($e->method))}(...$e->params);
+});
+```
+
+**(c) Project into a read model.** The events are the source of truth;
+replay rebuilds a separate projection (table, in-memory map, …).
+
+```php
+$projection = [];
+$events->replay(function (Event $e) use (&$projection): void {
+    if ($e->method === 'POST') {
+        $projection[$e->result['id']] = $e->result;
+    }
+    // … etc.
+});
+```
+
+**Idempotency**: (a) and (b) replay business logic, so they require the
+resource's `onPost`/etc. to be idempotent **or** the world (DB,
+side-effects) to be reset before replay. (c) rebuilds the projection
+from scratch each time and is inherently idempotent.
 
 ### Serialize / restore
 

@@ -39,6 +39,20 @@ final class EventStore implements EventStoreInterface
         );
     }
 
+    public function appendAll(EventsInterface $events): void
+    {
+        $this->pdo->beginTransaction();
+        try {
+            foreach ($events as $event) {
+                $this->append($event);
+            }
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
     public function getEvents(): EventsInterface
     {
         $rows = $this->pdo->fetchAll(sprintf('SELECT * FROM %s ORDER BY timestamp ASC', $this->table));

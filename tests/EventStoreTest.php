@@ -33,6 +33,46 @@ final class EventStoreTest extends TestCase
         $this->store = new EventStore($this->pdo);
     }
 
+    public function testAppendAllPersistsAllEvents(): void
+    {
+        $events = new Events([
+            Event::create('/a', 'POST', [], null),
+            Event::create('/b', 'PUT', [], null),
+            Event::create('/c', 'DELETE', [], null),
+        ]);
+
+        $this->store->appendAll($events);
+
+        $this->assertCount(3, $this->store->getEvents());
+    }
+
+    public function testAppendAllRollsBackOnFailure(): void
+    {
+        $a = Event::create('/a', 'POST', [], null);
+        $duplicate = Event::fromArray([
+            'id' => $a->id,
+            'timestamp' => '2025-01-01T00:00:00.000000+00:00',
+            'uri' => '/dup',
+            'method' => 'POST',
+        ]);
+
+        $events = new Events([
+            Event::create('/x', 'POST', [], null),
+            Event::create('/y', 'POST', [], null),
+            $a,
+            $duplicate,
+        ]);
+
+        try {
+            $this->store->appendAll($events);
+            $this->fail('Expected exception on duplicate id');
+        } catch (\Throwable) {
+            // expected
+        }
+
+        $this->assertCount(0, $this->store->getEvents(), 'Failed batch should be rolled back');
+    }
+
     public function testAppendAndGetEventsRoundTrip(): void
     {
         $event = Event::create('/users/1', 'POST', ['name' => 'a'], ['id' => 1]);

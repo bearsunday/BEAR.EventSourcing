@@ -70,9 +70,7 @@ $events = Events::fromSemanticLog($log->toArray());
 echo sprintf("Extracted %d events from the SemanticLog tree.\n\n", count($events));
 
 echo "=== Phase 3: persist ===\n";
-foreach ($events as $event) {
-    $eventStore->append($event);
-}
+$eventStore->appendAll($events);
 
 echo "Persisted. JSON snapshot (first event):\n";
 echo json_encode($events->all()[0]->toArray(), JSON_PRETTY_PRINT), "\n\n";
