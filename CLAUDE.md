@@ -55,7 +55,7 @@ tests for regression / bug reproduction (assumes idempotency).
 
 `EventStore` uses `Aura\Sql\ExtendedPdo` against a single user-supplied table
 (default `event_store`). It uses only standard SQL (`INSERT`, `SELECT … WHERE … LIKE …
-ESCAPE '\\'`) so SQLite, MySQL, and Postgres all work. Migration is the caller's
+ESCAPE '!'`) so SQLite, MySQL, and Postgres all work. Migration is the caller's
 responsibility (`createTable()` is intentionally absent).
 
 URI glob lookups (`*`, `?`) are converted to SQL LIKE with `%`/`_` escaping; user

@@ -90,9 +90,9 @@ final class EventStoreTest extends TestCase
 
     public function testGetEventsSinceFilters(): void
     {
-        $this->insertWithTimestamp('a', '/a', '2025-01-01T00:00:00+00:00');
-        $this->insertWithTimestamp('b', '/b', '2025-06-01T00:00:00+00:00');
-        $this->insertWithTimestamp('c', '/c', '2025-12-01T00:00:00+00:00');
+        $this->insertWithTimestamp('a', '/a', '2025-01-01T00:00:00.000000+00:00');
+        $this->insertWithTimestamp('b', '/b', '2025-06-01T00:00:00.000000+00:00');
+        $this->insertWithTimestamp('c', '/c', '2025-12-01T00:00:00.000000+00:00');
 
         $events = $this->store->getEventsSince(new DateTimeImmutable('2025-05-01T00:00:00+00:00'));
 
