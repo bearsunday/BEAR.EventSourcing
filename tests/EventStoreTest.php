@@ -102,6 +102,23 @@ final class EventStoreTest extends TestCase
         $this->assertCount(2, $events);
     }
 
+    public function testGetEventsByAggregateIdRespectsIdBoundary(): void
+    {
+        $this->store->append(Event::create('/orders/123', 'POST', [], null));
+        $this->store->append(Event::create('/orders/1234', 'POST', [], null));
+        $this->store->append(Event::create('/orders/123/items', 'POST', [], null));
+        $this->store->append(Event::create('/orders/123?reason=cancel', 'POST', [], null));
+
+        $events = $this->store->getEventsByAggregateId('orders', '123');
+
+        $uris = array_map(static fn (Event $e): string => $e->uri, $events->all());
+        sort($uris);
+        $this->assertSame(
+            ['/orders/123', '/orders/123/items', '/orders/123?reason=cancel'],
+            $uris,
+        );
+    }
+
     public function testAggregateTypeWithSlashRejected(): void
     {
         $this->expectException(InvalidArgumentException::class);

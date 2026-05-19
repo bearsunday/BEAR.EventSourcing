@@ -69,8 +69,10 @@ final class EventStore implements EventStoreInterface
     /**
      * Both arguments are treated as literal strings (no wildcards allowed). Neither may
      * contain '/' — that would silently broaden the matched URI scope.
-     * The query matches URIs starting with `/{aggregateType}/{aggregateId}` to also include
-     * sub-resources such as `/orders/123/items`.
+     *
+     * Matches URIs that are exactly `/{aggregateType}/{aggregateId}` or that continue
+     * with '/' (sub-resources) or '?' (query string). `/orders/123` does **not** match
+     * `/orders/1234` (boundary is required).
      */
     public function getEventsByAggregateId(string $aggregateType, string $aggregateId): EventsInterface
     {
@@ -78,11 +80,21 @@ final class EventStore implements EventStoreInterface
             throw new InvalidArgumentException('aggregateType and aggregateId must not contain "/"');
         }
 
-        $pattern = '/' . $this->escapeLike($aggregateType) . '/' . $this->escapeLike($aggregateId) . '%';
+        $base = '/' . $aggregateType . '/' . $aggregateId;
+        $basePrefix = '/' . $this->escapeLike($aggregateType) . '/' . $this->escapeLike($aggregateId);
 
         $rows = $this->pdo->fetchAll(
-            sprintf("SELECT * FROM %s WHERE uri LIKE :pattern ESCAPE '!' ORDER BY timestamp ASC", $this->table),
-            ['pattern' => $pattern],
+            sprintf(
+                "SELECT * FROM %s "
+                . "WHERE uri = :exact OR uri LIKE :slash ESCAPE '!' OR uri LIKE :query ESCAPE '!' "
+                . 'ORDER BY timestamp ASC',
+                $this->table,
+            ),
+            [
+                'exact' => $base,
+                'slash' => $basePrefix . '/%',
+                'query' => $basePrefix . '?%',
+            ],
         );
 
         return $this->hydrate($rows);
