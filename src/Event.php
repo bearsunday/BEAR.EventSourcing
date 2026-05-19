@@ -13,6 +13,9 @@ final class Event implements JsonSerializable
 {
     public const TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
 
+    /**
+     * @param array<string, mixed> $params
+     */
     private function __construct(
         public readonly string $id,
         public readonly DateTimeImmutable $timestamp,
