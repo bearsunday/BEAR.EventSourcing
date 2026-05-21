@@ -97,19 +97,19 @@ the same code path as the original call. Requires a wired BEAR.Sunday
 injector.
 
 ```php
-$events->replay(function (Event $e) use ($resource) {
-    $resource->{strtolower($e->method)}->withQuery($e->params)
-        ->eager()->request($e->uri);
+$events->replay(function (Event $e) use ($resource): void {
+    // $resource is BEAR\Resource\ResourceInterface
+    $resource->{strtolower($e->method)}($e->uri, $e->params);
 });
 ```
 
 **(b) Call the resource method directly.** Useful in tests / scripts where
 spinning up DI is overkill. The handler maps HTTP method → resource
-method name itself.
+method name itself (see `demo/record-and-replay.php`).
 
 ```php
-$events->replay(function (Event $e) use ($container): void {
-    $ro = $container->newInstance(parse_url($e->uri, PHP_URL_HOST) . '...');
+$events->replay(function (Event $e): void {
+    $ro = new Users();
     $ro->{'on' . ucfirst(strtolower($e->method))}(...$e->params);
 });
 ```
@@ -145,8 +145,8 @@ Replay production events for regression testing (assumes idempotency):
 
 ```php
 Events::fromJson(file_get_contents('production-events.json'))
-    ->replay(function (Event $e) use ($resource, $test) {
-        $ro = $resource->{strtolower($e->method)}->withQuery($e->params)->eager()->request($e->uri);
+    ->replay(function (Event $e) use ($resource, $test): void {
+        $ro = $resource->{strtolower($e->method)}($e->uri, $e->params);
         $test->assertSame($e->result, $ro->body);
     });
 ```
@@ -161,7 +161,10 @@ class AppModule extends AbstractModule
 {
     protected function configure(): void
     {
-        $this->install(new SemanticLoggerModule());   // binds BEAR\Resource\LoggerInterface
+        // ResourceModule (installed by BEAR.Package) already binds
+        // BEAR\Resource\LoggerInterface to NullLogger, so SemanticLoggerModule
+        // MUST be installed with override() to take effect.
+        $this->override(new SemanticLoggerModule());  // binds LoggerInterface -> SemanticLogger
         $this->install(new EventSourcingModule());    // binds EventStoreInterface / EventsInterface
         $this->bind(ExtendedPdo::class)->toInstance(new ExtendedPdo('mysql:...', $user, $pass));
     }
@@ -170,6 +173,12 @@ class AppModule extends AbstractModule
 
 `SemanticLoggerModule` binds `BEAR\Resource\LoggerInterface → BEAR\SemanticLogger\SemanticLogger`,
 so every non-GET resource call is automatically recorded into the SemanticLog tree.
+
+> **Install with `override()`, not `install()`.** `BEAR\Resource`'s
+> `ResourceClientModule` binds `LoggerInterface → NullLogger`. A plain
+> `install(new SemanticLoggerModule())` leaves that binding in place and
+> nothing is recorded. `tests/ResourceClientIntegrationTest.php` verifies
+> the `override()` wiring end to end.
 
 ## Schema (event_store table)
 

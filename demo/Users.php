@@ -17,7 +17,6 @@ final class Users extends ResourceObject
     /** @var array<int, array{name: string, age: int}> */
     public static array $store = [];
 
-    /** @return self */
     public function onPost(string $name, int $age): static
     {
         $id = count(self::$store) + 1;
@@ -28,7 +27,6 @@ final class Users extends ResourceObject
         return $this;
     }
 
-    /** @return self */
     public function onGet(int $id): static
     {
         $row = self::$store[$id] ?? null;

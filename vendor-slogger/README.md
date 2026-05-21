@@ -22,6 +22,14 @@ This package provides:
 - `BEAR\SemanticLogger\Module\SemanticLoggerModule` — DI module that binds
   `BEAR\Resource\LoggerInterface → SemanticLogger`.
 
+Install `SemanticLoggerModule` with `override()` — `BEAR\Resource`'s
+`ResourceClientModule` already binds `LoggerInterface → NullLogger`, and a
+plain `install()` leaves that in place:
+
+```php
+$this->override(new SemanticLoggerModule());
+```
+
 ## Recorded methods
 
 Only state-changing methods are recorded (matching `BEAR\Resource\ProdLogger`):
