@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\EventSourcing;
 
 use Aura\Sql\ExtendedPdo;
+use DateTimeImmutable;
 use JsonException;
 use PHPUnit\Framework\TestCase;
 
@@ -26,6 +27,65 @@ class EventStoreTest extends TestCase
         $this->assertSame('POST', $storedEvents[0]->method);
         $this->assertSame(['name' => 'John'], $storedEvents[0]->params);
         $this->assertSame(['id' => 1], $storedEvents[0]->result);
+    }
+
+    public function testGetEventsSince(): void
+    {
+        [$eventStore, $pdo] = $this->newEventStore();
+        $this->insertStoredEvent($pdo, 'event-1', '2025-01-01 00:00:00.000000', '/users/1');
+        $this->insertStoredEvent($pdo, 'event-2', '2025-01-02 00:00:00.000000', '/users/2');
+        $this->insertStoredEvent($pdo, 'event-3', '2025-01-03 00:00:00.000000', '/users/3');
+
+        $events = $eventStore->getEventsSince(new DateTimeImmutable('2025-01-02 00:00:00.000000'));
+
+        $this->assertSame(['/users/2', '/users/3'], $this->uris($events));
+    }
+
+    public function testGetEventsByUriUsesGlobPattern(): void
+    {
+        [$eventStore, $pdo] = $this->newEventStore();
+        $this->insertStoredEvent($pdo, 'event-1', '2025-01-01 00:00:00.000000', '/users/1');
+        $this->insertStoredEvent($pdo, 'event-2', '2025-01-02 00:00:00.000000', '/users/2');
+        $this->insertStoredEvent($pdo, 'event-3', '2025-01-03 00:00:00.000000', '/orders/1');
+
+        $events = $eventStore->getEventsByUri('/users/*');
+
+        $this->assertSame(['/users/1', '/users/2'], $this->uris($events));
+    }
+
+    public function testGetEventsByUriEscapesSqlLikeWildcards(): void
+    {
+        [$eventStore, $pdo] = $this->newEventStore();
+        $this->insertStoredEvent($pdo, 'event-1', '2025-01-01 00:00:00.000000', '/reports/100%');
+        $this->insertStoredEvent($pdo, 'event-2', '2025-01-02 00:00:00.000000', '/reports/100x');
+
+        $events = $eventStore->getEventsByUri('/reports/100%');
+
+        $this->assertSame(['/reports/100%'], $this->uris($events));
+    }
+
+    public function testGetEventsByAggregateIdDoesNotMatchPrefixCollision(): void
+    {
+        [$eventStore, $pdo] = $this->newEventStore();
+        $this->insertStoredEvent($pdo, 'event-1', '2025-01-01 00:00:00.000000', '/orders/123');
+        $this->insertStoredEvent($pdo, 'event-2', '2025-01-02 00:00:00.000000', '/orders/123/items/1');
+        $this->insertStoredEvent($pdo, 'event-3', '2025-01-03 00:00:00.000000', '/orders/1234');
+
+        $events = $eventStore->getEventsByAggregateId('orders', '123');
+
+        $this->assertSame(['/orders/123', '/orders/123/items/1'], $this->uris($events));
+    }
+
+    public function testGetEventsByAggregateIdEscapesSqlLikeWildcards(): void
+    {
+        [$eventStore, $pdo] = $this->newEventStore();
+        $this->insertStoredEvent($pdo, 'event-1', '2025-01-01 00:00:00.000000', '/orders/12_3');
+        $this->insertStoredEvent($pdo, 'event-2', '2025-01-02 00:00:00.000000', '/orders/12_3/items/1');
+        $this->insertStoredEvent($pdo, 'event-3', '2025-01-03 00:00:00.000000', '/orders/12a3');
+
+        $events = $eventStore->getEventsByAggregateId('orders', '12_3');
+
+        $this->assertSame(['/orders/12_3', '/orders/12_3/items/1'], $this->uris($events));
     }
 
     public function testInvalidStoredJsonThrows(): void
@@ -53,17 +113,42 @@ class EventStoreTest extends TestCase
     private function newEventStore(): array
     {
         $pdo = new ExtendedPdo('sqlite::memory:');
-        $pdo->exec(
-            'CREATE TABLE event_store (
-                id TEXT PRIMARY KEY,
-                timestamp TEXT NOT NULL,
-                uri TEXT NOT NULL,
-                method TEXT NOT NULL,
-                params TEXT,
-                result TEXT
-            )',
-        );
+        $eventStore = new EventStore($pdo);
+        $eventStore->createTable();
 
-        return [new EventStore($pdo), $pdo];
+        return [$eventStore, $pdo];
+    }
+
+    private function insertStoredEvent(
+        ExtendedPdo $pdo,
+        string $id,
+        string $timestamp,
+        string $uri,
+        string $method = 'POST',
+        string $params = '[]',
+        string $result = 'null',
+    ): void {
+        $pdo->perform(
+            'INSERT INTO event_store (id, timestamp, uri, method, params, result) VALUES (:id, :timestamp, :uri, :method, :params, :result)',
+            [
+                'id' => $id,
+                'timestamp' => $timestamp,
+                'uri' => $uri,
+                'method' => $method,
+                'params' => $params,
+                'result' => $result,
+            ],
+        );
+    }
+
+    /** @return list<string> */
+    private function uris(EventsInterface $events): array
+    {
+        $uris = [];
+        foreach ($events as $event) {
+            $uris[] = $event->uri;
+        }
+
+        return $uris;
     }
 }

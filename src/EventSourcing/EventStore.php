@@ -6,6 +6,7 @@ namespace BEAR\EventSourcing\EventSourcing;
 
 use Aura\Sql\ExtendedPdo;
 use DateTimeInterface;
+use PDO;
 use UnexpectedValueException;
 
 use function array_map;
@@ -81,10 +82,10 @@ class EventStore implements EventStoreInterface
     public function getEventsByUri(string $pattern): EventsInterface
     {
         // Convert glob pattern to SQL LIKE pattern
-        $likePattern = str_replace(['*', '?'], ['%', '_'], $pattern);
+        $likePattern = self::globToSqlLikePattern($pattern);
 
         $sql = sprintf(
-            'SELECT * FROM %s WHERE uri LIKE :pattern ORDER BY timestamp ASC',
+            "SELECT * FROM %s WHERE uri LIKE :pattern ESCAPE '!' ORDER BY timestamp ASC",
             self::TABLE_NAME,
         );
 
@@ -97,16 +98,20 @@ class EventStore implements EventStoreInterface
     /** @inheritDoc */
     public function getEventsByAggregateId(string $aggregateType, string $aggregateId): EventsInterface
     {
-        // Match URIs like /orders/123, /customers/456
-        $pattern = sprintf('/%s/%s%%', $aggregateType, $aggregateId);
+        // Match aggregate URI and child resources like /orders/123/items/1.
+        $uri = sprintf('/%s/%s', $aggregateType, $aggregateId);
+        $childrenPattern = sprintf('%s/%%', self::escapeSqlLikeLiteral($uri));
 
         $sql = sprintf(
-            'SELECT * FROM %s WHERE uri LIKE :pattern ORDER BY timestamp ASC',
+            "SELECT * FROM %s WHERE uri = :uri OR uri LIKE :childrenPattern ESCAPE '!' ORDER BY timestamp ASC",
             self::TABLE_NAME,
         );
 
         /** @var array<int, array<string, mixed>> $rows */
-        $rows = $this->pdo->fetchAll($sql, ['pattern' => $pattern]);
+        $rows = $this->pdo->fetchAll($sql, [
+            'uri' => $uri,
+            'childrenPattern' => $childrenPattern,
+        ]);
 
         return $this->hydrateEvents($rows);
     }
@@ -115,6 +120,17 @@ class EventStore implements EventStoreInterface
      * Create the event store table if it doesn't exist
      */
     public function createTable(): void
+    {
+        if ($this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
+            $this->createSqliteTable();
+
+            return;
+        }
+
+        $this->createMysqlTable();
+    }
+
+    private function createMysqlTable(): void
     {
         $sql = sprintf(
             'CREATE TABLE IF NOT EXISTS %s (
@@ -132,6 +148,26 @@ class EventStore implements EventStoreInterface
         );
 
         $this->pdo->exec($sql);
+    }
+
+    private function createSqliteTable(): void
+    {
+        $sql = sprintf(
+            'CREATE TABLE IF NOT EXISTS %s (
+                id TEXT PRIMARY KEY,
+                timestamp TEXT NOT NULL,
+                uri TEXT NOT NULL,
+                method TEXT NOT NULL,
+                params TEXT,
+                result TEXT
+            )',
+            self::TABLE_NAME,
+        );
+
+        $this->pdo->exec($sql);
+        $this->pdo->exec(sprintf('CREATE INDEX IF NOT EXISTS idx_timestamp ON %s (timestamp)', self::TABLE_NAME));
+        $this->pdo->exec(sprintf('CREATE INDEX IF NOT EXISTS idx_uri ON %s (uri)', self::TABLE_NAME));
+        $this->pdo->exec(sprintf('CREATE INDEX IF NOT EXISTS idx_method ON %s (method)', self::TABLE_NAME));
     }
 
     /** @param array<int, array<string, mixed>> $rows */
@@ -156,5 +192,23 @@ class EventStore implements EventStoreInterface
         }, $rows);
 
         return new Events($events);
+    }
+
+    private static function globToSqlLikePattern(string $pattern): string
+    {
+        return str_replace(
+            ['!', '%', '_', '*', '?'],
+            ['!!', '!%', '!_', '%', '_'],
+            $pattern,
+        );
+    }
+
+    private static function escapeSqlLikeLiteral(string $value): string
+    {
+        return str_replace(
+            ['!', '%', '_'],
+            ['!!', '!%', '!_'],
+            $value,
+        );
     }
 }
