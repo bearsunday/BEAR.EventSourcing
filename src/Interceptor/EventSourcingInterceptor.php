@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Interceptor;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\EventSourcing\Event;
 use BEAR\EventSourcing\EventSourcing\EventStoreInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
+
+use function str_starts_with;
 
 /**
  * Event Sourcing Interceptor
@@ -18,10 +20,11 @@ use Ray\Aop\MethodInvocation;
 class EventSourcingInterceptor implements MethodInterceptor
 {
     public function __construct(
-        private readonly EventStoreInterface $eventStore
+        private readonly EventStoreInterface $eventStore,
     ) {
     }
 
+    /** @param MethodInvocation<object> $invocation */
     public function invoke(MethodInvocation $invocation): mixed
     {
         $method = $invocation->getMethod()->getName();
@@ -51,7 +54,7 @@ class EventSourcingInterceptor implements MethodInterceptor
             $uri,
             $httpMethod,
             $params,
-            $result instanceof ResourceObject ? $result->body : $result
+            $result instanceof ResourceObject ? $result->body : $result,
         );
 
         $this->eventStore->append($event);
@@ -61,20 +64,12 @@ class EventSourcingInterceptor implements MethodInterceptor
 
     private function getResourceUri(ResourceObject $resource): string
     {
-        // Get URI from the resource's uri property if available
-        if (isset($resource->uri)) {
-            return (string)$resource->uri;
-        }
-
-        // Fallback to class name based URI
-        $className = get_class($resource);
-        $parts = explode('\\', $className);
-        $resourceName = array_pop($parts);
-
-        return '/' . strtolower($resourceName);
+        return (string) $resource->uri;
     }
 
     /**
+     * @param MethodInvocation<object> $invocation
+     *
      * @return array<string, mixed>
      */
     private function getParameters(MethodInvocation $invocation): array
@@ -85,9 +80,11 @@ class EventSourcingInterceptor implements MethodInterceptor
         $parameters = $method->getParameters();
 
         foreach ($parameters as $index => $parameter) {
-            if (isset($arguments[$index])) {
-                $params[$parameter->getName()] = $arguments[$index];
+            if (! isset($arguments[$index])) {
+                continue;
             }
+
+            $params[$parameter->getName()] = $arguments[$index];
         }
 
         return $params;
@@ -98,12 +95,15 @@ class EventSourcingInterceptor implements MethodInterceptor
         if (str_starts_with($methodName, 'onPost')) {
             return 'POST';
         }
+
         if (str_starts_with($methodName, 'onPut')) {
             return 'PUT';
         }
+
         if (str_starts_with($methodName, 'onDelete')) {
             return 'DELETE';
         }
+
         if (str_starts_with($methodName, 'onPatch')) {
             return 'PATCH';
         }

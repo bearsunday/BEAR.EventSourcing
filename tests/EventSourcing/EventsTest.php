@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\EventSourcing;
 
-use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+
+use function json_decode;
+use function json_encode;
+
+use const JSON_THROW_ON_ERROR;
 
 class EventsTest extends TestCase
 {
@@ -47,7 +51,7 @@ class EventsTest extends TestCase
                 'params' => [],
                 'result' => null,
             ],
-        ]);
+        ], JSON_THROW_ON_ERROR);
 
         $events = Events::fromJson($json);
 
@@ -60,10 +64,11 @@ class EventsTest extends TestCase
         $events = new Events([$event]);
 
         $json = $events->toJson();
-        $decoded = json_decode($json, true);
+        $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
         $this->assertIsArray($decoded);
         $this->assertCount(1, $decoded);
+        $this->assertIsArray($decoded[0]);
         $this->assertSame('/test', $decoded[0]['uri']);
     }
 
@@ -101,7 +106,7 @@ class EventsTest extends TestCase
         ]);
 
         $replayed = [];
-        $events->replay(function (Event $e) use (&$replayed) {
+        $events->replay(static function (Event $e) use (&$replayed): void {
             $replayed[] = $e->uri;
         });
 

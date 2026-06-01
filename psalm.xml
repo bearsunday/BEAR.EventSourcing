@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<psalm
+    phpVersion="8.2"
+    errorLevel="1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    xsi:schemaLocation="https://getpsalm.org/schema/config vendor-bin/tools/vendor/vimeo/psalm/config.xsd"
+    findUnusedCode="false"
+>
+    <projectFiles>
+        <directory name="src"/>
+        <ignoreFiles>
+            <directory name="vendor"/>
+            <directory name="vendor-bin"/>
+            <directory name="tests"/>
+        </ignoreFiles>
+    </projectFiles>
+    <issueHandlers>
+        <UnusedClass errorLevel="suppress"/>
+        <UnusedMethod errorLevel="suppress"/>
+        <PossiblyUnusedProperty errorLevel="suppress"/>
+        <ClassMustBeFinal errorLevel="suppress"/>
+        <MissingOverrideAttribute errorLevel="suppress"/>
+        <MixedAssignment errorLevel="suppress"/>
+        <RedundantConditionGivenDocblockType errorLevel="suppress"/>
+    </issueHandlers>
+</psalm>

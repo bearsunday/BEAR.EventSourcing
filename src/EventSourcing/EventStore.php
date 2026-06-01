@@ -6,6 +6,16 @@ namespace BEAR\EventSourcing\EventSourcing;
 
 use Aura\Sql\ExtendedPdo;
 use DateTimeInterface;
+use UnexpectedValueException;
+
+use function array_map;
+use function is_string;
+use function json_decode;
+use function json_encode;
+use function sprintf;
+use function str_replace;
+
+use const JSON_THROW_ON_ERROR;
 
 /**
  * Database-backed Event Store implementation
@@ -15,18 +25,16 @@ class EventStore implements EventStoreInterface
     private const TABLE_NAME = 'event_store';
 
     public function __construct(
-        private readonly ExtendedPdo $pdo
+        private readonly ExtendedPdo $pdo,
     ) {
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function append(Event $event): void
     {
         $sql = sprintf(
             'INSERT INTO %s (id, timestamp, uri, method, params, result) VALUES (:id, :timestamp, :uri, :method, :params, :result)',
-            self::TABLE_NAME
+            self::TABLE_NAME,
         );
 
         $this->pdo->perform($sql, [
@@ -34,36 +42,34 @@ class EventStore implements EventStoreInterface
             'timestamp' => $event->timestamp->format('Y-m-d H:i:s.u'),
             'uri' => $event->uri,
             'method' => $event->method,
-            'params' => json_encode($event->params),
-            'result' => json_encode($event->result),
+            'params' => json_encode($event->params, JSON_THROW_ON_ERROR),
+            'result' => json_encode($event->result, JSON_THROW_ON_ERROR),
         ]);
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function getEvents(): EventsInterface
     {
         $sql = sprintf(
             'SELECT * FROM %s ORDER BY timestamp ASC',
-            self::TABLE_NAME
+            self::TABLE_NAME,
         );
 
+        /** @var array<int, array<string, mixed>> $rows */
         $rows = $this->pdo->fetchAll($sql);
 
         return $this->hydrateEvents($rows);
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function getEventsSince(DateTimeInterface $since): EventsInterface
     {
         $sql = sprintf(
             'SELECT * FROM %s WHERE timestamp >= :since ORDER BY timestamp ASC',
-            self::TABLE_NAME
+            self::TABLE_NAME,
         );
 
+        /** @var array<int, array<string, mixed>> $rows */
         $rows = $this->pdo->fetchAll($sql, [
             'since' => $since->format('Y-m-d H:i:s.u'),
         ]);
@@ -71,9 +77,7 @@ class EventStore implements EventStoreInterface
         return $this->hydrateEvents($rows);
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function getEventsByUri(string $pattern): EventsInterface
     {
         // Convert glob pattern to SQL LIKE pattern
@@ -81,19 +85,16 @@ class EventStore implements EventStoreInterface
 
         $sql = sprintf(
             'SELECT * FROM %s WHERE uri LIKE :pattern ORDER BY timestamp ASC',
-            self::TABLE_NAME
+            self::TABLE_NAME,
         );
 
-        $rows = $this->pdo->fetchAll($sql, [
-            'pattern' => $likePattern,
-        ]);
+        /** @var array<int, array<string, mixed>> $rows */
+        $rows = $this->pdo->fetchAll($sql, ['pattern' => $likePattern]);
 
         return $this->hydrateEvents($rows);
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function getEventsByAggregateId(string $aggregateType, string $aggregateId): EventsInterface
     {
         // Match URIs like /orders/123, /customers/456
@@ -101,12 +102,11 @@ class EventStore implements EventStoreInterface
 
         $sql = sprintf(
             'SELECT * FROM %s WHERE uri LIKE :pattern ORDER BY timestamp ASC',
-            self::TABLE_NAME
+            self::TABLE_NAME,
         );
 
-        $rows = $this->pdo->fetchAll($sql, [
-            'pattern' => $pattern,
-        ]);
+        /** @var array<int, array<string, mixed>> $rows */
+        $rows = $this->pdo->fetchAll($sql, ['pattern' => $pattern]);
 
         return $this->hydrateEvents($rows);
     }
@@ -128,25 +128,30 @@ class EventStore implements EventStoreInterface
                 INDEX idx_uri (uri),
                 INDEX idx_method (method)
             )',
-            self::TABLE_NAME
+            self::TABLE_NAME,
         );
 
         $this->pdo->exec($sql);
     }
 
-    /**
-     * @param array<int, array<string, mixed>> $rows
-     */
+    /** @param array<int, array<string, mixed>> $rows */
     private function hydrateEvents(array $rows): EventsInterface
     {
-        $events = array_map(function (array $row): Event {
+        $events = array_map(static function (array $row): Event {
+            $paramsJson = $row['params'] ?? '[]';
+            $resultJson = $row['result'] ?? 'null';
+
+            if (! is_string($paramsJson) || ! is_string($resultJson)) {
+                throw new UnexpectedValueException('Invalid event store row');
+            }
+
             return Event::fromArray([
                 'id' => $row['id'],
                 'timestamp' => $row['timestamp'],
                 'uri' => $row['uri'],
                 'method' => $row['method'],
-                'params' => json_decode($row['params'] ?? '[]', true),
-                'result' => json_decode($row['result'] ?? 'null', true),
+                'params' => json_decode($paramsJson, true, 512, JSON_THROW_ON_ERROR),
+                'result' => json_decode($resultJson, true, 512, JSON_THROW_ON_ERROR),
             ]);
         }, $rows);
 

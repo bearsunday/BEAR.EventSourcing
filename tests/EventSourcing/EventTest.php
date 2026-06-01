@@ -6,6 +6,11 @@ namespace BEAR\EventSourcing\EventSourcing;
 
 use PHPUnit\Framework\TestCase;
 
+use function json_decode;
+use function json_encode;
+
+use const JSON_THROW_ON_ERROR;
+
 class EventTest extends TestCase
 {
     public function testCreate(): void
@@ -52,10 +57,10 @@ class EventTest extends TestCase
     public function testJsonSerialize(): void
     {
         $event = Event::create('/test', 'POST', ['key' => 'value'], 'result');
-        $json = json_encode($event);
+        $json = json_encode($event, JSON_THROW_ON_ERROR);
 
-        $this->assertIsString($json);
-        $decoded = json_decode($json, true);
+        $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertIsArray($decoded);
         $this->assertSame('/test', $decoded['uri']);
     }
 }

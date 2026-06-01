@@ -5,37 +5,42 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\EventSourcing;
 
 use DateTimeImmutable;
+use InvalidArgumentException;
 use JsonSerializable;
 use Ramsey\Uuid\Uuid;
+
+use function is_array;
+use function is_string;
 
 /**
  * Immutable Event class representing a state change
  */
-final class Event implements JsonSerializable
+final readonly class Event implements JsonSerializable
 {
+    /** @param array<array-key, mixed> $params */
     private function __construct(
-        public readonly string $id,
-        public readonly DateTimeImmutable $timestamp,
-        public readonly string $uri,
-        public readonly string $method,
-        public readonly array $params,
-        public readonly mixed $result,
+        public string $id,
+        public DateTimeImmutable $timestamp,
+        public string $uri,
+        public string $method,
+        public array $params,
+        public mixed $result,
     ) {
     }
 
     /**
      * Create a new event from a resource request
      *
-     * @param string              $uri    Resource URI
-     * @param string              $method HTTP method
-     * @param array<string,mixed> $params Request parameters
-     * @param mixed               $result Request result
+     * @param string               $uri    Resource URI
+     * @param string               $method HTTP method
+     * @param array<string, mixed> $params Request parameters
+     * @param mixed                $result Request result
      */
     public static function create(
         string $uri,
         string $method,
         array $params,
-        mixed $result
+        mixed $result,
     ): self {
         return new self(
             Uuid::uuid4()->toString(),
@@ -43,24 +48,34 @@ final class Event implements JsonSerializable
             $uri,
             $method,
             $params,
-            $result
+            $result,
         );
     }
 
     /**
      * Create an event from array data
      *
-     * @param array<string, mixed> $data
+     * @param array<array-key, mixed> $data
      */
     public static function fromArray(array $data): self
     {
+        $id = $data['id'] ?? null;
+        $timestamp = $data['timestamp'] ?? null;
+        $uri = $data['uri'] ?? null;
+        $method = $data['method'] ?? null;
+        $params = $data['params'] ?? [];
+
+        if (! is_string($id) || ! is_string($timestamp) || ! is_string($uri) || ! is_string($method) || ! is_array($params)) {
+            throw new InvalidArgumentException('Invalid event data');
+        }
+
         return new self(
-            $data['id'],
-            new DateTimeImmutable($data['timestamp']),
-            $data['uri'],
-            $data['method'],
-            $data['params'] ?? [],
-            $data['result'] ?? null
+            $id,
+            new DateTimeImmutable($timestamp),
+            $uri,
+            $method,
+            $params,
+            $data['result'] ?? null,
         );
     }
 
@@ -81,9 +96,7 @@ final class Event implements JsonSerializable
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
         return $this->toArray();
