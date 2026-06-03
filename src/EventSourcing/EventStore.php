@@ -10,6 +10,8 @@ use PDO;
 use UnexpectedValueException;
 
 use function array_map;
+use function get_debug_type;
+use function is_scalar;
 use function is_string;
 use function json_decode;
 use function json_encode;
@@ -121,13 +123,23 @@ class EventStore implements EventStoreInterface
      */
     public function createTable(): void
     {
-        if ($this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
+        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        if ($driver === 'mysql') {
+            $this->createMysqlTable();
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
             $this->createSqliteTable();
 
             return;
         }
 
-        $this->createMysqlTable();
+        $driverName = is_scalar($driver) ? (string) $driver : get_debug_type($driver);
+
+        throw new UnexpectedValueException(sprintf('Unsupported PDO driver: %s', $driverName));
     }
 
     private function createMysqlTable(): void

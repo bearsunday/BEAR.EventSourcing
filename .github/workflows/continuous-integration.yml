@@ -6,8 +6,90 @@ on:
   workflow_dispatch:
 
 jobs:
-  ci:
-    uses: ray-di/.github/.github/workflows/continuous-integration.yml@v1
-    with:
-      old_stable: '["8.2", "8.3", "8.4"]'
-      current_stable: 8.5
+  test:
+    name: PHP ${{ matrix.php }} / ${{ matrix.dependencies }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # aura/sql 5.x is needed for PHP 8.2/8.3 support, but it cannot run on
+        # PHP 8.4+ because PDO::connect() is static there. PHP 8.4+ is covered
+        # with the highest dependency set, which resolves aura/sql 6.x.
+        include:
+          - php: '8.2'
+            dependencies: lowest
+            composer-options: '--prefer-lowest --prefer-stable --prefer-dist'
+            coverage: none
+            os: ubuntu-latest
+          - php: '8.2'
+            dependencies: highest
+            composer-options: '--prefer-dist'
+            coverage: none
+            os: ubuntu-latest
+          - php: '8.3'
+            dependencies: lowest
+            composer-options: '--prefer-lowest --prefer-stable --prefer-dist'
+            coverage: none
+            os: ubuntu-latest
+          - php: '8.3'
+            dependencies: highest
+            composer-options: '--prefer-dist'
+            coverage: none
+            os: ubuntu-latest
+          - php: '8.4'
+            dependencies: highest
+            composer-options: '--prefer-dist'
+            coverage: none
+            os: ubuntu-latest
+          - php: '8.5'
+            dependencies: highest
+            composer-options: '--prefer-dist'
+            coverage: pcov
+            os: ubuntu-latest
+          - php: '8.5'
+            dependencies: highest
+            composer-options: '--prefer-dist'
+            coverage: none
+            os: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: ${{ matrix.coverage }}
+
+      - name: Get composer cache directory
+        id: composer-cache
+        shell: bash
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php-${{ matrix.php }}-${{ matrix.dependencies }}-composer-${{ hashFiles('**/composer.json', '**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-php-${{ matrix.php }}-${{ matrix.dependencies }}-composer-
+
+      - name: Install dependencies
+        run: composer update --no-interaction --no-progress --no-plugins ${{ matrix.composer-options }}
+
+      - name: Run PHPUnit
+        if: matrix.coverage != 'pcov'
+        run: composer test
+
+      - name: Run PHPUnit with coverage
+        if: matrix.coverage == 'pcov'
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml
+
+      - name: Upload coverage
+        if: matrix.coverage == 'pcov'
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false

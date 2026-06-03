@@ -10,6 +10,7 @@ use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
 
+use function array_key_exists;
 use function str_starts_with;
 
 /**
@@ -76,11 +77,12 @@ class EventSourcingInterceptor implements MethodInterceptor
     {
         $params = [];
         $method = $invocation->getMethod();
-        $arguments = $invocation->getArguments();
+        /** @var array<int, mixed> $arguments */
+        $arguments = $invocation->getArguments()->getArrayCopy();
         $parameters = $method->getParameters();
 
         foreach ($parameters as $index => $parameter) {
-            if (! isset($arguments[$index])) {
+            if (! array_key_exists($index, $arguments)) {
                 continue;
             }
 

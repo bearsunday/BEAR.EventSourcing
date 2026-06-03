@@ -7,7 +7,9 @@ namespace BEAR\EventSourcing\EventSourcing;
 use Aura\Sql\ExtendedPdo;
 use DateTimeImmutable;
 use JsonException;
+use PDO;
 use PHPUnit\Framework\TestCase;
+use UnexpectedValueException;
 
 class EventStoreTest extends TestCase
 {
@@ -107,6 +109,23 @@ class EventStoreTest extends TestCase
         $this->expectException(JsonException::class);
 
         $eventStore->getEvents();
+    }
+
+    public function testCreateTableRejectsUnsupportedDriver(): void
+    {
+        $pdo = $this->getMockBuilder(ExtendedPdo::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getAttribute'])
+            ->getMock();
+        $pdo->expects($this->once())
+            ->method('getAttribute')
+            ->with(PDO::ATTR_DRIVER_NAME)
+            ->willReturn('pgsql');
+
+        $this->expectException(UnexpectedValueException::class);
+        $this->expectExceptionMessage('Unsupported PDO driver: pgsql');
+
+        (new EventStore($pdo))->createTable();
     }
 
     /** @return array{EventStore, ExtendedPdo} */
