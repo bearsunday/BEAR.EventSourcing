@@ -8,11 +8,13 @@ use BEAR\EventSourcing\EventSourcing\Event;
 use BEAR\EventSourcing\EventSourcing\Events;
 use BEAR\EventSourcing\EventSourcing\EventsInterface;
 use DateTimeInterface;
+use InvalidArgumentException;
 use Ray\MediaQuery\Result\PostQueryContext;
 use Ray\MediaQuery\Result\PostQueryInterface;
 use Traversable;
 
-use function array_map;
+use function get_debug_type;
+use function sprintf;
 
 final readonly class StoredEvents implements EventsInterface, PostQueryInterface
 {
@@ -23,13 +25,20 @@ final readonly class StoredEvents implements EventsInterface, PostQueryInterface
 
     public static function fromContext(PostQueryContext $context): static
     {
-        /** @var list<StoredEvent> $events */
-        $events = $context->rows;
+        $events = [];
+        foreach ($context->rows as $index => $row) {
+            if (! $row instanceof StoredEvent) {
+                throw new InvalidArgumentException(sprintf(
+                    'Expected StoredEvent at row %d, got %s',
+                    $index,
+                    get_debug_type($row),
+                ));
+            }
 
-        return new self(new Events(array_map(
-            static fn (StoredEvent $event): Event => $event->toEvent(),
-            $events,
-        )));
+            $events[] = $row->toEvent();
+        }
+
+        return new self(new Events($events));
     }
 
     /** @inheritDoc */

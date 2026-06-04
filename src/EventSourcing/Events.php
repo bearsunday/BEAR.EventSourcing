@@ -36,7 +36,7 @@ final readonly class Events implements EventsInterface
     /** @inheritDoc */
     public static function fromJson(string $json): EventsInterface
     {
-        $data = json_decode($json, true);
+        $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
         if (! is_array($data)) {
             throw new InvalidArgumentException('Invalid JSON data');

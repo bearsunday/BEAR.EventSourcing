@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\EventSourcing;
 
+use JsonException;
 use PHPUnit\Framework\TestCase;
 
 use function json_decode;
@@ -56,6 +57,13 @@ class EventsTest extends TestCase
         $events = Events::fromJson($json);
 
         $this->assertCount(2, $events);
+    }
+
+    public function testFromJsonRejectsMalformedJson(): void
+    {
+        $this->expectException(JsonException::class);
+
+        Events::fromJson('{');
     }
 
     public function testToJson(): void
