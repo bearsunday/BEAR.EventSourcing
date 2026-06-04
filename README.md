@@ -80,7 +80,7 @@ interface EventStoreInterface
 }
 ```
 
-`EventStoreInterface` is the persistence port. The bundled `SqlEventStore` implementation is SQL-backed and delegates SQL execution to Ray.MediaQuery through `BEAR\EventSourcing\Query\EventStoreQueryInterface`. `InMemoryEventStore` is available for tests and transient use, and applications can replace the store with KVS or another append-only storage implementation.
+`EventStoreInterface` is the persistence port. The bundled `SqlEventStore` implementation is SQL-backed and delegates SQL execution to Ray.MediaQuery through `BEAR\EventSourcing\Query\EventStoreQueryInterface` and `BEAR\EventSourcing\Query\EventStoreCommandInterface`. `InMemoryEventStore` is available for tests and transient use, and applications can replace the store with KVS or another append-only storage implementation.
 
 ## Usage
 
@@ -218,7 +218,7 @@ Install it as a wrapping module so `rename()` can move the existing BEAR.Resourc
 $module = new EventSourcingModule($appModule);
 ```
 
-The module expects the application MediaQuery setup to intercept `BEAR\EventSourcing\Query\EventStoreQueryInterface` and resolve the bundled `sql/event_store/*.sql` files. It does not install MediaQuery itself, so existing application MediaQuery bindings are not replaced.
+The module expects the application MediaQuery setup to intercept `BEAR\EventSourcing\Query\EventStoreQueryInterface` and `BEAR\EventSourcing\Query\EventStoreCommandInterface`, resolving the bundled `sql/event_store/*.sql` files. It does not install MediaQuery itself, so existing application MediaQuery bindings are not replaced.
 
 For tests, replace the persistence adapter:
 

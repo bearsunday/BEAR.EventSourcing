@@ -6,6 +6,7 @@ namespace BEAR\EventSourcing\EventSourcing;
 
 use Aura\Sql\ExtendedPdo;
 use Aura\Sql\ExtendedPdoInterface;
+use BEAR\EventSourcing\Query\EventStoreCommandInterface;
 use BEAR\EventSourcing\Query\EventStoreQueryInterface;
 use DateTimeImmutable;
 use JsonException;
@@ -42,10 +43,10 @@ class SqlEventStoreTest extends TestCase
 
     public function testGetEventsSince(): void
     {
-        [$eventStore, $query] = $this->newEventStore();
-        $this->insertStoredEvent($query, 'event-1', '2025-01-01 00:00:00.000000', '/users/1');
-        $this->insertStoredEvent($query, 'event-2', '2025-01-02 00:00:00.000000', '/users/2');
-        $this->insertStoredEvent($query, 'event-3', '2025-01-03 00:00:00.000000', '/users/3');
+        [$eventStore, $eventStoreCmd] = $this->newEventStore();
+        $this->insertStoredEvent($eventStoreCmd, 'event-1', '2025-01-01 00:00:00.000000', '/users/1');
+        $this->insertStoredEvent($eventStoreCmd, 'event-2', '2025-01-02 00:00:00.000000', '/users/2');
+        $this->insertStoredEvent($eventStoreCmd, 'event-3', '2025-01-03 00:00:00.000000', '/users/3');
 
         $events = $eventStore->getEventsSince(new DateTimeImmutable('2025-01-02 00:00:00.000000'));
 
@@ -54,10 +55,10 @@ class SqlEventStoreTest extends TestCase
 
     public function testGetEventsByUriUsesGlobPattern(): void
     {
-        [$eventStore, $query] = $this->newEventStore();
-        $this->insertStoredEvent($query, 'event-1', '2025-01-01 00:00:00.000000', '/users/1');
-        $this->insertStoredEvent($query, 'event-2', '2025-01-02 00:00:00.000000', '/users/2');
-        $this->insertStoredEvent($query, 'event-3', '2025-01-03 00:00:00.000000', '/orders/1');
+        [$eventStore, $eventStoreCmd] = $this->newEventStore();
+        $this->insertStoredEvent($eventStoreCmd, 'event-1', '2025-01-01 00:00:00.000000', '/users/1');
+        $this->insertStoredEvent($eventStoreCmd, 'event-2', '2025-01-02 00:00:00.000000', '/users/2');
+        $this->insertStoredEvent($eventStoreCmd, 'event-3', '2025-01-03 00:00:00.000000', '/orders/1');
 
         $events = $eventStore->getEventsByUri('/users/*');
 
@@ -66,9 +67,9 @@ class SqlEventStoreTest extends TestCase
 
     public function testGetEventsByUriEscapesSqlLikeWildcards(): void
     {
-        [$eventStore, $query] = $this->newEventStore();
-        $this->insertStoredEvent($query, 'event-1', '2025-01-01 00:00:00.000000', '/reports/100%');
-        $this->insertStoredEvent($query, 'event-2', '2025-01-02 00:00:00.000000', '/reports/100x');
+        [$eventStore, $eventStoreCmd] = $this->newEventStore();
+        $this->insertStoredEvent($eventStoreCmd, 'event-1', '2025-01-01 00:00:00.000000', '/reports/100%');
+        $this->insertStoredEvent($eventStoreCmd, 'event-2', '2025-01-02 00:00:00.000000', '/reports/100x');
 
         $events = $eventStore->getEventsByUri('/reports/100%');
 
@@ -77,10 +78,10 @@ class SqlEventStoreTest extends TestCase
 
     public function testGetEventsByAggregateIdDoesNotMatchPrefixCollision(): void
     {
-        [$eventStore, $query] = $this->newEventStore();
-        $this->insertStoredEvent($query, 'event-1', '2025-01-01 00:00:00.000000', '/orders/123');
-        $this->insertStoredEvent($query, 'event-2', '2025-01-02 00:00:00.000000', '/orders/123/items/1');
-        $this->insertStoredEvent($query, 'event-3', '2025-01-03 00:00:00.000000', '/orders/1234');
+        [$eventStore, $eventStoreCmd] = $this->newEventStore();
+        $this->insertStoredEvent($eventStoreCmd, 'event-1', '2025-01-01 00:00:00.000000', '/orders/123');
+        $this->insertStoredEvent($eventStoreCmd, 'event-2', '2025-01-02 00:00:00.000000', '/orders/123/items/1');
+        $this->insertStoredEvent($eventStoreCmd, 'event-3', '2025-01-03 00:00:00.000000', '/orders/1234');
 
         $events = $eventStore->getEventsByAggregateId('orders', '123');
 
@@ -89,10 +90,10 @@ class SqlEventStoreTest extends TestCase
 
     public function testGetEventsByAggregateIdEscapesSqlLikeWildcards(): void
     {
-        [$eventStore, $query] = $this->newEventStore();
-        $this->insertStoredEvent($query, 'event-1', '2025-01-01 00:00:00.000000', '/orders/12_3');
-        $this->insertStoredEvent($query, 'event-2', '2025-01-02 00:00:00.000000', '/orders/12_3/items/1');
-        $this->insertStoredEvent($query, 'event-3', '2025-01-03 00:00:00.000000', '/orders/12a3');
+        [$eventStore, $eventStoreCmd] = $this->newEventStore();
+        $this->insertStoredEvent($eventStoreCmd, 'event-1', '2025-01-01 00:00:00.000000', '/orders/12_3');
+        $this->insertStoredEvent($eventStoreCmd, 'event-2', '2025-01-02 00:00:00.000000', '/orders/12_3/items/1');
+        $this->insertStoredEvent($eventStoreCmd, 'event-3', '2025-01-03 00:00:00.000000', '/orders/12a3');
 
         $events = $eventStore->getEventsByAggregateId('orders', '12_3');
 
@@ -101,9 +102,9 @@ class SqlEventStoreTest extends TestCase
 
     public function testInvalidStoredJsonThrows(): void
     {
-        [$eventStore, $query] = $this->newEventStore();
+        [$eventStore, $eventStoreCmd] = $this->newEventStore();
 
-        $this->insertStoredEvent($query, 'invalid-json', '2025-01-01 00:00:00.000000', '/users/1', params: '{');
+        $this->insertStoredEvent($eventStoreCmd, 'invalid-json', '2025-01-01 00:00:00.000000', '/users/1', params: '{');
 
         $this->expectException(JsonException::class);
 
@@ -124,10 +125,14 @@ class SqlEventStoreTest extends TestCase
         $this->expectException(UnexpectedValueException::class);
         $this->expectExceptionMessage('Unsupported PDO driver: pgsql');
 
-        (new SqlEventStore($pdo, $this->createMock(EventStoreQueryInterface::class)))->createTable();
+        (new SqlEventStore(
+            $pdo,
+            $this->createMock(EventStoreQueryInterface::class),
+            $this->createMock(EventStoreCommandInterface::class),
+        ))->createTable();
     }
 
-    /** @return array{SqlEventStore, EventStoreQueryInterface} */
+    /** @return array{SqlEventStore, EventStoreCommandInterface} */
     private function newEventStore(): array
     {
         $pdo = new ExtendedPdo('sqlite::memory:');
@@ -150,11 +155,11 @@ class SqlEventStoreTest extends TestCase
         $eventStore = $injector->getInstance(SqlEventStore::class);
         $eventStore->createTable();
 
-        return [$eventStore, $injector->getInstance(EventStoreQueryInterface::class)];
+        return [$eventStore, $injector->getInstance(EventStoreCommandInterface::class)];
     }
 
     private function insertStoredEvent(
-        EventStoreQueryInterface $query,
+        EventStoreCommandInterface $eventStoreCmd,
         string $id,
         string $timestamp,
         string $uri,
@@ -162,7 +167,7 @@ class SqlEventStoreTest extends TestCase
         string $params = '[]',
         string $result = 'null',
     ): void {
-        $query->append($id, $timestamp, $uri, $method, $params, $result);
+        $eventStoreCmd->append($id, $timestamp, $uri, $method, $params, $result);
     }
 
     /** @return list<string> */

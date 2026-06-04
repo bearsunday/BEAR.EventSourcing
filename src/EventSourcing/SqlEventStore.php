@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\EventSourcing;
 
 use Aura\Sql\ExtendedPdoInterface;
+use BEAR\EventSourcing\Query\EventStoreCommandInterface;
 use BEAR\EventSourcing\Query\EventStoreQueryInterface;
 use DateTimeInterface;
 use PDO;
@@ -28,14 +29,15 @@ class SqlEventStore implements EventStoreInterface
 {
     public function __construct(
         private readonly ExtendedPdoInterface $pdo,
-        private readonly EventStoreQueryInterface $query,
+        private readonly EventStoreQueryInterface $eventStore,
+        private readonly EventStoreCommandInterface $eventStoreCmd,
     ) {
     }
 
     /** @inheritDoc */
     public function append(Event $event): void
     {
-        $this->query->append(
+        $this->eventStoreCmd->append(
             $event->id,
             $event->timestamp->format('Y-m-d H:i:s.u'),
             $event->uri,
@@ -48,7 +50,7 @@ class SqlEventStore implements EventStoreInterface
     /** @inheritDoc */
     public function getEvents(): EventsInterface
     {
-        $rows = $this->query->getEvents();
+        $rows = $this->eventStore->list();
 
         return $this->hydrateEvents($rows);
     }
@@ -56,7 +58,7 @@ class SqlEventStore implements EventStoreInterface
     /** @inheritDoc */
     public function getEventsSince(DateTimeInterface $since): EventsInterface
     {
-        $rows = $this->query->getEventsSince($since->format('Y-m-d H:i:s.u'));
+        $rows = $this->eventStore->listSince($since->format('Y-m-d H:i:s.u'));
 
         return $this->hydrateEvents($rows);
     }
@@ -67,7 +69,7 @@ class SqlEventStore implements EventStoreInterface
         // Convert glob pattern to SQL LIKE pattern
         $likePattern = self::globToSqlLikePattern($pattern);
 
-        $rows = $this->query->getEventsByUri($likePattern);
+        $rows = $this->eventStore->listByUri($likePattern);
 
         return $this->hydrateEvents($rows);
     }
@@ -79,7 +81,7 @@ class SqlEventStore implements EventStoreInterface
         $uri = sprintf('/%s/%s', $aggregateType, $aggregateId);
         $childrenPattern = sprintf('%s/%%', self::escapeSqlLikeLiteral($uri));
 
-        $rows = $this->query->getEventsByAggregateId($uri, $childrenPattern);
+        $rows = $this->eventStore->listByAggregateId($uri, $childrenPattern);
 
         return $this->hydrateEvents($rows);
     }
@@ -110,15 +112,15 @@ class SqlEventStore implements EventStoreInterface
 
     private function createMysqlTable(): void
     {
-        $this->query->createMysql();
+        $this->eventStoreCmd->createMysqlTable();
     }
 
     private function createSqliteTable(): void
     {
-        $this->query->createSqlite();
-        $this->query->createSqliteIndexTimestamp();
-        $this->query->createSqliteIndexUri();
-        $this->query->createSqliteIndexMethod();
+        $this->eventStoreCmd->createSqliteTable();
+        $this->eventStoreCmd->createSqliteTimestampIndex();
+        $this->eventStoreCmd->createSqliteUriIndex();
+        $this->eventStoreCmd->createSqliteMethodIndex();
     }
 
     /** @param array<int, array<string, mixed>> $rows */
