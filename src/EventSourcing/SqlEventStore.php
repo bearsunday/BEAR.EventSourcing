@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\EventSourcing;
 
-use Aura\Sql\ExtendedPdo;
-use BEAR\EventSourcing\Sql\SqlQuery;
+use Aura\Sql\ExtendedPdoInterface;
+use BEAR\EventSourcing\Query\EventStoreQueryInterface;
 use DateTimeInterface;
 use PDO;
 use UnexpectedValueException;
@@ -27,29 +27,28 @@ use const JSON_THROW_ON_ERROR;
 class SqlEventStore implements EventStoreInterface
 {
     public function __construct(
-        private readonly ExtendedPdo $pdo,
-        private readonly SqlQuery $sql = new SqlQuery(),
+        private readonly ExtendedPdoInterface $pdo,
+        private readonly EventStoreQueryInterface $query,
     ) {
     }
 
     /** @inheritDoc */
     public function append(Event $event): void
     {
-        $this->pdo->perform($this->sql->get('event_store/append'), [
-            'id' => $event->id,
-            'timestamp' => $event->timestamp->format('Y-m-d H:i:s.u'),
-            'uri' => $event->uri,
-            'method' => $event->method,
-            'params' => json_encode($event->params, JSON_THROW_ON_ERROR),
-            'result' => json_encode($event->result, JSON_THROW_ON_ERROR),
-        ]);
+        $this->query->append(
+            $event->id,
+            $event->timestamp->format('Y-m-d H:i:s.u'),
+            $event->uri,
+            $event->method,
+            json_encode($event->params, JSON_THROW_ON_ERROR),
+            json_encode($event->result, JSON_THROW_ON_ERROR),
+        );
     }
 
     /** @inheritDoc */
     public function getEvents(): EventsInterface
     {
-        /** @var array<int, array<string, mixed>> $rows */
-        $rows = $this->pdo->fetchAll($this->sql->get('event_store/get_events'));
+        $rows = $this->query->getEvents();
 
         return $this->hydrateEvents($rows);
     }
@@ -57,10 +56,7 @@ class SqlEventStore implements EventStoreInterface
     /** @inheritDoc */
     public function getEventsSince(DateTimeInterface $since): EventsInterface
     {
-        /** @var array<int, array<string, mixed>> $rows */
-        $rows = $this->pdo->fetchAll($this->sql->get('event_store/get_events_since'), [
-            'since' => $since->format('Y-m-d H:i:s.u'),
-        ]);
+        $rows = $this->query->getEventsSince($since->format('Y-m-d H:i:s.u'));
 
         return $this->hydrateEvents($rows);
     }
@@ -71,8 +67,7 @@ class SqlEventStore implements EventStoreInterface
         // Convert glob pattern to SQL LIKE pattern
         $likePattern = self::globToSqlLikePattern($pattern);
 
-        /** @var array<int, array<string, mixed>> $rows */
-        $rows = $this->pdo->fetchAll($this->sql->get('event_store/get_events_by_uri'), ['pattern' => $likePattern]);
+        $rows = $this->query->getEventsByUri($likePattern);
 
         return $this->hydrateEvents($rows);
     }
@@ -84,11 +79,7 @@ class SqlEventStore implements EventStoreInterface
         $uri = sprintf('/%s/%s', $aggregateType, $aggregateId);
         $childrenPattern = sprintf('%s/%%', self::escapeSqlLikeLiteral($uri));
 
-        /** @var array<int, array<string, mixed>> $rows */
-        $rows = $this->pdo->fetchAll($this->sql->get('event_store/get_events_by_aggregate_id'), [
-            'uri' => $uri,
-            'childrenPattern' => $childrenPattern,
-        ]);
+        $rows = $this->query->getEventsByAggregateId($uri, $childrenPattern);
 
         return $this->hydrateEvents($rows);
     }
@@ -119,15 +110,15 @@ class SqlEventStore implements EventStoreInterface
 
     private function createMysqlTable(): void
     {
-        $this->pdo->exec($this->sql->get('event_store/create_mysql'));
+        $this->query->createMysql();
     }
 
     private function createSqliteTable(): void
     {
-        $this->pdo->exec($this->sql->get('event_store/create_sqlite'));
-        $this->pdo->exec($this->sql->get('event_store/create_sqlite_index_timestamp'));
-        $this->pdo->exec($this->sql->get('event_store/create_sqlite_index_uri'));
-        $this->pdo->exec($this->sql->get('event_store/create_sqlite_index_method'));
+        $this->query->createSqlite();
+        $this->query->createSqliteIndexTimestamp();
+        $this->query->createSqliteIndexUri();
+        $this->query->createSqliteIndexMethod();
     }
 
     /** @param array<int, array<string, mixed>> $rows */
