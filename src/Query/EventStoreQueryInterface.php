@@ -10,19 +10,15 @@ use Ray\MediaQuery\Annotation\DbQuery;
 
 interface EventStoreQueryInterface
 {
-    /** @return EventRecords<EventRecord> */
-    #[DbQuery('event_store/list')]
+    #[DbQuery('event_store/list', factory: EventRecord::class)]
     public function list(): EventRecords;
 
-    /** @return EventRecords<EventRecord> */
-    #[DbQuery('event_store/list_since')]
+    #[DbQuery('event_store/list_since', factory: EventRecord::class)]
     public function listSince(string $since): EventRecords;
 
-    /** @return EventRecords<EventRecord> */
-    #[DbQuery('event_store/list_by_uri')]
+    #[DbQuery('event_store/list_by_uri', factory: EventRecord::class)]
     public function listByUri(string $pattern): EventRecords;
 
-    /** @return EventRecords<EventRecord> */
-    #[DbQuery('event_store/list_by_aggregate_id')]
+    #[DbQuery('event_store/list_by_aggregate_id', factory: EventRecord::class)]
     public function listByAggregateId(string $uri, string $childrenPattern): EventRecords;
 }

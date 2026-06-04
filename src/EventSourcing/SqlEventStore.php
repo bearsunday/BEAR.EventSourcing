@@ -47,13 +47,13 @@ class SqlEventStore implements EventStoreInterface
     /** @inheritDoc */
     public function getEvents(): EventsInterface
     {
-        return $this->eventStore->list()->toEvents();
+        return $this->eventStore->list();
     }
 
     /** @inheritDoc */
     public function getEventsSince(DateTimeInterface $since): EventsInterface
     {
-        return $this->eventStore->listSince($since->format('Y-m-d H:i:s.u'))->toEvents();
+        return $this->eventStore->listSince($since->format('Y-m-d H:i:s.u'));
     }
 
     /** @inheritDoc */
@@ -62,7 +62,7 @@ class SqlEventStore implements EventStoreInterface
         // Convert glob pattern to SQL LIKE pattern
         $likePattern = self::globToSqlLikePattern($pattern);
 
-        return $this->eventStore->listByUri($likePattern)->toEvents();
+        return $this->eventStore->listByUri($likePattern);
     }
 
     /** @inheritDoc */
@@ -72,7 +72,7 @@ class SqlEventStore implements EventStoreInterface
         $uri = sprintf('/%s/%s', $aggregateType, $aggregateId);
         $childrenPattern = sprintf('%s/%%', self::escapeSqlLikeLiteral($uri));
 
-        return $this->eventStore->listByAggregateId($uri, $childrenPattern)->toEvents();
+        return $this->eventStore->listByAggregateId($uri, $childrenPattern);
     }
 
     /**

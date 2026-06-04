@@ -4,55 +4,90 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Result;
 
-use ArrayIterator;
 use BEAR\EventSourcing\EventSourcing\Event;
 use BEAR\EventSourcing\EventSourcing\Events;
 use BEAR\EventSourcing\EventSourcing\EventsInterface;
-use Countable;
-use IteratorAggregate;
+use DateTimeInterface;
 use Ray\MediaQuery\Result\PostQueryContext;
 use Ray\MediaQuery\Result\PostQueryInterface;
 use Traversable;
 
 use function array_map;
-use function count;
 
-/**
- * @template T of EventRecord
- * @implements IteratorAggregate<int, T>
- */
-final readonly class EventRecords implements Countable, IteratorAggregate, PostQueryInterface
+final readonly class EventRecords implements EventsInterface, PostQueryInterface
 {
-    /** @param list<T> $records */
     public function __construct(
-        private array $records,
+        private EventsInterface $events,
     ) {
     }
 
     public static function fromContext(PostQueryContext $context): static
     {
-        /** @var list<T> $records */
+        /** @var list<EventRecord> $records */
         $records = $context->rows;
 
-        return new self($records);
-    }
-
-    public function toEvents(): EventsInterface
-    {
-        return new Events(array_map(
+        return new self(new Events(array_map(
             static fn (EventRecord $record): Event => $record->toEvent(),
-            $this->records,
-        ));
+            $records,
+        )));
     }
 
-    /** @return Traversable<int, T> */
+    /** @inheritDoc */
+    public static function fromJson(string $json): EventsInterface
+    {
+        return Events::fromJson($json);
+    }
+
+    /** @inheritDoc */
+    public function toJson(): string
+    {
+        return $this->events->toJson();
+    }
+
+    /** @inheritDoc */
+    public function add(Event $event): EventsInterface
+    {
+        return $this->events->add($event);
+    }
+
+    /** @inheritDoc */
+    public function filterByUri(string $pattern): EventsInterface
+    {
+        return $this->events->filterByUri($pattern);
+    }
+
+    /** @inheritDoc */
+    public function filterByMethod(string $method): EventsInterface
+    {
+        return $this->events->filterByMethod($method);
+    }
+
+    /** @inheritDoc */
+    public function since(DateTimeInterface $since): EventsInterface
+    {
+        return $this->events->since($since);
+    }
+
+    /** @inheritDoc */
+    public function replay(callable $handler): void
+    {
+        $this->events->replay($handler);
+    }
+
+    /** @inheritDoc */
+    public function all(): array
+    {
+        return $this->events->all();
+    }
+
+    /** @return Traversable<int, Event> */
     public function getIterator(): Traversable
     {
-        return new ArrayIterator($this->records);
+        return $this->events->getIterator();
     }
 
     public function count(): int
     {
-        return count($this->records);
+        return $this->events->count();
     }
 }

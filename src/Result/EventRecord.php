@@ -24,6 +24,17 @@ final readonly class EventRecord
     ) {
     }
 
+    public static function factory(
+        string $id,
+        string $timestamp,
+        string $uri,
+        string $method,
+        string|null $params,
+        string|null $result,
+    ): self {
+        return new self($id, $timestamp, $uri, $method, $params, $result);
+    }
+
     public function toEvent(): Event
     {
         return Event::reconstitute(
