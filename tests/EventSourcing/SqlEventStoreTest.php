@@ -12,7 +12,7 @@ use PDO;
 use PHPUnit\Framework\TestCase;
 use UnexpectedValueException;
 
-class EventStoreTest extends TestCase
+class SqlEventStoreTest extends TestCase
 {
     public function testAppendAndGetEvents(): void
     {
@@ -126,14 +126,14 @@ class EventStoreTest extends TestCase
         $this->expectException(UnexpectedValueException::class);
         $this->expectExceptionMessage('Unsupported PDO driver: pgsql');
 
-        (new EventStore($pdo))->createTable();
+        (new SqlEventStore($pdo))->createTable();
     }
 
-    /** @return array{EventStore, ExtendedPdo} */
+    /** @return array{SqlEventStore, ExtendedPdo} */
     private function newEventStore(): array
     {
         $pdo = new ExtendedPdo('sqlite::memory:');
-        $eventStore = new EventStore($pdo);
+        $eventStore = new SqlEventStore($pdo);
         $eventStore->createTable();
 
         return [$eventStore, $pdo];

@@ -22,9 +22,9 @@ use function str_replace;
 use const JSON_THROW_ON_ERROR;
 
 /**
- * Database-backed Event Store implementation
+ * SQL-backed Event Store implementation
  */
-class EventStore implements EventStoreInterface
+class SqlEventStore implements EventStoreInterface
 {
     public function __construct(
         private readonly ExtendedPdo $pdo,

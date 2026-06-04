@@ -22,7 +22,7 @@ Semantic observation -> Event -> EventStore
 |-------|------|-------------|
 | Semantic Logger | Records meaningful observations | Configurable |
 | Event | Immutable state-change fact | Permanent |
-| EventStore | Appends and queries recorded events | Database-backed |
+| EventStore | Appends and queries recorded events | Replaceable |
 
 ## Installation
 
@@ -79,6 +79,8 @@ interface EventStoreInterface
     public function getEventsByAggregateId(string $aggregateType, string $aggregateId): EventsInterface;
 }
 ```
+
+`EventStoreInterface` is the persistence port. The bundled implementation is SQL-backed, but applications can replace it with KVS or another append-only storage implementation.
 
 ## Usage
 
@@ -186,8 +188,8 @@ Benefits:
 ```php
 use BEAR\EventSourcing\EventSourcing\Events;
 use BEAR\EventSourcing\EventSourcing\EventsInterface;
-use BEAR\EventSourcing\EventSourcing\EventStore;
 use BEAR\EventSourcing\EventSourcing\EventStoreInterface;
+use BEAR\EventSourcing\EventSourcing\SqlEventStore;
 use BEAR\EventSourcing\Logger\EventSourcingLogger;
 use BEAR\Resource\LoggerInterface as ResourceLoggerInterface;
 use Ray\Di\AbstractModule;
@@ -199,7 +201,7 @@ class EventSourcingModule extends AbstractModule
 
     protected function configure(): void
     {
-        $this->bind(EventStoreInterface::class)->to(EventStore::class);
+        $this->bind(EventStoreInterface::class)->to(SqlEventStore::class);
         $this->bind(EventsInterface::class)->to(Events::class);
 
         $this->rename(ResourceLoggerInterface::class, self::LOGGER);
