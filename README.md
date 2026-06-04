@@ -80,7 +80,7 @@ interface EventStoreInterface
 }
 ```
 
-`EventStoreInterface` is the persistence port. The bundled implementation is SQL-backed, but applications can replace it with KVS or another append-only storage implementation.
+`EventStoreInterface` is the persistence port. The bundled `SqlEventStore` implementation is SQL-backed. `InMemoryEventStore` is available for tests and transient use, and applications can replace the store with KVS or another append-only storage implementation.
 
 ## Usage
 
@@ -216,6 +216,12 @@ Install it as a wrapping module so `rename()` can move the existing BEAR.Resourc
 
 ```php
 $module = new EventSourcingModule($appModule);
+```
+
+For tests, replace the persistence adapter:
+
+```php
+$this->bind(EventStoreInterface::class)->to(InMemoryEventStore::class);
 ```
 
 ## Design Principles
