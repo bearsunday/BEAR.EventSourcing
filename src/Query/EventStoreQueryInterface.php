@@ -4,23 +4,25 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Query;
 
+use BEAR\EventSourcing\Result\EventRecord;
+use BEAR\EventSourcing\Result\EventRecords;
 use Ray\MediaQuery\Annotation\DbQuery;
 
 interface EventStoreQueryInterface
 {
-    /** @return list<array<string, mixed>> */
+    /** @return EventRecords<EventRecord> */
     #[DbQuery('event_store/list')]
-    public function list(): array;
+    public function list(): EventRecords;
 
-    /** @return list<array<string, mixed>> */
+    /** @return EventRecords<EventRecord> */
     #[DbQuery('event_store/list_since')]
-    public function listSince(string $since): array;
+    public function listSince(string $since): EventRecords;
 
-    /** @return list<array<string, mixed>> */
+    /** @return EventRecords<EventRecord> */
     #[DbQuery('event_store/list_by_uri')]
-    public function listByUri(string $pattern): array;
+    public function listByUri(string $pattern): EventRecords;
 
-    /** @return list<array<string, mixed>> */
+    /** @return EventRecords<EventRecord> */
     #[DbQuery('event_store/list_by_aggregate_id')]
-    public function listByAggregateId(string $uri, string $childrenPattern): array;
+    public function listByAggregateId(string $uri, string $childrenPattern): EventRecords;
 }

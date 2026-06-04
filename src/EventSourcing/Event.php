@@ -69,13 +69,36 @@ final readonly class Event implements JsonSerializable
             throw new InvalidArgumentException('Invalid event data');
         }
 
+        return self::reconstitute(
+            $id,
+            $timestamp,
+            $uri,
+            $method,
+            $params,
+            $data['result'] ?? null,
+        );
+    }
+
+    /**
+     * Reconstitute an event from persisted values.
+     *
+     * @param array<array-key, mixed> $params
+     */
+    public static function reconstitute(
+        string $id,
+        string $timestamp,
+        string $uri,
+        string $method,
+        array $params,
+        mixed $result,
+    ): self {
         return new self(
             $id,
             new DateTimeImmutable($timestamp),
             $uri,
             $method,
             $params,
-            $data['result'] ?? null,
+            $result,
         );
     }
 

@@ -11,11 +11,8 @@ use DateTimeInterface;
 use PDO;
 use UnexpectedValueException;
 
-use function array_map;
 use function get_debug_type;
 use function is_scalar;
-use function is_string;
-use function json_decode;
 use function json_encode;
 use function sprintf;
 use function str_replace;
@@ -50,17 +47,13 @@ class SqlEventStore implements EventStoreInterface
     /** @inheritDoc */
     public function getEvents(): EventsInterface
     {
-        $rows = $this->eventStore->list();
-
-        return $this->hydrateEvents($rows);
+        return $this->eventStore->list()->toEvents();
     }
 
     /** @inheritDoc */
     public function getEventsSince(DateTimeInterface $since): EventsInterface
     {
-        $rows = $this->eventStore->listSince($since->format('Y-m-d H:i:s.u'));
-
-        return $this->hydrateEvents($rows);
+        return $this->eventStore->listSince($since->format('Y-m-d H:i:s.u'))->toEvents();
     }
 
     /** @inheritDoc */
@@ -69,9 +62,7 @@ class SqlEventStore implements EventStoreInterface
         // Convert glob pattern to SQL LIKE pattern
         $likePattern = self::globToSqlLikePattern($pattern);
 
-        $rows = $this->eventStore->listByUri($likePattern);
-
-        return $this->hydrateEvents($rows);
+        return $this->eventStore->listByUri($likePattern)->toEvents();
     }
 
     /** @inheritDoc */
@@ -81,9 +72,7 @@ class SqlEventStore implements EventStoreInterface
         $uri = sprintf('/%s/%s', $aggregateType, $aggregateId);
         $childrenPattern = sprintf('%s/%%', self::escapeSqlLikeLiteral($uri));
 
-        $rows = $this->eventStore->listByAggregateId($uri, $childrenPattern);
-
-        return $this->hydrateEvents($rows);
+        return $this->eventStore->listByAggregateId($uri, $childrenPattern)->toEvents();
     }
 
     /**
@@ -121,30 +110,6 @@ class SqlEventStore implements EventStoreInterface
         $this->eventStoreCmd->createSqliteTimestampIndex();
         $this->eventStoreCmd->createSqliteUriIndex();
         $this->eventStoreCmd->createSqliteMethodIndex();
-    }
-
-    /** @param array<int, array<string, mixed>> $rows */
-    private function hydrateEvents(array $rows): EventsInterface
-    {
-        $events = array_map(static function (array $row): Event {
-            $paramsJson = $row['params'] ?? '[]';
-            $resultJson = $row['result'] ?? 'null';
-
-            if (! is_string($paramsJson) || ! is_string($resultJson)) {
-                throw new UnexpectedValueException('Invalid event store row');
-            }
-
-            return Event::fromArray([
-                'id' => $row['id'],
-                'timestamp' => $row['timestamp'],
-                'uri' => $row['uri'],
-                'method' => $row['method'],
-                'params' => json_decode($paramsJson, true, 512, JSON_THROW_ON_ERROR),
-                'result' => json_decode($resultJson, true, 512, JSON_THROW_ON_ERROR),
-            ]);
-        }, $rows);
-
-        return new Events($events);
     }
 
     private static function globToSqlLikePattern(string $pattern): string
