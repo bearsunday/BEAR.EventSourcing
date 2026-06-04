@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace BEAR\EventSourcing\Interceptor;
+namespace BEAR\EventSourcing\Logger;
 
 use BEAR\EventSourcing\EventSourcing\Event;
 use BEAR\EventSourcing\EventSourcing\EventsInterface;

@@ -4,7 +4,7 @@ Event Sourcing for BEAR.Sunday — extracting state-change facts from semantic o
 
 ## Philosophy
 
-BEAR.Sunday does not provide Event Sourcing as a feature. By following REST, AOP, and semantic observation constraints, event recording can be added without making resources aware of the event store.
+BEAR.Sunday does not provide Event Sourcing as a feature. By following REST and semantic observation constraints, event recording can be added without making resources aware of the event store.
 
 > "A framework is a constraint, not a solution."
 
@@ -12,7 +12,7 @@ BEAR.Sunday does not provide Event Sourcing as a feature. By following REST, AOP
 
 Semantic Logger is the observation layer. BEAR.EventSourcing extracts state-change facts from those observations and stores them as immutable events.
 
-The current implementation observes completed `ResourceObject` method calls through AOP. A richer Semantic Logger can provide the same observation boundary without changing the event model.
+The current implementation decorates BEAR.Resource's `LoggerInterface`, observing completed resource responses without making resources aware of the event store.
 
 ```
 Semantic observation -> Event -> EventStore
@@ -141,16 +141,15 @@ Replay assumes idempotent handlers.
 
 ## Recording
 
-`EventSourcingInterceptor` records successful state-changing resource method calls as semantic observations.
+`EventSourcingLogger` records successful state-changing resource requests as semantic observations.
 
 Recorded methods:
 
-- `onPost` -> `POST`
-- `onPut` -> `PUT`
-- `onPatch` -> `PATCH`
-- `onDelete` -> `DELETE`
+- `post` -> `POST`
+- `put` -> `PUT`
+- `delete` -> `DELETE`
 
-`onGet` is not recorded.
+`get` and `patch` are not recorded.
 
 ```php
 final class User extends ResourceObject
@@ -164,48 +163,57 @@ final class User extends ResourceObject
 }
 ```
 
-When the method succeeds, the interceptor appends an event with the resource URI, HTTP method, method parameters, and result body. A Semantic Logger integration can replace or enrich this observation step while preserving the same `Event` representation.
+When the request succeeds, the logger appends an event with the resource URI, HTTP method, URI query, and result body. URI query is the canonical resource method input.
 
-### Why AOP?
+### Why Logger?
 
 | Approach | Cost |
 |----------|------|
-| AOP | Only bound resource methods |
-| Invoker | All requests |
+| Logger | Completed resource responses |
+| AOP | Resource method weaving |
+| Invoker | All resource requests |
 
 Benefits:
 
 - Resources remain unaware of Event Sourcing
 - Failed calls are not recorded
-- GET requests are excluded
+- GET and PATCH requests are excluded
+- Existing resource logging is preserved through Ray.Di `rename()`
 - No global state
 
 ## Module
 
 ```php
+use BEAR\EventSourcing\EventSourcing\Events;
+use BEAR\EventSourcing\EventSourcing\EventsInterface;
+use BEAR\EventSourcing\EventSourcing\EventStore;
+use BEAR\EventSourcing\EventSourcing\EventStoreInterface;
+use BEAR\EventSourcing\Logger\EventSourcingLogger;
+use BEAR\Resource\LoggerInterface as ResourceLoggerInterface;
+use Ray\Di\AbstractModule;
+use Ray\Di\Scope;
+
 class EventSourcingModule extends AbstractModule
 {
+    private const LOGGER = 'event_sourcing_logger';
+
     protected function configure(): void
     {
         $this->bind(EventStoreInterface::class)->to(EventStore::class);
         $this->bind(EventsInterface::class)->to(Events::class);
 
-        $this->bindInterceptor(
-            $this->matcher->subclassesOf(ResourceObject::class),
-            $this->matcher->logicalOr(
-                $this->matcher->startsWith('onPost'),
-                $this->matcher->logicalOr(
-                    $this->matcher->startsWith('onPut'),
-                    $this->matcher->logicalOr(
-                        $this->matcher->startsWith('onPatch'),
-                        $this->matcher->startsWith('onDelete'),
-                    ),
-                ),
-            ),
-            [EventSourcingInterceptor::class],
-        );
+        $this->rename(ResourceLoggerInterface::class, self::LOGGER);
+        $this->bind(ResourceLoggerInterface::class)
+            ->toConstructor(EventSourcingLogger::class, ['logger' => self::LOGGER])
+            ->in(Scope::SINGLETON);
     }
 }
+```
+
+Install it as a wrapping module so `rename()` can move the existing BEAR.Resource logger:
+
+```php
+$module = new EventSourcingModule($appModule);
 ```
 
 ## Design Principles
@@ -216,7 +224,7 @@ class EventSourcingModule extends AbstractModule
 | Single Responsibility | EventStore stores and retrieves events |
 | Symmetry | `fromJson` / `toJson` |
 | Transparency | Resources are unaware of Event Sourcing |
-| No Global State | DI injection, no order dependency |
+| No Global State | DI injection, no global registry |
 
 ## Vision
 
