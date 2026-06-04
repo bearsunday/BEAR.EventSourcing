@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\EventSourcing;
 
 use Aura\Sql\ExtendedPdo;
+use BEAR\EventSourcing\Sql\SqlQuery;
 use DateTimeInterface;
 use PDO;
 use UnexpectedValueException;
@@ -25,22 +26,16 @@ use const JSON_THROW_ON_ERROR;
  */
 class EventStore implements EventStoreInterface
 {
-    private const TABLE_NAME = 'event_store';
-
     public function __construct(
         private readonly ExtendedPdo $pdo,
+        private readonly SqlQuery $sql = new SqlQuery(),
     ) {
     }
 
     /** @inheritDoc */
     public function append(Event $event): void
     {
-        $sql = sprintf(
-            'INSERT INTO %s (id, timestamp, uri, method, params, result) VALUES (:id, :timestamp, :uri, :method, :params, :result)',
-            self::TABLE_NAME,
-        );
-
-        $this->pdo->perform($sql, [
+        $this->pdo->perform($this->sql->get('event_store/append'), [
             'id' => $event->id,
             'timestamp' => $event->timestamp->format('Y-m-d H:i:s.u'),
             'uri' => $event->uri,
@@ -53,13 +48,8 @@ class EventStore implements EventStoreInterface
     /** @inheritDoc */
     public function getEvents(): EventsInterface
     {
-        $sql = sprintf(
-            'SELECT * FROM %s ORDER BY timestamp ASC',
-            self::TABLE_NAME,
-        );
-
         /** @var array<int, array<string, mixed>> $rows */
-        $rows = $this->pdo->fetchAll($sql);
+        $rows = $this->pdo->fetchAll($this->sql->get('event_store/get_events'));
 
         return $this->hydrateEvents($rows);
     }
@@ -67,13 +57,8 @@ class EventStore implements EventStoreInterface
     /** @inheritDoc */
     public function getEventsSince(DateTimeInterface $since): EventsInterface
     {
-        $sql = sprintf(
-            'SELECT * FROM %s WHERE timestamp >= :since ORDER BY timestamp ASC',
-            self::TABLE_NAME,
-        );
-
         /** @var array<int, array<string, mixed>> $rows */
-        $rows = $this->pdo->fetchAll($sql, [
+        $rows = $this->pdo->fetchAll($this->sql->get('event_store/get_events_since'), [
             'since' => $since->format('Y-m-d H:i:s.u'),
         ]);
 
@@ -86,13 +71,8 @@ class EventStore implements EventStoreInterface
         // Convert glob pattern to SQL LIKE pattern
         $likePattern = self::globToSqlLikePattern($pattern);
 
-        $sql = sprintf(
-            "SELECT * FROM %s WHERE uri LIKE :pattern ESCAPE '!' ORDER BY timestamp ASC",
-            self::TABLE_NAME,
-        );
-
         /** @var array<int, array<string, mixed>> $rows */
-        $rows = $this->pdo->fetchAll($sql, ['pattern' => $likePattern]);
+        $rows = $this->pdo->fetchAll($this->sql->get('event_store/get_events_by_uri'), ['pattern' => $likePattern]);
 
         return $this->hydrateEvents($rows);
     }
@@ -104,13 +84,8 @@ class EventStore implements EventStoreInterface
         $uri = sprintf('/%s/%s', $aggregateType, $aggregateId);
         $childrenPattern = sprintf('%s/%%', self::escapeSqlLikeLiteral($uri));
 
-        $sql = sprintf(
-            "SELECT * FROM %s WHERE uri = :uri OR uri LIKE :childrenPattern ESCAPE '!' ORDER BY timestamp ASC",
-            self::TABLE_NAME,
-        );
-
         /** @var array<int, array<string, mixed>> $rows */
-        $rows = $this->pdo->fetchAll($sql, [
+        $rows = $this->pdo->fetchAll($this->sql->get('event_store/get_events_by_aggregate_id'), [
             'uri' => $uri,
             'childrenPattern' => $childrenPattern,
         ]);
@@ -144,42 +119,15 @@ class EventStore implements EventStoreInterface
 
     private function createMysqlTable(): void
     {
-        $sql = sprintf(
-            'CREATE TABLE IF NOT EXISTS %s (
-                id VARCHAR(36) PRIMARY KEY,
-                timestamp DATETIME(6) NOT NULL,
-                uri VARCHAR(255) NOT NULL,
-                method VARCHAR(10) NOT NULL,
-                params JSON,
-                result JSON,
-                INDEX idx_timestamp (timestamp),
-                INDEX idx_uri (uri),
-                INDEX idx_method (method)
-            )',
-            self::TABLE_NAME,
-        );
-
-        $this->pdo->exec($sql);
+        $this->pdo->exec($this->sql->get('event_store/create_mysql'));
     }
 
     private function createSqliteTable(): void
     {
-        $sql = sprintf(
-            'CREATE TABLE IF NOT EXISTS %s (
-                id TEXT PRIMARY KEY,
-                timestamp TEXT NOT NULL,
-                uri TEXT NOT NULL,
-                method TEXT NOT NULL,
-                params TEXT,
-                result TEXT
-            )',
-            self::TABLE_NAME,
-        );
-
-        $this->pdo->exec($sql);
-        $this->pdo->exec(sprintf('CREATE INDEX IF NOT EXISTS idx_timestamp ON %s (timestamp)', self::TABLE_NAME));
-        $this->pdo->exec(sprintf('CREATE INDEX IF NOT EXISTS idx_uri ON %s (uri)', self::TABLE_NAME));
-        $this->pdo->exec(sprintf('CREATE INDEX IF NOT EXISTS idx_method ON %s (method)', self::TABLE_NAME));
+        $this->pdo->exec($this->sql->get('event_store/create_sqlite'));
+        $this->pdo->exec($this->sql->get('event_store/create_sqlite_index_timestamp'));
+        $this->pdo->exec($this->sql->get('event_store/create_sqlite_index_uri'));
+        $this->pdo->exec($this->sql->get('event_store/create_sqlite_index_method'));
     }
 
     /** @param array<int, array<string, mixed>> $rows */

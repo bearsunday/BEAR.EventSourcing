@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\EventSourcing;
 
 use Aura\Sql\ExtendedPdo;
+use BEAR\EventSourcing\Sql\SqlQuery;
 use DateTimeImmutable;
 use JsonException;
 use PDO;
@@ -95,7 +96,7 @@ class EventStoreTest extends TestCase
         [$eventStore, $pdo] = $this->newEventStore();
 
         $pdo->perform(
-            'INSERT INTO event_store (id, timestamp, uri, method, params, result) VALUES (:id, :timestamp, :uri, :method, :params, :result)',
+            (new SqlQuery())->get('event_store/append'),
             [
                 'id' => 'invalid-json',
                 'timestamp' => '2025-01-01 00:00:00.000000',
@@ -148,7 +149,7 @@ class EventStoreTest extends TestCase
         string $result = 'null',
     ): void {
         $pdo->perform(
-            'INSERT INTO event_store (id, timestamp, uri, method, params, result) VALUES (:id, :timestamp, :uri, :method, :params, :result)',
+            (new SqlQuery())->get('event_store/append'),
             [
                 'id' => $id,
                 'timestamp' => $timestamp,
