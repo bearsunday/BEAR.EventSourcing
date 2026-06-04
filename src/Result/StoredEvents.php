@@ -14,7 +14,7 @@ use Traversable;
 
 use function array_map;
 
-final readonly class EventRecords implements EventsInterface, PostQueryInterface
+final readonly class StoredEvents implements EventsInterface, PostQueryInterface
 {
     public function __construct(
         private EventsInterface $events,
@@ -23,12 +23,12 @@ final readonly class EventRecords implements EventsInterface, PostQueryInterface
 
     public static function fromContext(PostQueryContext $context): static
     {
-        /** @var list<EventRecord> $records */
-        $records = $context->rows;
+        /** @var list<StoredEvent> $events */
+        $events = $context->rows;
 
         return new self(new Events(array_map(
-            static fn (EventRecord $record): Event => $record->toEvent(),
-            $records,
+            static fn (StoredEvent $event): Event => $event->toEvent(),
+            $events,
         )));
     }
 

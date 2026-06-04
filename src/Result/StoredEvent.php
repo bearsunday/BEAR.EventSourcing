@@ -12,7 +12,7 @@ use function json_decode;
 
 use const JSON_THROW_ON_ERROR;
 
-final readonly class EventRecord
+final readonly class StoredEvent
 {
     public function __construct(
         public string $id,
