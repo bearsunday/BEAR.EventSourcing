@@ -218,7 +218,56 @@ Install it as a wrapping module so `rename()` can move the existing BEAR.Resourc
 $module = new EventSourcingModule($appModule);
 ```
 
-The module expects the application MediaQuery setup to intercept `BEAR\EventSourcing\Query\EventStoreQueryInterface` and `BEAR\EventSourcing\Query\EventStoreCommandInterface`, resolving the bundled `sql/event_store/*.sql` files. It does not install MediaQuery itself, so existing application MediaQuery bindings are not replaced.
+### MediaQuery Setup
+
+`EventSourcingModule` does not install Ray.MediaQuery. Configure it in the application module, using the same SQL root the application already uses, and include the event store query interfaces in the MediaQuery query set.
+
+Place the bundled SQL files under the application's MediaQuery SQL root:
+
+```
+sql/
+  event_store/
+    append.sql
+    create_mysql_table.sql
+    create_sqlite_method_index.sql
+    create_sqlite_table.sql
+    create_sqlite_timestamp_index.sql
+    create_sqlite_uri_index.sql
+    list.sql
+    list_by_aggregate_id.sql
+    list_by_uri.sql
+    list_since.sql
+```
+
+Then include the event store interfaces in the application's MediaQuery configuration:
+
+```php
+use BEAR\EventSourcing\Query\EventStoreCommandInterface;
+use BEAR\EventSourcing\Query\EventStoreQueryInterface;
+use Ray\Di\AbstractModule;
+use Ray\MediaQuery\DbQueryConfig;
+use Ray\MediaQuery\MediaQueryModule;
+use Ray\MediaQuery\Queries;
+
+final class AppMediaQueryModule extends AbstractModule
+{
+    private const SQL_DIR = __DIR__ . '/../../sql';
+
+    protected function configure(): void
+    {
+        $queries = Queries::fromClasses([
+            EventStoreQueryInterface::class,
+            EventStoreCommandInterface::class,
+            // App\Query\ArticleQueryInterface::class,
+            // App\Query\UserQueryInterface::class,
+        ]);
+
+        $this->install(new MediaQueryModule($queries, [new DbQueryConfig(self::SQL_DIR)]));
+    }
+}
+```
+
+Do not install a second `MediaQuerySqlModule` with a different SQL directory just for event sourcing in an application that already uses MediaQuery. `SqlQuery` resolves SQL from the active `SqlDir` binding, so the event store SQL should live in that same root.
 
 For tests, replace the persistence adapter:
 
