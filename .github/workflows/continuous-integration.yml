@@ -62,7 +62,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: fileinfo
+          extensions: fileinfo, pdo_sqlite
           coverage: ${{ matrix.coverage }}
 
       - name: Get composer cache directory
