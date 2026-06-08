@@ -15,10 +15,9 @@
 
 declare(strict_types=1);
 
-use Aura\Sql\ExtendedPdo;
 use BEAR\EventSourcing\Demo\Users;
-use BEAR\EventSourcing\EventStore;
-use BEAR\EventSourcing\Events;
+use BEAR\EventSourcing\EventSourcing\Events;
+use BEAR\EventSourcing\EventSourcing\InMemoryEventStore;
 use BEAR\Resource\Uri;
 use BEAR\SemanticLogger\SemanticLogger as Bridge;
 use Koriym\SemanticLogger\SemanticLogger;
@@ -28,18 +27,7 @@ require __DIR__ . '/../vendor/autoload.php';
 $semanticLogger = new SemanticLogger();
 $bridge = new Bridge($semanticLogger);
 
-$pdo = new ExtendedPdo('sqlite::memory:');
-$pdo->exec(<<<'SQL'
-    CREATE TABLE event_store (
-        id TEXT PRIMARY KEY,
-        timestamp TEXT NOT NULL,
-        uri TEXT NOT NULL,
-        method TEXT NOT NULL,
-        params TEXT,
-        result TEXT
-    )
-SQL);
-$eventStore = new EventStore($pdo);
+$eventStore = new InMemoryEventStore();
 
 /**
  * Simulate one POST /users call, recording via the bridge.
@@ -70,7 +58,9 @@ $events = Events::fromSemanticLog($log->toArray());
 echo sprintf("Extracted %d events from the SemanticLog tree.\n\n", count($events));
 
 echo "=== Phase 3: persist ===\n";
-$eventStore->appendAll($events);
+foreach ($events as $event) {
+    $eventStore->append($event);
+}
 
 echo "Persisted. JSON snapshot (first event):\n";
 echo json_encode($events->all()[0]->toArray(), JSON_PRETTY_PRINT), "\n\n";

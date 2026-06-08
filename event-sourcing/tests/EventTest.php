@@ -1,0 +1,115 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BEAR\EventSourcing;
+
+use BEAR\EventSourcing\Fake\FakeCompleteContext;
+use BEAR\EventSourcing\Fake\FakeOpenContext;
+use PHPUnit\Framework\TestCase;
+
+use function json_decode;
+use function json_encode;
+
+use const JSON_THROW_ON_ERROR;
+
+final class EventTest extends TestCase
+{
+    public function testConstructor(): void
+    {
+        $event = new Event(
+            id: 'test-id-123',
+            timestamp: '2025-01-01T00:00:00+00:00',
+            uri: 'app://self/user',
+            method: 'POST',
+            params: ['name' => 'John'],
+            result: ['id' => 1, 'name' => 'John'],
+        );
+
+        $this->assertSame('test-id-123', $event->id);
+        $this->assertSame('2025-01-01T00:00:00+00:00', $event->timestamp);
+        $this->assertSame('app://self/user', $event->uri);
+        $this->assertSame('POST', $event->method);
+        $this->assertSame(['name' => 'John'], $event->params);
+        $this->assertSame(['id' => 1, 'name' => 'John'], $event->result);
+    }
+
+    public function testFromArray(): void
+    {
+        $data = [
+            'id' => 'test-id-123',
+            'timestamp' => '2025-01-01T00:00:00+00:00',
+            'uri' => 'app://self/user',
+            'method' => 'POST',
+            'params' => ['name' => 'John'],
+            'result' => ['id' => 1, 'name' => 'John'],
+        ];
+
+        $event = Event::fromArray($data);
+
+        $this->assertSame('test-id-123', $event->id);
+        $this->assertSame('app://self/user', $event->uri);
+    }
+
+    public function testToArray(): void
+    {
+        $event = new Event(
+            id: 'test-id-123',
+            timestamp: '2025-01-01T00:00:00+00:00',
+            uri: 'app://self/user',
+            method: 'POST',
+            params: ['name' => 'John'],
+            result: ['id' => 1],
+        );
+
+        $array = $event->toArray();
+
+        $this->assertSame('test-id-123', $array['id']);
+        $this->assertSame('POST', $array['method']);
+        $this->assertSame('app://self/user', $array['uri']);
+    }
+
+    public function testJsonSerialize(): void
+    {
+        $event = new Event(
+            id: 'test-id-123',
+            timestamp: '2025-01-01T00:00:00+00:00',
+            uri: 'app://self/user',
+            method: 'POST',
+            params: [],
+            result: null,
+        );
+
+        $json = json_encode($event, JSON_THROW_ON_ERROR);
+        /** @var array<string, mixed> $decoded */
+        $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame('test-id-123', $decoded['id']);
+    }
+
+    public function testFromContexts(): void
+    {
+        $open = new FakeOpenContext('POST', 'app://self/user', ['name' => 'John']);
+        $complete = new FakeCompleteContext('app://self/user', 201, [], ['id' => 1, 'name' => 'John']);
+
+        $event = Event::fromContexts($open, $complete);
+
+        $this->assertSame('app://self/user', $event->uri);
+        $this->assertSame('POST', $event->method);
+        $this->assertSame(['name' => 'John'], $event->params);
+        $this->assertSame(['id' => 1, 'name' => 'John'], $event->result);
+        $this->assertNotEmpty($event->id);
+        $this->assertNotEmpty($event->timestamp);
+    }
+
+    public function testFromContextsGeneratesUniqueId(): void
+    {
+        $open = new FakeOpenContext('POST', 'app://self/user', []);
+        $complete = new FakeCompleteContext('app://self/user', 201, [], null);
+
+        $event1 = Event::fromContexts($open, $complete);
+        $event2 = Event::fromContexts($open, $complete);
+
+        $this->assertNotSame($event1->id, $event2->id);
+    }
+}

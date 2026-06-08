@@ -1,40 +1,28 @@
 # BEAR.EventSourcing (WIP)
 
-Event Sourcing for BEAR.Sunday — extracting facts from observations.
+Event Sourcing for BEAR.Sunday — extracting state-change facts from semantic observations.
 
 ## Philosophy
 
-BEAR.Sunday does not provide Event Sourcing as a feature. It emerges naturally by following REST and AOP constraints.
+BEAR.Sunday does not provide Event Sourcing as a feature. By following REST and semantic observation constraints, event recording can be added without making resources aware of the event store.
 
 > "A framework is a constraint, not a solution."
 
 ## Concept
 
-SemanticLogger records meaningful observations. Event Sourcing extracts state-change facts from them.
+Semantic Logger is the observation layer. BEAR.EventSourcing extracts state-change facts from those observations and stores them as immutable events.
+
+The current implementation decorates BEAR.Resource's `LoggerInterface`, observing completed resource responses without making resources aware of the event store.
 
 ```
-Observation (SemanticLog) → Extraction → Facts (Events)
+Semantic observation -> Event -> EventStore
 ```
 
 | Layer | Role | Persistence |
 |-------|------|-------------|
-| SemanticLog | Complete observation record | Configurable |
-| Events | State-change facts only | Permanent |
-
-## Three-Layer Architecture
-
-```
-koriym/semantic-logger      Generic structured log primitives (open/close/event tree)
-        ▲
-bear/semantic-logger        BEAR conventions: ResourceRequest/ResponseContext
-                            + SemanticLogger (implements BEAR\Resource\LoggerInterface)
-        ▲
-bear/event-sourcing         Events::fromSemanticLog() + EventStore (this package)
-```
-
-bear/event-sourcing depends on bear/semantic-logger (this repo ships it at `vendor-slogger/`
-during development; see "Development layout" below). Neither depends on `ray/aop` — recording
-is wired through the existing `BEAR\Resource\LoggerInterface` hook.
+| Semantic Logger | Records meaningful observations | Configurable |
+| Event | Immutable state-change fact | Permanent |
+| EventStore | Appends and queries recorded events | Replaceable |
 
 ## Installation
 
@@ -42,196 +30,268 @@ is wired through the existing `BEAR\Resource\LoggerInterface` hook.
 composer require bear/event-sourcing
 ```
 
-## End-to-end demo
+## Interfaces
 
-A self-contained, runnable demo lives at [`demo/record-and-replay.php`](demo/record-and-replay.php).
-It POSTs a couple of resources, flushes the SemanticLog, extracts Events,
-persists them in SQLite, then resets the world and replays — verifying the
-replay reproduces the originals. Run it after `composer install`:
+### Event
 
-```bash
-php demo/record-and-replay.php
+Immutable fact of a state change:
+
+```php
+final readonly class Event implements JsonSerializable
+{
+    public static function create(
+        string $uri,
+        string $method,
+        array $params,
+        mixed $result,
+    ): self;
+
+    public static function fromArray(array $data): self;
+    public function toArray(): array;
+}
 ```
 
-Exits 0 when the replay matches the originals. The same flow is exercised
-by `tests/EndToEndTest.php` so regressions are caught by `composer test`.
+### EventsInterface
+
+```php
+interface EventsInterface extends IteratorAggregate, Countable
+{
+    public static function fromJson(string $json): self;
+    public function toJson(): string;
+    public function add(Event $event): self;
+    public function filterByUri(string $pattern): self;
+    public function filterByMethod(string $method): self;
+    public function since(DateTimeInterface $since): self;
+    public function replay(callable $handler): void;
+    public function all(): array;
+}
+```
+
+### EventStoreInterface
+
+```php
+interface EventStoreInterface
+{
+    public function append(Event $event): void;
+    public function getEvents(): EventsInterface;
+    public function getEventsSince(DateTimeInterface $since): EventsInterface;
+    public function getEventsByUri(string $pattern): EventsInterface;
+    public function getEventsByAggregateId(string $aggregateType, string $aggregateId): EventsInterface;
+}
+```
+
+`EventStoreInterface` is the persistence port. The bundled `SqlEventStore` implementation is SQL-backed and delegates SQL execution to Ray.MediaQuery through `BEAR\EventSourcing\Query\EventStoreQueryInterface` and `BEAR\EventSourcing\Query\EventStoreCommandInterface`. `InMemoryEventStore` is available for tests and transient use, and applications can replace the store with KVS or another append-only storage implementation.
 
 ## Usage
 
-### Extract from SemanticLog
+### Create and Store
 
 ```php
-use BEAR\EventSourcing\Events;
+$event = Event::create('/users/1', 'POST', ['name' => 'John'], ['id' => 1]);
 
-$logJson = $logger->flush();              // Koriym\SemanticLogger\LogJson
-$events = Events::fromSemanticLog($logJson->toArray());
+$eventStore->append($event);
 ```
 
-`fromSemanticLog()` walks the log tree, picking entries whose `type` is
-`resource_request` (paired with a `resource_response` close) and producing one
-`Event` per pair.
-
-### Persist & query
+### Query
 
 ```php
-$eventStore->appendAll($events);          // single transaction
+$events = $eventStore->getEventsByUri('/users/*');
 
-$eventStore->getEventsByUri('/users/*');
-$eventStore->getEventsByAggregateId('orders', '123');
-$eventStore->getEventsSince(new DateTimeImmutable('-1 day'));
+foreach ($events as $event) {
+    // process event
+}
 ```
-
-`appendAll` wraps the batch in a transaction; `append` is the single-event
-form. Use whichever fits.
 
 ### Replay
 
-`$events->replay($handler)` iterates events in chronological order and
-hands each to your handler. The library does not prescribe **how** to
-re-apply an event — that is intentional, because the right strategy
-depends on whether your read model is rebuilt from events or kept in
-sync with a separate write side. Three common patterns:
-
-**(a) Re-invoke the resource via the resource client.** Cleanest, exercises
-the same code path as the original call. Requires a wired BEAR.Sunday
-injector.
-
 ```php
-$events->replay(function (Event $e) use ($resource): void {
-    // $resource is BEAR\Resource\ResourceInterface
-    $resource->{strtolower($e->method)}($e->uri, $e->params);
+$events->replay(function (Event $event) use ($resource): void {
+    $resource->{$event->method}($event->uri, $event->params);
 });
 ```
 
-**(b) Call the resource method directly.** Useful in tests / scripts where
-spinning up DI is overkill. The handler maps HTTP method → resource
-method name itself (see `demo/record-and-replay.php`).
+### Serialize
 
 ```php
-$events->replay(function (Event $e): void {
-    $ro = new Users();
-    $ro->{'on' . ucfirst(strtolower($e->method))}(...$e->params);
-});
-```
-
-**(c) Project into a read model.** The events are the source of truth;
-replay rebuilds a separate projection (table, in-memory map, …).
-
-```php
-$projection = [];
-$events->replay(function (Event $e) use (&$projection): void {
-    if ($e->method === 'POST') {
-        $projection[$e->result['id']] = $e->result;
-    }
-    // … etc.
-});
-```
-
-**Idempotency**: (a) and (b) replay business logic, so they require the
-resource's `onPost`/etc. to be idempotent **or** the world (DB,
-side-effects) to be reset before replay. (c) rebuilds the projection
-from scratch each time and is inherently idempotent.
-
-### Serialize / restore
-
-```php
+// Export
 file_put_contents('events.json', $events->toJson());
+
+// Import and replay
 Events::fromJson(file_get_contents('events.json'))->replay($handler);
 ```
 
-### Integration testing
+### Integration Testing
 
-Replay production events for regression testing (assumes idempotency):
+Replay production events for regression testing:
 
 ```php
-Events::fromJson(file_get_contents('production-events.json'))
-    ->replay(function (Event $e) use ($resource, $test): void {
-        $ro = $resource->{strtolower($e->method)}($e->uri, $e->params);
-        $test->assertSame($e->result, $ro->body);
-    });
+$events = Events::fromJson(file_get_contents('production-events.json'));
+
+$events->replay(function (Event $event) use ($resource, $test): void {
+    $result = $resource->{$event->method}($event->uri, $event->params);
+    $test->assertSame($event->result, $result->body);
+});
 ```
 
-## Module
+Useful for:
+
+- Bug reproduction
+- Regression testing
+- Production data verification
+
+Replay assumes idempotent handlers.
+
+## Recording
+
+`EventSourcingLogger` records successful state-changing resource requests as semantic observations.
+
+Recorded methods:
+
+- `post` -> `POST`
+- `put` -> `PUT`
+- `delete` -> `DELETE`
+
+`get` and `patch` are not recorded.
 
 ```php
-use BEAR\EventSourcing\Module\EventSourcingModule;
-use BEAR\SemanticLogger\Module\SemanticLoggerModule;
-
-class AppModule extends AbstractModule
+final class User extends ResourceObject
 {
-    protected function configure(): void
+    public function onPost(string $name): static
     {
-        // ResourceModule (installed by BEAR.Package) already binds
-        // BEAR\Resource\LoggerInterface to NullLogger, so SemanticLoggerModule
-        // MUST be installed with override() to take effect.
-        $this->override(new SemanticLoggerModule());  // binds LoggerInterface -> SemanticLogger
-        $this->install(new EventSourcingModule());    // binds EventStoreInterface / EventsInterface
-        $this->bind(ExtendedPdo::class)->toInstance(new ExtendedPdo('mysql:...', $user, $pass));
+        $this->body = ['id' => 1, 'name' => $name];
+
+        return $this;
     }
 }
 ```
 
-`SemanticLoggerModule` binds `BEAR\Resource\LoggerInterface → BEAR\SemanticLogger\SemanticLogger`,
-so every non-GET resource call is automatically recorded into the SemanticLog tree.
+When the request succeeds, the logger appends an event with the resource URI, HTTP method, URI query, and result body. URI query is the canonical resource method input.
 
-> **Install with `override()`, not `install()`.** `BEAR\Resource`'s
-> `ResourceClientModule` binds `LoggerInterface → NullLogger`. A plain
-> `install(new SemanticLoggerModule())` leaves that binding in place and
-> nothing is recorded. `tests/ResourceClientIntegrationTest.php` verifies
-> the `override()` wiring end to end.
+### Why Logger?
 
-## Schema (event_store table)
+| Approach | Cost |
+|----------|------|
+| Logger | Completed resource responses |
+| AOP | Resource method weaving |
+| Invoker | All resource requests |
 
-The schema is dialect-neutral — pick a flavor that fits your DB:
+Benefits:
 
-```sql
--- SQLite / minimal portable
-CREATE TABLE event_store (
-    id         TEXT PRIMARY KEY,
-    timestamp  TEXT NOT NULL,
-    uri        TEXT NOT NULL,
-    method     TEXT NOT NULL,
-    params     TEXT,
-    result     TEXT
-);
+- Resources remain unaware of Event Sourcing
+- Failed calls are not recorded
+- GET and PATCH requests are excluded
+- Existing resource logging is preserved through Ray.Di `rename()`
+- No global state
+
+## Module
+
+```php
+use BEAR\EventSourcing\EventSourcing\Events;
+use BEAR\EventSourcing\EventSourcing\EventsInterface;
+use BEAR\EventSourcing\EventSourcing\EventStoreInterface;
+use BEAR\EventSourcing\EventSourcing\SqlEventStore;
+use BEAR\EventSourcing\Logger\EventSourcingLogger;
+use BEAR\Resource\LoggerInterface as ResourceLoggerInterface;
+use Ray\Di\AbstractModule;
+use Ray\Di\Scope;
+
+class EventSourcingModule extends AbstractModule
+{
+    private const LOGGER = 'event_sourcing_logger';
+
+    protected function configure(): void
+    {
+        $this->bind(EventStoreInterface::class)->to(SqlEventStore::class);
+        $this->bind(EventsInterface::class)->to(Events::class);
+
+        $this->rename(ResourceLoggerInterface::class, self::LOGGER);
+        $this->bind(ResourceLoggerInterface::class)
+            ->toConstructor(EventSourcingLogger::class, ['logger' => self::LOGGER])
+            ->in(Scope::SINGLETON);
+    }
+}
 ```
 
-`EventStore` only appends and reads; events are never updated or deleted. Migration
-is your responsibility (the library no longer ships `createTable()`).
+Install it as a wrapping module so `rename()` can move the existing BEAR.Resource logger:
 
-## Development layout
-
-During development this repo doubles as a monorepo. The companion package
-`bear/semantic-logger` lives at `./vendor-slogger` and is loaded via a composer
-path repository declared in this `composer.json`. After `composer install` it
-appears in `vendor/bear/semantic-logger` as a symlink. Tests in `tests/` import
-its classes directly. Eventually `vendor-slogger/` will be split out into
-`bearsunday/BEAR.SemanticLogger`.
-
-Run both test suites:
-
-```bash
-composer install                           # root + vendor-slogger via path repo
-composer test                              # bear/event-sourcing
-cd vendor-slogger && composer install && composer test
+```php
+$module = new EventSourcingModule($appModule);
 ```
 
-## Known limitations
+### MediaQuery Setup
 
-- `SCHEMA_URL` constants in `BEAR\SemanticLogger\Resource*Context` point at
-  placeholder URLs — actual JSON Schemas will be published separately.
-- `EventStoreInterface::getEvents()` returns all events without pagination —
-  intended for small stores or batch processing only.
-- `composer.json` declares `minimum-stability: dev` because `koriym/semantic-logger`
-  has no stable release yet. Tighten when upstream cuts 1.0.
+`EventSourcingModule` does not install Ray.MediaQuery. Configure it in the application module, using the same SQL root the application already uses, and include the event store query interfaces in the MediaQuery query set.
+
+Place the bundled SQL files under the application's MediaQuery SQL root:
+
+```
+sql/
+  event_store/
+    append.sql
+    create_mysql_table.sql
+    create_sqlite_method_index.sql
+    create_sqlite_table.sql
+    create_sqlite_timestamp_index.sql
+    create_sqlite_uri_index.sql
+    list.sql
+    list_by_aggregate_id.sql
+    list_by_uri.sql
+    list_since.sql
+```
+
+Then include the event store interfaces in the application's MediaQuery configuration:
+
+```php
+use BEAR\EventSourcing\Query\EventStoreCommandInterface;
+use BEAR\EventSourcing\Query\EventStoreQueryInterface;
+use Ray\Di\AbstractModule;
+use Ray\MediaQuery\DbQueryConfig;
+use Ray\MediaQuery\MediaQueryModule;
+use Ray\MediaQuery\Queries;
+
+final class AppMediaQueryModule extends AbstractModule
+{
+    private const SQL_DIR = __DIR__ . '/../../sql';
+
+    protected function configure(): void
+    {
+        $queries = Queries::fromClasses([
+            EventStoreQueryInterface::class,
+            EventStoreCommandInterface::class,
+            // App\Query\ArticleQueryInterface::class,
+            // App\Query\UserQueryInterface::class,
+        ]);
+
+        $this->install(new MediaQueryModule($queries, [new DbQueryConfig(self::SQL_DIR)]));
+    }
+}
+```
+
+Do not install a second `MediaQuerySqlModule` with a different SQL directory just for event sourcing in an application that already uses MediaQuery. `SqlQuery` resolves SQL from the active `SqlDir` binding, so the event store SQL should live in that same root.
+
+For tests, replace the persistence adapter:
+
+```php
+$this->bind(EventStoreInterface::class)->to(InMemoryEventStore::class);
+```
 
 ## Design Principles
 
 | Principle | Application |
 |-----------|-------------|
-| WYSIWYG | Observation is truth |
-| Separation | Observation → Fact |
-| Single Responsibility | EventStore stores and retrieves |
-| Symmetry | `fromJson`/`toJson`, `fromSemanticLog` |
-| Transparency | Resources unaware of ES |
-| No Global State | DI injection, no order dependency |
+| WYSIWYG | The completed resource method result is recorded |
+| Single Responsibility | EventStore stores and retrieves events |
+| Symmetry | `fromJson` / `toJson` |
+| Transparency | Resources are unaware of Event Sourcing |
+| No Global State | DI injection, no global registry |
+
+## Vision
+
+Event Sourcing extracts one aspect of semantic observation: **state changed**.
+
+Replay needs facts. Analysis may need richer context. Semantic Logger supplies that context; Event Sourcing keeps only the fact stream needed for replay.
+
+
+## Semantic Logger bridge
+
+This branch also includes a `vendor-slogger/` path package that adapts `BEAR\Resource\LoggerInterface` events into Koriym SemanticLogger contexts. `Events::fromSemanticLog()` can extract state-change events from that semantic log while keeping the current EventSourcing store implementation.
