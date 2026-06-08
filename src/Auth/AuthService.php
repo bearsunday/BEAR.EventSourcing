@@ -9,6 +9,15 @@ use BEAR\EventSourcing\Query\MemberQueryInterface;
 use DateTimeImmutable;
 use Ramsey\Uuid\Uuid;
 
+use function base64_encode;
+use function hash_hmac;
+use function json_encode;
+use function password_hash;
+use function password_verify;
+use function time;
+
+use const PASSWORD_DEFAULT;
+
 /**
  * JWT-based authentication service
  */
@@ -25,7 +34,7 @@ class AuthService implements AuthServiceInterface
     ) {
     }
 
-    public function authenticateCustomer(string $email, string $password): ?array
+    public function authenticateCustomer(string $email, string $password): array|null
     {
         $customer = $this->customerQuery->findByEmail($email);
 
@@ -33,7 +42,7 @@ class AuthService implements AuthServiceInterface
             return null;
         }
 
-        if (!password_verify($password, $customer['password'])) {
+        if (! password_verify($password, $customer['password'])) {
             return null;
         }
 
@@ -52,7 +61,7 @@ class AuthService implements AuthServiceInterface
         ];
     }
 
-    public function authenticateMember(string $loginId, string $password): ?array
+    public function authenticateMember(string $loginId, string $password): array|null
     {
         $member = $this->memberQuery->findByLoginId($loginId);
 
@@ -60,7 +69,7 @@ class AuthService implements AuthServiceInterface
             return null;
         }
 
-        if (!password_verify($password, $member['password'])) {
+        if (! password_verify($password, $member['password'])) {
             return null;
         }
 
@@ -79,7 +88,7 @@ class AuthService implements AuthServiceInterface
         ];
     }
 
-    public function validateToken(string $token): ?array
+    public function validateToken(string $token): array|null
     {
         $data = $this->tokenStorage->get($token);
 
@@ -90,6 +99,7 @@ class AuthService implements AuthServiceInterface
         $expiresAt = new DateTimeImmutable($data['expires_at']);
         if ($expiresAt < new DateTimeImmutable()) {
             $this->tokenStorage->delete($token);
+
             return null;
         }
 
@@ -112,7 +122,7 @@ class AuthService implements AuthServiceInterface
         ];
     }
 
-    public function refreshToken(string $token): ?string
+    public function refreshToken(string $token): string|null
     {
         $data = $this->tokenStorage->get($token);
 
@@ -137,7 +147,7 @@ class AuthService implements AuthServiceInterface
         $this->tokenStorage->delete($token);
     }
 
-    public function generateResetToken(string $email): ?string
+    public function generateResetToken(string $email): string|null
     {
         $customer = $this->customerQuery->findByEmail($email);
 

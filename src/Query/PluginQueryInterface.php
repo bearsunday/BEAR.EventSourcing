@@ -6,9 +6,9 @@ namespace BEAR\EventSourcing\Query;
 
 interface PluginQueryInterface
 {
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
-    public function findByCode(string $code): ?array;
+    public function findByCode(string $code): array|null;
 
     public function findAll(bool $enabledOnly = false): array;
 

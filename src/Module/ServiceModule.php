@@ -16,6 +16,8 @@ use BEAR\EventSourcing\Service\TaxService;
 use BEAR\EventSourcing\Service\TaxServiceInterface;
 use Ray\Di\AbstractModule;
 
+use function getenv;
+
 /**
  * Service module - binds service interfaces to implementations
  */
@@ -38,7 +40,7 @@ class ServiceModule extends AbstractModule
 
         // SMTP configuration
         $this->bind()->annotatedWith('smtp_host')->toInstance(getenv('SMTP_HOST') ?: 'localhost');
-        $this->bind()->annotatedWith('smtp_port')->toInstance((int)(getenv('SMTP_PORT') ?: 25));
+        $this->bind()->annotatedWith('smtp_port')->toInstance((int) (getenv('SMTP_PORT') ?: 25));
         $this->bind()->annotatedWith('smtp_user')->toInstance(getenv('SMTP_USER') ?: '');
         $this->bind()->annotatedWith('smtp_pass')->toInstance(getenv('SMTP_PASS') ?: '');
         $this->bind()->annotatedWith('mail_from')->toInstance(getenv('MAIL_FROM') ?: 'noreply@example.com');

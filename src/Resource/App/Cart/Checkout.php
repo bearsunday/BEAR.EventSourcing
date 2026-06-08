@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Cart;
 
-use BEAR\Resource\Annotation\Link;
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\CartQueryInterface;
 use BEAR\EventSourcing\Query\OrderQueryInterface;
 use BEAR\EventSourcing\Service\CheckoutServiceInterface;
+use BEAR\Resource\Annotation\Link;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
+use Throwable;
 
 /**
  * Checkout resource (注文確定)
@@ -18,19 +19,12 @@ use Ray\Di\Di\Inject;
  */
 class Checkout extends ResourceObject
 {
-    private CartQueryInterface $cartQuery;
-    private OrderQueryInterface $orderQuery;
-    private CheckoutServiceInterface $checkoutService;
-
     #[Inject]
     public function __construct(
-        CartQueryInterface $cartQuery,
-        OrderQueryInterface $orderQuery,
-        CheckoutServiceInterface $checkoutService
+        private CartQueryInterface $cartQuery,
+        private OrderQueryInterface $orderQuery,
+        private CheckoutServiceInterface $checkoutService,
     ) {
-        $this->cartQuery = $cartQuery;
-        $this->orderQuery = $orderQuery;
-        $this->checkoutService = $checkoutService;
     }
 
     /**
@@ -39,13 +33,14 @@ class Checkout extends ResourceObject
      * @param string|null $cartKey    Cart key (for guest)
      * @param int|null    $customerId Customer ID (for logged-in user)
      */
-    public function onGet(?string $cartKey = null, ?int $customerId = null): static
+    public function onGet(string|null $cartKey = null, int|null $customerId = null): static
     {
         $cart = $this->cartQuery->findByKeyOrCustomerId($cartKey, $customerId);
 
         if ($cart === null || empty($cart['items'])) {
             $this->code = 400;
             $this->body = ['error' => 'Cart is empty'];
+
             return $this;
         }
 
@@ -57,24 +52,24 @@ class Checkout extends ResourceObject
     /**
      * Complete checkout and create order
      *
-     * @param string|null $cartKey        Cart key (for guest)
-     * @param int|null    $customerId     Customer ID (for logged-in user)
-     * @param int         $paymentId      Payment method ID
-     * @param int         $deliveryId     Delivery method ID
-     * @param string      $name01         Last name
-     * @param string      $name02         First name
-     * @param string      $postalCode     Postal code
-     * @param int         $prefId         Prefecture ID
-     * @param string      $addr01         Address 1
-     * @param string      $addr02         Address 2
-     * @param string|null $phoneNumber    Phone number
-     * @param string|null $email          Email (required for guest)
-     * @param string|null $message        Message to shop
-     * @param int|null    $usePoint       Point to use
+     * @param string|null $cartKey     Cart key (for guest)
+     * @param int|null    $customerId  Customer ID (for logged-in user)
+     * @param int         $paymentId   Payment method ID
+     * @param int         $deliveryId  Delivery method ID
+     * @param string      $name01      Last name
+     * @param string      $name02      First name
+     * @param string      $postalCode  Postal code
+     * @param int         $prefId      Prefecture ID
+     * @param string      $addr01      Address 1
+     * @param string      $addr02      Address 2
+     * @param string|null $phoneNumber Phone number
+     * @param string|null $email       Email (required for guest)
+     * @param string|null $message     Message to shop
+     * @param int|null    $usePoint    Point to use
      */
     public function onPost(
-        ?string $cartKey,
-        ?int $customerId,
+        string|null $cartKey,
+        int|null $customerId,
         int $paymentId,
         int $deliveryId,
         string $name01,
@@ -83,16 +78,17 @@ class Checkout extends ResourceObject
         int $prefId,
         string $addr01,
         string $addr02,
-        ?string $phoneNumber = null,
-        ?string $email = null,
-        ?string $message = null,
-        ?int $usePoint = 0
+        string|null $phoneNumber = null,
+        string|null $email = null,
+        string|null $message = null,
+        int|null $usePoint = 0,
     ): static {
         $cart = $this->cartQuery->findByKeyOrCustomerId($cartKey, $customerId);
 
         if ($cart === null || empty($cart['items'])) {
             $this->code = 400;
             $this->body = ['error' => 'Cart is empty'];
+
             return $this;
         }
 
@@ -123,7 +119,7 @@ class Checkout extends ResourceObject
                 'order_id' => $orderId,
                 'order' => $this->orderQuery->findById($orderId),
             ];
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->code = 400;
             $this->body = ['error' => $e->getMessage()];
         }

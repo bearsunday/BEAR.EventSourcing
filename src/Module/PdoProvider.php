@@ -31,7 +31,7 @@ class PdoProvider implements ProviderInterface
             $this->dsn,
             $this->user,
             $this->password,
-            $this->options
+            $this->options,
         );
     }
 }

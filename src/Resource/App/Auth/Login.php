@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Auth;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Auth\AuthServiceInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
 
 /**
@@ -13,12 +13,9 @@ use Ray\Di\Di\Inject;
  */
 class Login extends ResourceObject
 {
-    private AuthServiceInterface $authService;
-
     #[Inject]
-    public function __construct(AuthServiceInterface $authService)
+    public function __construct(private AuthServiceInterface $authService)
     {
-        $this->authService = $authService;
     }
 
     /**
@@ -34,10 +31,12 @@ class Login extends ResourceObject
         if ($result === null) {
             $this->code = 401;
             $this->body = ['error' => 'Invalid email or password'];
+
             return $this;
         }
 
         $this->body = $result;
+
         return $this;
     }
 }

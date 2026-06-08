@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
+use BEAR\EventSourcing\Query\ProductQueryInterface;
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BEAR\EventSourcing\Query\ProductQueryInterface;
 use Ray\Di\Di\Inject;
 
 /**
@@ -16,27 +16,24 @@ use Ray\Di\Di\Inject;
  */
 class Products extends ResourceObject
 {
-    private ProductQueryInterface $productQuery;
-
     #[Inject]
-    public function __construct(ProductQueryInterface $productQuery)
+    public function __construct(private ProductQueryInterface $productQuery)
     {
-        $this->productQuery = $productQuery;
     }
 
     /**
      * Get product list
      *
-     * @param int|null    $categoryId  Category ID to filter
-     * @param string|null $name        Product name to search
-     * @param int         $page        Page number
-     * @param int         $limit       Items per page
+     * @param int|null    $categoryId Category ID to filter
+     * @param string|null $name       Product name to search
+     * @param int         $page       Page number
+     * @param int         $limit      Items per page
      */
     public function onGet(
-        ?int $categoryId = null,
-        ?string $name = null,
+        int|null $categoryId = null,
+        string|null $name = null,
         int $page = 1,
-        int $limit = 20
+        int $limit = 20,
     ): static {
         $offset = ($page - 1) * $limit;
 
@@ -65,10 +62,10 @@ class Products extends ResourceObject
     public function onPost(
         string $name,
         int $status,
-        ?string $descriptionList = null,
-        ?string $descriptionDetail = null,
-        ?string $searchWord = null,
-        ?string $note = null
+        string|null $descriptionList = null,
+        string|null $descriptionDetail = null,
+        string|null $searchWord = null,
+        string|null $note = null,
     ): static {
         $id = $this->productQuery->create([
             'name' => $name,

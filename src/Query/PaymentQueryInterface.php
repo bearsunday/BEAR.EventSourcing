@@ -23,7 +23,7 @@ interface PaymentQueryInterface
      *
      * @return array<string, mixed>|null
      */
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
     /**
      * Find payments by delivery ID

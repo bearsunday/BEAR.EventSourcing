@@ -9,24 +9,69 @@ namespace BEAR\EventSourcing\Entity;
  */
 class PageLayout extends AbstractEntity
 {
-    protected ?int $pageId = null;
-    protected ?Page $page = null;
-    protected ?int $layoutId = null;
-    protected ?Layout $layout = null;
+    protected int|null $pageId = null;
+    protected Page|null $page = null;
+    protected int|null $layoutId = null;
+    protected Layout|null $layout = null;
     protected int $sortNo = 0;
 
-    public function getPageId(): ?int { return $this->pageId; }
-    public function setPageId(?int $pageId): static { $this->pageId = $pageId; return $this; }
+    public function getPageId(): int|null
+    {
+        return $this->pageId;
+    }
 
-    public function getPage(): ?Page { return $this->page; }
-    public function setPage(?Page $page): static { $this->page = $page; return $this; }
+    public function setPageId(int|null $pageId): static
+    {
+        $this->pageId = $pageId;
 
-    public function getLayoutId(): ?int { return $this->layoutId; }
-    public function setLayoutId(?int $layoutId): static { $this->layoutId = $layoutId; return $this; }
+        return $this;
+    }
 
-    public function getLayout(): ?Layout { return $this->layout; }
-    public function setLayout(?Layout $layout): static { $this->layout = $layout; return $this; }
+    public function getPage(): Page|null
+    {
+        return $this->page;
+    }
 
-    public function getSortNo(): int { return $this->sortNo; }
-    public function setSortNo(int $sortNo): static { $this->sortNo = $sortNo; return $this; }
+    public function setPage(Page|null $page): static
+    {
+        $this->page = $page;
+
+        return $this;
+    }
+
+    public function getLayoutId(): int|null
+    {
+        return $this->layoutId;
+    }
+
+    public function setLayoutId(int|null $layoutId): static
+    {
+        $this->layoutId = $layoutId;
+
+        return $this;
+    }
+
+    public function getLayout(): Layout|null
+    {
+        return $this->layout;
+    }
+
+    public function setLayout(Layout|null $layout): static
+    {
+        $this->layout = $layout;
+
+        return $this;
+    }
+
+    public function getSortNo(): int
+    {
+        return $this->sortNo;
+    }
+
+    public function setSortNo(int $sortNo): static
+    {
+        $this->sortNo = $sortNo;
+
+        return $this;
+    }
 }

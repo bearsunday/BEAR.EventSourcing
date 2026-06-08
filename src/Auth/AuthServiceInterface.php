@@ -14,26 +14,26 @@ interface AuthServiceInterface
      *
      * @return array{token: string, customer: array<string, mixed>}|null
      */
-    public function authenticateCustomer(string $email, string $password): ?array;
+    public function authenticateCustomer(string $email, string $password): array|null;
 
     /**
      * Authenticate admin member by login ID and password
      *
      * @return array{token: string, member: array<string, mixed>}|null
      */
-    public function authenticateMember(string $loginId, string $password): ?array;
+    public function authenticateMember(string $loginId, string $password): array|null;
 
     /**
      * Validate token and return user info
      *
      * @return array{type: string, id: int, data: array<string, mixed>}|null
      */
-    public function validateToken(string $token): ?array;
+    public function validateToken(string $token): array|null;
 
     /**
      * Refresh token
      */
-    public function refreshToken(string $token): ?string;
+    public function refreshToken(string $token): string|null;
 
     /**
      * Revoke token
@@ -43,7 +43,7 @@ interface AuthServiceInterface
     /**
      * Generate password reset token
      */
-    public function generateResetToken(string $email): ?string;
+    public function generateResetToken(string $email): string|null;
 
     /**
      * Reset password with token

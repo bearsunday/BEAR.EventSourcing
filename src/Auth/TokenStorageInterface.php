@@ -21,7 +21,7 @@ interface TokenStorageInterface
      *
      * @return array<string, mixed>|null
      */
-    public function get(string $token): ?array;
+    public function get(string $token): array|null;
 
     /**
      * Delete token

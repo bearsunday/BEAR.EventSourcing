@@ -8,16 +8,22 @@ use Aura\Sql\ExtendedPdo;
 use BEAR\EventSourcing\Query\MemberQueryInterface;
 use DateTimeImmutable;
 
+use function array_keys;
+use function array_map;
+use function implode;
+
 class MemberQuery implements MemberQueryInterface
 {
-    public function __construct(private readonly ExtendedPdo $pdo) {}
+    public function __construct(private readonly ExtendedPdo $pdo)
+    {
+    }
 
-    public function findById(int $id): ?array
+    public function findById(int $id): array|null
     {
         return $this->pdo->fetchOne('SELECT * FROM member WHERE id = :id', ['id' => $id]) ?: null;
     }
 
-    public function findByLoginId(string $loginId): ?array
+    public function findByLoginId(string $loginId): array|null
     {
         return $this->pdo->fetchOne('SELECT * FROM member WHERE login_id = :login_id', ['login_id' => $loginId]) ?: null;
     }
@@ -29,7 +35,7 @@ class MemberQuery implements MemberQueryInterface
 
     public function count(): int
     {
-        return (int)$this->pdo->fetchValue('SELECT COUNT(*) FROM member');
+        return (int) $this->pdo->fetchValue('SELECT COUNT(*) FROM member');
     }
 
     public function create(array $data): int
@@ -40,13 +46,14 @@ class MemberQuery implements MemberQueryInterface
         $cols = implode(', ', array_keys($data));
         $ph = ':' . implode(', :', array_keys($data));
         $this->pdo->perform("INSERT INTO member ({$cols}) VALUES ({$ph})", $data);
-        return (int)$this->pdo->lastInsertId();
+
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function update(int $id, array $data): void
     {
         $data['update_date'] = (new DateTimeImmutable())->format('Y-m-d H:i:s');
-        $sets = array_map(fn($k) => "{$k} = :{$k}", array_keys($data));
+        $sets = array_map(static fn ($k) => "{$k} = :{$k}", array_keys($data));
         $data['id'] = $id;
         $this->pdo->perform('UPDATE member SET ' . implode(', ', $sets) . ' WHERE id = :id', $data);
     }

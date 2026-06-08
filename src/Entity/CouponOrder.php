@@ -9,49 +9,148 @@ namespace BEAR\EventSourcing\Entity;
  */
 class CouponOrder extends AbstractEntity
 {
-    protected ?int $id = null;
-    protected ?int $couponId = null;
-    protected ?Coupon $coupon = null;
-    protected ?int $orderId = null;
-    protected ?Order $order = null;
-    protected ?int $customerId = null;
-    protected ?Customer $customer = null;
+    protected int|null $id = null;
+    protected int|null $couponId = null;
+    protected Coupon|null $coupon = null;
+    protected int|null $orderId = null;
+    protected Order|null $order = null;
+    protected int|null $customerId = null;
+    protected Customer|null $customer = null;
     protected string $couponCd = '';
     protected string $couponName = '';
     protected string $discountPrice = '0';
     protected bool $visible = true;
     protected string $orderChangeStatus = '0';
 
-    public function getId(): ?int { return $this->id; }
-    public function setId(?int $id): static { $this->id = $id; return $this; }
+    public function getId(): int|null
+    {
+        return $this->id;
+    }
 
-    public function getCouponId(): ?int { return $this->couponId; }
-    public function setCouponId(?int $couponId): static { $this->couponId = $couponId; return $this; }
+    public function setId(int|null $id): static
+    {
+        $this->id = $id;
 
-    public function getCoupon(): ?Coupon { return $this->coupon; }
-    public function setCoupon(?Coupon $coupon): static { $this->coupon = $coupon; return $this; }
+        return $this;
+    }
 
-    public function getOrderId(): ?int { return $this->orderId; }
-    public function setOrderId(?int $orderId): static { $this->orderId = $orderId; return $this; }
+    public function getCouponId(): int|null
+    {
+        return $this->couponId;
+    }
 
-    public function getOrder(): ?Order { return $this->order; }
-    public function setOrder(?Order $order): static { $this->order = $order; return $this; }
+    public function setCouponId(int|null $couponId): static
+    {
+        $this->couponId = $couponId;
 
-    public function getCustomerId(): ?int { return $this->customerId; }
-    public function setCustomerId(?int $customerId): static { $this->customerId = $customerId; return $this; }
+        return $this;
+    }
 
-    public function getCustomer(): ?Customer { return $this->customer; }
-    public function setCustomer(?Customer $customer): static { $this->customer = $customer; return $this; }
+    public function getCoupon(): Coupon|null
+    {
+        return $this->coupon;
+    }
 
-    public function getCouponCd(): string { return $this->couponCd; }
-    public function setCouponCd(string $couponCd): static { $this->couponCd = $couponCd; return $this; }
+    public function setCoupon(Coupon|null $coupon): static
+    {
+        $this->coupon = $coupon;
 
-    public function getCouponName(): string { return $this->couponName; }
-    public function setCouponName(string $couponName): static { $this->couponName = $couponName; return $this; }
+        return $this;
+    }
 
-    public function getDiscountPrice(): string { return $this->discountPrice; }
-    public function setDiscountPrice(string $discountPrice): static { $this->discountPrice = $discountPrice; return $this; }
+    public function getOrderId(): int|null
+    {
+        return $this->orderId;
+    }
 
-    public function isVisible(): bool { return $this->visible; }
-    public function setVisible(bool $visible): static { $this->visible = $visible; return $this; }
+    public function setOrderId(int|null $orderId): static
+    {
+        $this->orderId = $orderId;
+
+        return $this;
+    }
+
+    public function getOrder(): Order|null
+    {
+        return $this->order;
+    }
+
+    public function setOrder(Order|null $order): static
+    {
+        $this->order = $order;
+
+        return $this;
+    }
+
+    public function getCustomerId(): int|null
+    {
+        return $this->customerId;
+    }
+
+    public function setCustomerId(int|null $customerId): static
+    {
+        $this->customerId = $customerId;
+
+        return $this;
+    }
+
+    public function getCustomer(): Customer|null
+    {
+        return $this->customer;
+    }
+
+    public function setCustomer(Customer|null $customer): static
+    {
+        $this->customer = $customer;
+
+        return $this;
+    }
+
+    public function getCouponCd(): string
+    {
+        return $this->couponCd;
+    }
+
+    public function setCouponCd(string $couponCd): static
+    {
+        $this->couponCd = $couponCd;
+
+        return $this;
+    }
+
+    public function getCouponName(): string
+    {
+        return $this->couponName;
+    }
+
+    public function setCouponName(string $couponName): static
+    {
+        $this->couponName = $couponName;
+
+        return $this;
+    }
+
+    public function getDiscountPrice(): string
+    {
+        return $this->discountPrice;
+    }
+
+    public function setDiscountPrice(string $discountPrice): static
+    {
+        $this->discountPrice = $discountPrice;
+
+        return $this;
+    }
+
+    public function isVisible(): bool
+    {
+        return $this->visible;
+    }
+
+    public function setVisible(bool $visible): static
+    {
+        $this->visible = $visible;
+
+        return $this;
+    }
 }

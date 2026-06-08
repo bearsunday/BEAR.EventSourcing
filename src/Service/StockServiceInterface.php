@@ -14,7 +14,7 @@ interface StockServiceInterface
     /**
      * Get current stock level (null = unlimited)
      */
-    public function getStock(int $productClassId): ?int;
+    public function getStock(int $productClassId): int|null;
 
     /**
      * Reduce stock by quantity
@@ -31,5 +31,5 @@ interface StockServiceInterface
     /**
      * Set stock level directly
      */
-    public function setStock(int $productClassId, ?int $stock, bool $unlimited = false): void;
+    public function setStock(int $productClassId, int|null $stock, bool $unlimited = false): void;
 }

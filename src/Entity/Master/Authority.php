@@ -11,6 +11,7 @@ class Authority extends AbstractMasterEntity
 {
     /** システム管理者 */
     public const ADMIN = 0;
+
     /** 店舗オーナー */
     public const OWNER = 1;
 }

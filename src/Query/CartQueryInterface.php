@@ -17,7 +17,7 @@ interface CartQueryInterface
      *
      * @return array<string, mixed>|null
      */
-    public function findByKeyOrCustomerId(?string $cartKey, ?int $customerId): ?array;
+    public function findByKeyOrCustomerId(string|null $cartKey, int|null $customerId): array|null;
 
     /**
      * Create or get existing cart
@@ -27,7 +27,7 @@ interface CartQueryInterface
      *
      * @return int Cart ID
      */
-    public function createOrGet(?string $cartKey, ?int $customerId): int;
+    public function createOrGet(string|null $cartKey, int|null $customerId): int;
 
     /**
      * Clear cart
@@ -35,7 +35,7 @@ interface CartQueryInterface
      * @param string|null $cartKey    Cart key
      * @param int|null    $customerId Customer ID
      */
-    public function clear(?string $cartKey, ?int $customerId): void;
+    public function clear(string|null $cartKey, int|null $customerId): void;
 
     /**
      * Merge guest cart into customer cart

@@ -11,8 +11,10 @@ class CustomerStatus extends AbstractMasterEntity
 {
     /** 仮会員 */
     public const PROVISIONAL = 1;
+
     /** 本会員 */
     public const REGULAR = 2;
+
     /** 退会 */
     public const WITHDRAWING = 3;
 }

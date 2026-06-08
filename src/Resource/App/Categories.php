@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
+use BEAR\EventSourcing\Query\CategoryQueryInterface;
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BEAR\EventSourcing\Query\CategoryQueryInterface;
 use Ray\Di\Di\Inject;
 
 /**
@@ -16,12 +16,9 @@ use Ray\Di\Di\Inject;
  */
 class Categories extends ResourceObject
 {
-    private CategoryQueryInterface $categoryQuery;
-
     #[Inject]
-    public function __construct(CategoryQueryInterface $categoryQuery)
+    public function __construct(private CategoryQueryInterface $categoryQuery)
     {
-        $this->categoryQuery = $categoryQuery;
     }
 
     /**
@@ -30,7 +27,7 @@ class Categories extends ResourceObject
      * @param int|null $parentId Parent category ID (null for root categories)
      * @param bool     $tree     Return as tree structure
      */
-    public function onGet(?int $parentId = null, bool $tree = false): static
+    public function onGet(int|null $parentId = null, bool $tree = false): static
     {
         if ($tree) {
             $this->body = $this->categoryQuery->getTree();
@@ -48,7 +45,7 @@ class Categories extends ResourceObject
      * @param int|null $parentId Parent category ID
      * @param int      $sortNo   Sort order
      */
-    public function onPost(string $name, ?int $parentId = null, int $sortNo = 0): static
+    public function onPost(string $name, int|null $parentId = null, int $sortNo = 0): static
     {
         $id = $this->categoryQuery->create([
             'name' => $name,

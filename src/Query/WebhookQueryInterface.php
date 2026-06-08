@@ -6,7 +6,7 @@ namespace BEAR\EventSourcing\Query;
 
 interface WebhookQueryInterface
 {
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
     public function findAll(): array;
 
@@ -18,7 +18,7 @@ interface WebhookQueryInterface
 
     public function delete(int $id): void;
 
-    public function logDelivery(int $webhookId, string $event, string $payload, int $responseCode, ?string $responseBody, bool $success): int;
+    public function logDelivery(int $webhookId, string $event, string $payload, int $responseCode, string|null $responseBody, bool $success): int;
 
     public function getDeliveryLogs(int $webhookId, int $limit = 50): array;
 }

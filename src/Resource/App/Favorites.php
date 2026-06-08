@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Annotation\RequireAuth;
 use BEAR\EventSourcing\Query\FavoriteQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
 
 /**
@@ -15,13 +15,11 @@ use Ray\Di\Di\Inject;
 #[RequireAuth(type: 'customer')]
 class Favorites extends ResourceObject
 {
-    private FavoriteQueryInterface $favoriteQuery;
-    private ?array $authUser = null;
+    private array|null $authUser = null;
 
     #[Inject]
-    public function __construct(FavoriteQueryInterface $favoriteQuery)
+    public function __construct(private FavoriteQueryInterface $favoriteQuery)
     {
-        $this->favoriteQuery = $favoriteQuery;
     }
 
     public function setAuthUser(array $user): void
@@ -64,6 +62,7 @@ class Favorites extends ResourceObject
         if ($this->favoriteQuery->exists($customerId, $productId)) {
             $this->code = 409;
             $this->body = ['error' => 'Product already in favorites'];
+
             return $this;
         }
 

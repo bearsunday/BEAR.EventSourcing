@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\DeliveryQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
 
 /**
@@ -13,12 +13,9 @@ use Ray\Di\Di\Inject;
  */
 class Deliveries extends ResourceObject
 {
-    private DeliveryQueryInterface $deliveryQuery;
-
     #[Inject]
-    public function __construct(DeliveryQueryInterface $deliveryQuery)
+    public function __construct(private DeliveryQueryInterface $deliveryQuery)
     {
-        $this->deliveryQuery = $deliveryQuery;
     }
 
     /**
@@ -26,7 +23,7 @@ class Deliveries extends ResourceObject
      *
      * @param int|null $prefId Prefecture ID to get fees
      */
-    public function onGet(?int $prefId = null): static
+    public function onGet(int|null $prefId = null): static
     {
         $deliveries = $this->deliveryQuery->findAll();
 
@@ -38,6 +35,7 @@ class Deliveries extends ResourceObject
         }
 
         $this->body = $deliveries;
+
         return $this;
     }
 }

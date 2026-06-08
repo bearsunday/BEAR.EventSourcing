@@ -1,0 +1,13 @@
+includes:
+  - vendor-bin/tools/vendor/phpstan/phpstan-phpunit/extension.neon
+
+parameters:
+  level: max
+  paths:
+    - src/EventSourcing
+    - src/Logger
+    - src/Module/EventSourcingModule.php
+    - src/Query/EventStoreCommandInterface.php
+    - src/Query/EventStoreQueryInterface.php
+    - src/Result
+    - tests

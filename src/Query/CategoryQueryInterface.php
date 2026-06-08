@@ -16,7 +16,7 @@ interface CategoryQueryInterface
      *
      * @return array<int, array<string, mixed>>
      */
-    public function findByParentId(?int $parentId = null): array;
+    public function findByParentId(int|null $parentId = null): array;
 
     /**
      * Get category tree
@@ -32,7 +32,7 @@ interface CategoryQueryInterface
      *
      * @return array<string, mixed>|null
      */
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
     /**
      * Create a new category

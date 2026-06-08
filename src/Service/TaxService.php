@@ -7,23 +7,27 @@ namespace BEAR\EventSourcing\Service;
 use BEAR\EventSourcing\Entity\Master\RoundingType;
 use BEAR\EventSourcing\Query\TaxRuleQueryInterface;
 
+use function bcadd;
+use function bccomp;
+use function bcdiv;
+use function bcmul;
+use function bcsub;
+
 /**
  * Tax calculation service
  */
 class TaxService implements TaxServiceInterface
 {
     public function __construct(
-        private readonly TaxRuleQueryInterface $taxRuleQuery
+        private readonly TaxRuleQueryInterface $taxRuleQuery,
     ) {
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function calculateTax(
         string $price,
-        ?int $productClassId = null,
-        ?int $prefId = null
+        int|null $productClassId = null,
+        int|null $prefId = null,
     ): array {
         $taxRule = $this->taxRuleQuery->findApplicable($productClassId, $prefId);
 
@@ -52,31 +56,29 @@ class TaxService implements TaxServiceInterface
         ];
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function getTaxIncludedPrice(
         string $price,
-        ?int $productClassId = null,
-        ?int $prefId = null
+        int|null $productClassId = null,
+        int|null $prefId = null,
     ): string {
         $result = $this->calculateTax($price, $productClassId, $prefId);
+
         return $result['price_inc_tax'];
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function getTaxExcludedPrice(
         string $priceIncTax,
-        ?int $productClassId = null,
-        ?int $prefId = null
+        int|null $productClassId = null,
+        int|null $prefId = null,
     ): string {
         $taxRule = $this->taxRuleQuery->findApplicable($productClassId, $prefId);
         $taxRate = $taxRule['tax_rate'] ?? '10';
 
         // price = priceIncTax / (1 + taxRate/100)
         $divisor = bcadd('1', bcdiv($taxRate, '100', 10), 10);
+
         return bcdiv($priceIncTax, $divisor, 0);
     }
 

@@ -9,44 +9,47 @@ namespace BEAR\EventSourcing\Entity;
  */
 class ClassCategory extends AbstractEntity
 {
-    protected ?int $id = null;
-    protected ?int $classNameId = null;
-    protected ?ClassName $className = null;
+    protected int|null $id = null;
+    protected int|null $classNameId = null;
+    protected ClassName|null $className = null;
     protected string $name = '';
     protected string $backendName = '';
     protected int $sortNo = 0;
     protected bool $visible = true;
 
-    public function getId(): ?int
+    public function getId(): int|null
     {
         return $this->id;
     }
 
-    public function setId(?int $id): static
+    public function setId(int|null $id): static
     {
         $this->id = $id;
+
         return $this;
     }
 
-    public function getClassNameId(): ?int
+    public function getClassNameId(): int|null
     {
         return $this->classNameId;
     }
 
-    public function setClassNameId(?int $classNameId): static
+    public function setClassNameId(int|null $classNameId): static
     {
         $this->classNameId = $classNameId;
+
         return $this;
     }
 
-    public function getClassName(): ?ClassName
+    public function getClassName(): ClassName|null
     {
         return $this->className;
     }
 
-    public function setClassName(?ClassName $className): static
+    public function setClassName(ClassName|null $className): static
     {
         $this->className = $className;
+
         return $this;
     }
 
@@ -58,6 +61,7 @@ class ClassCategory extends AbstractEntity
     public function setName(string $name): static
     {
         $this->name = $name;
+
         return $this;
     }
 
@@ -69,6 +73,7 @@ class ClassCategory extends AbstractEntity
     public function setBackendName(string $backendName): static
     {
         $this->backendName = $backendName;
+
         return $this;
     }
 
@@ -80,6 +85,7 @@ class ClassCategory extends AbstractEntity
     public function setSortNo(int $sortNo): static
     {
         $this->sortNo = $sortNo;
+
         return $this;
     }
 
@@ -91,6 +97,7 @@ class ClassCategory extends AbstractEntity
     public function setVisible(bool $visible): static
     {
         $this->visible = $visible;
+
         return $this;
     }
 }

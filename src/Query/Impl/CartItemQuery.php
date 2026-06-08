@@ -11,17 +11,23 @@ use DateTimeImmutable;
 
 class CartItemQuery implements CartItemQueryInterface
 {
-    public function __construct(private readonly ExtendedPdo $pdo, private readonly CartQueryInterface $cartQuery) {}
+    public function __construct(private readonly ExtendedPdo $pdo, private readonly CartQueryInterface $cartQuery)
+    {
+    }
 
-    public function findByCartKeyOrCustomerId(?string $cartKey, ?int $customerId): array
+    public function findByCartKeyOrCustomerId(string|null $cartKey, int|null $customerId): array
     {
         $cart = $this->cartQuery->findByKeyOrCustomerId($cartKey, $customerId);
+
         return $cart['items'] ?? [];
     }
 
-    public function findById(int $id): ?array { return $this->pdo->fetchOne('SELECT * FROM cart_item WHERE id = :id', ['id' => $id]) ?: null; }
+    public function findById(int $id): array|null
+    {
+        return $this->pdo->fetchOne('SELECT * FROM cart_item WHERE id = :id', ['id' => $id]) ?: null;
+    }
 
-    public function addItem(int $productClassId, int $quantity, ?string $cartKey, ?int $customerId): int
+    public function addItem(int $productClassId, int $quantity, string|null $cartKey, int|null $customerId): int
     {
         $cartId = $this->cartQuery->createOrGet($cartKey, $customerId);
         $existing = $this->pdo->fetchOne('SELECT * FROM cart_item WHERE cart_id = :cart_id AND product_class_id = :product_class_id', ['cart_id' => $cartId, 'product_class_id' => $productClassId]);
@@ -31,12 +37,22 @@ class CartItemQuery implements CartItemQueryInterface
         if ($existing) {
             $newQty = $existing['quantity'] + $quantity;
             $this->pdo->perform('UPDATE cart_item SET quantity = :quantity, update_date = :update_date WHERE id = :id', ['id' => $existing['id'], 'quantity' => $newQty, 'update_date' => $now]);
+
             return $existing['id'];
         }
+
         $this->pdo->perform('INSERT INTO cart_item (cart_id, product_class_id, quantity, price, create_date, update_date) VALUES (:cart_id, :product_class_id, :quantity, :price, :create_date, :update_date)', ['cart_id' => $cartId, 'product_class_id' => $productClassId, 'quantity' => $quantity, 'price' => $price, 'create_date' => $now, 'update_date' => $now]);
-        return (int)$this->pdo->lastInsertId();
+
+        return (int) $this->pdo->lastInsertId();
     }
 
-    public function updateQuantity(int $id, int $quantity): void { $this->pdo->perform('UPDATE cart_item SET quantity = :quantity, update_date = :update_date WHERE id = :id', ['id' => $id, 'quantity' => $quantity, 'update_date' => (new DateTimeImmutable())->format('Y-m-d H:i:s')]); }
-    public function removeItem(int $id): void { $this->pdo->perform('DELETE FROM cart_item WHERE id = :id', ['id' => $id]); }
+    public function updateQuantity(int $id, int $quantity): void
+    {
+        $this->pdo->perform('UPDATE cart_item SET quantity = :quantity, update_date = :update_date WHERE id = :id', ['id' => $id, 'quantity' => $quantity, 'update_date' => (new DateTimeImmutable())->format('Y-m-d H:i:s')]);
+    }
+
+    public function removeItem(int $id): void
+    {
+        $this->pdo->perform('DELETE FROM cart_item WHERE id = :id', ['id' => $id]);
+    }
 }

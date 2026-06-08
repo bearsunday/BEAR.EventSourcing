@@ -8,12 +8,9 @@ use RuntimeException;
 
 class ValidationException extends RuntimeException
 {
-    private array $errors;
-
-    public function __construct(array $errors, string $message = 'Validation failed')
+    public function __construct(private array $errors, string $message = 'Validation failed')
     {
         parent::__construct($message);
-        $this->errors = $errors;
     }
 
     public function getErrors(): array

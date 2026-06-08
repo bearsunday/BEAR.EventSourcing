@@ -9,6 +9,8 @@ use BEAR\AppMeta\AbstractAppMeta;
 use PDO;
 use Ray\Di\AbstractModule;
 
+use function getenv;
+
 /**
  * Database module
  */
@@ -16,7 +18,7 @@ class DbModule extends AbstractModule
 {
     public function __construct(
         private readonly AbstractAppMeta $appMeta,
-        ?AbstractModule $module = null
+        AbstractModule|null $module = null,
     ) {
         parent::__construct($module);
     }
@@ -35,9 +37,7 @@ class DbModule extends AbstractModule
         $this->bind()->annotatedWith('db_options')->toInstance($dbConfig['options']);
     }
 
-    /**
-     * @return array{dsn: string, user: string, password: string, options: array<int, mixed>}
-     */
+    /** @return array{dsn: string, user: string, password: string, options: array<int, mixed>} */
     private function getDbConfig(): array
     {
         // Default configuration - can be overridden by environment variables

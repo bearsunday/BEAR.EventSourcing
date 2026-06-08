@@ -9,42 +9,45 @@ namespace BEAR\EventSourcing\Entity;
  */
 class ProductImage extends AbstractEntity
 {
-    protected ?int $id = null;
-    protected ?int $productId = null;
-    protected ?Product $product = null;
+    protected int|null $id = null;
+    protected int|null $productId = null;
+    protected Product|null $product = null;
     protected string $fileName = '';
     protected int $sortNo = 0;
 
-    public function getId(): ?int
+    public function getId(): int|null
     {
         return $this->id;
     }
 
-    public function setId(?int $id): static
+    public function setId(int|null $id): static
     {
         $this->id = $id;
+
         return $this;
     }
 
-    public function getProductId(): ?int
+    public function getProductId(): int|null
     {
         return $this->productId;
     }
 
-    public function setProductId(?int $productId): static
+    public function setProductId(int|null $productId): static
     {
         $this->productId = $productId;
+
         return $this;
     }
 
-    public function getProduct(): ?Product
+    public function getProduct(): Product|null
     {
         return $this->product;
     }
 
-    public function setProduct(?Product $product): static
+    public function setProduct(Product|null $product): static
     {
         $this->product = $product;
+
         return $this;
     }
 
@@ -56,6 +59,7 @@ class ProductImage extends AbstractEntity
     public function setFileName(string $fileName): static
     {
         $this->fileName = $fileName;
+
         return $this;
     }
 
@@ -67,6 +71,7 @@ class ProductImage extends AbstractEntity
     public function setSortNo(int $sortNo): static
     {
         $this->sortNo = $sortNo;
+
         return $this;
     }
 }

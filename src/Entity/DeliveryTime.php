@@ -9,43 +9,46 @@ namespace BEAR\EventSourcing\Entity;
  */
 class DeliveryTime extends AbstractEntity
 {
-    protected ?int $id = null;
-    protected ?int $deliveryId = null;
-    protected ?Delivery $delivery = null;
+    protected int|null $id = null;
+    protected int|null $deliveryId = null;
+    protected Delivery|null $delivery = null;
     protected string $deliveryTime = '';
     protected int $sortNo = 0;
     protected bool $visible = true;
 
-    public function getId(): ?int
+    public function getId(): int|null
     {
         return $this->id;
     }
 
-    public function setId(?int $id): static
+    public function setId(int|null $id): static
     {
         $this->id = $id;
+
         return $this;
     }
 
-    public function getDeliveryId(): ?int
+    public function getDeliveryId(): int|null
     {
         return $this->deliveryId;
     }
 
-    public function setDeliveryId(?int $deliveryId): static
+    public function setDeliveryId(int|null $deliveryId): static
     {
         $this->deliveryId = $deliveryId;
+
         return $this;
     }
 
-    public function getDelivery(): ?Delivery
+    public function getDelivery(): Delivery|null
     {
         return $this->delivery;
     }
 
-    public function setDelivery(?Delivery $delivery): static
+    public function setDelivery(Delivery|null $delivery): static
     {
         $this->delivery = $delivery;
+
         return $this;
     }
 
@@ -57,6 +60,7 @@ class DeliveryTime extends AbstractEntity
     public function setDeliveryTime(string $deliveryTime): static
     {
         $this->deliveryTime = $deliveryTime;
+
         return $this;
     }
 
@@ -68,6 +72,7 @@ class DeliveryTime extends AbstractEntity
     public function setSortNo(int $sortNo): static
     {
         $this->sortNo = $sortNo;
+
         return $this;
     }
 
@@ -79,6 +84,7 @@ class DeliveryTime extends AbstractEntity
     public function setVisible(bool $visible): static
     {
         $this->visible = $visible;
+
         return $this;
     }
 }

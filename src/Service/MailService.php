@@ -6,7 +6,9 @@ namespace BEAR\EventSourcing\Service;
 
 use BEAR\EventSourcing\Query\MailTemplateQueryInterface;
 use BEAR\EventSourcing\Query\OrderQueryInterface;
-use DateTimeImmutable;
+
+use function is_scalar;
+use function str_replace;
 
 /**
  * Mail service
@@ -20,9 +22,7 @@ class MailService implements MailServiceInterface
     ) {
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function sendOrderConfirmation(int $orderId): bool
     {
         $order = $this->orderQuery->findById($orderId);
@@ -41,13 +41,11 @@ class MailService implements MailServiceInterface
         return $this->mailer->send(
             $order['email'],
             $subject,
-            $body
+            $body,
         );
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function sendShippingNotification(int $orderId, int $shippingId): bool
     {
         $order = $this->orderQuery->findById($orderId);
@@ -66,13 +64,11 @@ class MailService implements MailServiceInterface
         return $this->mailer->send(
             $order['email'],
             $subject,
-            $body
+            $body,
         );
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function sendPasswordReset(string $email, string $resetUrl): bool
     {
         $template = $this->templateQuery->findByName('password_reset');
@@ -88,9 +84,7 @@ class MailService implements MailServiceInterface
         return $this->mailer->send($email, $subject, $body);
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function sendRegistrationComplete(int $customerId): bool
     {
         // Implementation
@@ -100,10 +94,13 @@ class MailService implements MailServiceInterface
     private function renderTemplate(string $template, array $data): string
     {
         foreach ($data as $key => $value) {
-            if (is_scalar($value)) {
-                $template = str_replace('{{' . $key . '}}', (string)$value, $template);
+            if (! is_scalar($value)) {
+                continue;
             }
+
+            $template = str_replace('{{' . $key . '}}', (string) $value, $template);
         }
+
         return $template;
     }
 }

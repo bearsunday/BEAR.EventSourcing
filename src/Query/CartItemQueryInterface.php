@@ -17,7 +17,7 @@ interface CartItemQueryInterface
      *
      * @return array<int, array<string, mixed>>
      */
-    public function findByCartKeyOrCustomerId(?string $cartKey, ?int $customerId): array;
+    public function findByCartKeyOrCustomerId(string|null $cartKey, int|null $customerId): array;
 
     /**
      * Find cart item by ID
@@ -26,7 +26,7 @@ interface CartItemQueryInterface
      *
      * @return array<string, mixed>|null
      */
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
     /**
      * Add item to cart
@@ -41,8 +41,8 @@ interface CartItemQueryInterface
     public function addItem(
         int $productClassId,
         int $quantity,
-        ?string $cartKey,
-        ?int $customerId
+        string|null $cartKey,
+        int|null $customerId,
     ): int;
 
     /**

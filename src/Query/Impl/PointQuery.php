@@ -11,16 +11,18 @@ use DateTimeImmutable;
 class PointQuery implements PointQueryInterface
 {
     public function __construct(
-        private readonly ExtendedPdo $pdo
-    ) {}
+        private readonly ExtendedPdo $pdo,
+    ) {
+    }
 
     public function getBalance(int $customerId): int
     {
         $result = $this->pdo->fetchValue(
             'SELECT COALESCE(SUM(point), 0) FROM point_history WHERE customer_id = :customer_id',
-            ['customer_id' => $customerId]
+            ['customer_id' => $customerId],
         );
-        return (int)$result;
+
+        return (int) $result;
     }
 
     public function getHistory(int $customerId, int $limit = 20, int $offset = 0): array
@@ -30,11 +32,11 @@ class PointQuery implements PointQueryInterface
              WHERE customer_id = :customer_id
              ORDER BY create_date DESC
              LIMIT :limit OFFSET :offset',
-            ['customer_id' => $customerId, 'limit' => $limit, 'offset' => $offset]
+            ['customer_id' => $customerId, 'limit' => $limit, 'offset' => $offset],
         );
     }
 
-    public function addPoints(int $customerId, int $point, int $actionType, ?string $reason = null, ?int $orderId = null): int
+    public function addPoints(int $customerId, int $point, int $actionType, string|null $reason = null, int|null $orderId = null): int
     {
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
         $this->pdo->perform(
@@ -47,14 +49,14 @@ class PointQuery implements PointQueryInterface
                 'action_type' => $actionType,
                 'reason' => $reason,
                 'create_date' => $now,
-            ]
+            ],
         );
-        $id = (int)$this->pdo->lastInsertId();
+        $id = (int) $this->pdo->lastInsertId();
 
         // Update customer point balance
         $this->pdo->perform(
             'UPDATE customer SET point = point + :point, update_date = :update_date WHERE id = :id',
-            ['point' => $point, 'update_date' => $now, 'id' => $customerId]
+            ['point' => $point, 'update_date' => $now, 'id' => $customerId],
         );
 
         return $id;
@@ -68,6 +70,7 @@ class PointQuery implements PointQueryInterface
         }
 
         $this->addPoints($customerId, -$point, 2, '注文でのポイント使用', $orderId);
+
         return true;
     }
 

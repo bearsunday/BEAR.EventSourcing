@@ -4,36 +4,41 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Admin;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Annotation\RequireAuth;
 use BEAR\EventSourcing\Query\ContactQueryInterface;
 use BEAR\EventSourcing\Service\MailServiceInterface;
+use BEAR\Resource\ResourceObject;
 
 class Contacts extends ResourceObject
 {
     public function __construct(
         private readonly ContactQueryInterface $query,
-        private readonly MailServiceInterface $mailService
-    ) {}
+        private readonly MailServiceInterface $mailService,
+    ) {
+    }
 
     #[RequireAuth(role: 'admin')]
     public function onGet(
-        ?int $id = null,
-        ?int $status = null,
+        int|null $id = null,
+        int|null $status = null,
         int $limit = 20,
-        int $offset = 0
+        int $offset = 0,
     ): static {
         if ($id !== null) {
             $contact = $this->query->findById($id);
             if ($contact === null) {
                 $this->code = 404;
                 $this->body = ['error' => 'Contact not found'];
+
                 return $this;
             }
+
             $this->body = $contact;
         } else {
             $filters = [];
-            if ($status !== null) $filters['status'] = $status;
+            if ($status !== null) {
+                $filters['status'] = $status;
+            }
 
             $contacts = $this->query->findByFilters($filters, $limit, $offset);
             $total = $this->query->countByFilters($filters);
@@ -45,16 +50,18 @@ class Contacts extends ResourceObject
                 'offset' => $offset,
             ];
         }
+
         return $this;
     }
 
     #[RequireAuth(role: 'admin')]
-    public function onPut(int $id, int $status, ?string $response = null): static
+    public function onPut(int $id, int $status, string|null $response = null): static
     {
         $contact = $this->query->findById($id);
         if ($contact === null) {
             $this->code = 404;
             $this->body = ['error' => 'Contact not found'];
+
             return $this;
         }
 
@@ -67,7 +74,7 @@ class Contacts extends ResourceObject
                 $contact['email'],
                 "{$contact['name01']} {$contact['name02']}",
                 "Re: {$contact['subject']}",
-                $response
+                $response,
             );
         }
 
@@ -75,6 +82,7 @@ class Contacts extends ResourceObject
 
         $this->code = 200;
         $this->body = ['id' => $id, 'status' => $status];
+
         return $this;
     }
 
@@ -85,6 +93,7 @@ class Contacts extends ResourceObject
         if ($contact === null) {
             $this->code = 404;
             $this->body = ['error' => 'Contact not found'];
+
             return $this;
         }
 
@@ -92,6 +101,7 @@ class Contacts extends ResourceObject
 
         $this->code = 200;
         $this->body = ['deleted' => true];
+
         return $this;
     }
 }

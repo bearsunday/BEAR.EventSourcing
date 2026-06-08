@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
+use BEAR\EventSourcing\Query\CategoryQueryInterface;
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BEAR\EventSourcing\Query\CategoryQueryInterface;
 use Ray\Di\Di\Inject;
+
+use function array_filter;
 
 /**
  * Category resource (カテゴリ詳細)
@@ -18,12 +20,9 @@ use Ray\Di\Di\Inject;
  */
 class Category extends ResourceObject
 {
-    private CategoryQueryInterface $categoryQuery;
-
     #[Inject]
-    public function __construct(CategoryQueryInterface $categoryQuery)
+    public function __construct(private CategoryQueryInterface $categoryQuery)
     {
-        $this->categoryQuery = $categoryQuery;
     }
 
     /**
@@ -38,6 +37,7 @@ class Category extends ResourceObject
         if ($category === null) {
             $this->code = 404;
             $this->body = ['error' => 'Category not found'];
+
             return $this;
         }
 
@@ -56,15 +56,16 @@ class Category extends ResourceObject
      */
     public function onPut(
         int $id,
-        ?string $name = null,
-        ?int $parentId = null,
-        ?int $sortNo = null
+        string|null $name = null,
+        int|null $parentId = null,
+        int|null $sortNo = null,
     ): static {
         $category = $this->categoryQuery->findById($id);
 
         if ($category === null) {
             $this->code = 404;
             $this->body = ['error' => 'Category not found'];
+
             return $this;
         }
 
@@ -72,7 +73,7 @@ class Category extends ResourceObject
             'name' => $name,
             'parent_id' => $parentId,
             'sort_no' => $sortNo,
-        ], fn($v) => $v !== null);
+        ], static fn ($v) => $v !== null);
 
         $this->categoryQuery->update($id, $data);
 
@@ -93,14 +94,16 @@ class Category extends ResourceObject
         if ($category === null) {
             $this->code = 404;
             $this->body = ['error' => 'Category not found'];
+
             return $this;
         }
 
         // Check if category has children
         $children = $this->categoryQuery->findByParentId($id);
-        if (!empty($children)) {
+        if (! empty($children)) {
             $this->code = 400;
             $this->body = ['error' => 'Cannot delete category with children'];
+
             return $this;
         }
 

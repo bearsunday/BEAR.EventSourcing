@@ -9,64 +9,69 @@ namespace BEAR\EventSourcing\Entity;
  */
 class ProductTag extends AbstractEntity
 {
-    protected ?int $id = null;
-    protected ?int $productId = null;
-    protected ?int $tagId = null;
-    protected ?Product $product = null;
-    protected ?Tag $tag = null;
+    protected int|null $id = null;
+    protected int|null $productId = null;
+    protected int|null $tagId = null;
+    protected Product|null $product = null;
+    protected Tag|null $tag = null;
 
-    public function getId(): ?int
+    public function getId(): int|null
     {
         return $this->id;
     }
 
-    public function setId(?int $id): static
+    public function setId(int|null $id): static
     {
         $this->id = $id;
+
         return $this;
     }
 
-    public function getProductId(): ?int
+    public function getProductId(): int|null
     {
         return $this->productId;
     }
 
-    public function setProductId(?int $productId): static
+    public function setProductId(int|null $productId): static
     {
         $this->productId = $productId;
+
         return $this;
     }
 
-    public function getTagId(): ?int
+    public function getTagId(): int|null
     {
         return $this->tagId;
     }
 
-    public function setTagId(?int $tagId): static
+    public function setTagId(int|null $tagId): static
     {
         $this->tagId = $tagId;
+
         return $this;
     }
 
-    public function getProduct(): ?Product
+    public function getProduct(): Product|null
     {
         return $this->product;
     }
 
-    public function setProduct(?Product $product): static
+    public function setProduct(Product|null $product): static
     {
         $this->product = $product;
+
         return $this;
     }
 
-    public function getTag(): ?Tag
+    public function getTag(): Tag|null
     {
         return $this->tag;
     }
 
-    public function setTag(?Tag $tag): static
+    public function setTag(Tag|null $tag): static
     {
         $this->tag = $tag;
+
         return $this;
     }
 }

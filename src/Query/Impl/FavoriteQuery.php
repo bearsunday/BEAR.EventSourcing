@@ -10,7 +10,9 @@ use DateTimeImmutable;
 
 class FavoriteQuery implements FavoriteQueryInterface
 {
-    public function __construct(private readonly ExtendedPdo $pdo) {}
+    public function __construct(private readonly ExtendedPdo $pdo)
+    {
+    }
 
     public function findByCustomerId(int $customerId, int $limit = 20, int $offset = 0): array
     {
@@ -22,15 +24,15 @@ class FavoriteQuery implements FavoriteQueryInterface
              WHERE f.customer_id = :customer_id
              ORDER BY f.create_date DESC
              LIMIT :limit OFFSET :offset',
-            ['customer_id' => $customerId, 'limit' => $limit, 'offset' => $offset]
+            ['customer_id' => $customerId, 'limit' => $limit, 'offset' => $offset],
         );
     }
 
     public function countByCustomerId(int $customerId): int
     {
-        return (int)$this->pdo->fetchValue(
+        return (int) $this->pdo->fetchValue(
             'SELECT COUNT(*) FROM customer_favorite_product WHERE customer_id = :customer_id',
-            ['customer_id' => $customerId]
+            ['customer_id' => $customerId],
         );
     }
 
@@ -38,8 +40,9 @@ class FavoriteQuery implements FavoriteQueryInterface
     {
         $result = $this->pdo->fetchValue(
             'SELECT 1 FROM customer_favorite_product WHERE customer_id = :customer_id AND product_id = :product_id',
-            ['customer_id' => $customerId, 'product_id' => $productId]
+            ['customer_id' => $customerId, 'product_id' => $productId],
         );
+
         return $result !== false;
     }
 
@@ -48,16 +51,17 @@ class FavoriteQuery implements FavoriteQueryInterface
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
         $this->pdo->perform(
             'INSERT INTO customer_favorite_product (customer_id, product_id, create_date, update_date) VALUES (:customer_id, :product_id, :create_date, :update_date)',
-            ['customer_id' => $customerId, 'product_id' => $productId, 'create_date' => $now, 'update_date' => $now]
+            ['customer_id' => $customerId, 'product_id' => $productId, 'create_date' => $now, 'update_date' => $now],
         );
-        return (int)$this->pdo->lastInsertId();
+
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function remove(int $customerId, int $productId): void
     {
         $this->pdo->perform(
             'DELETE FROM customer_favorite_product WHERE customer_id = :customer_id AND product_id = :product_id',
-            ['customer_id' => $customerId, 'product_id' => $productId]
+            ['customer_id' => $customerId, 'product_id' => $productId],
         );
     }
 }

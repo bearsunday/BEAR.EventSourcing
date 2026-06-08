@@ -11,6 +11,7 @@ class Work extends AbstractMasterEntity
 {
     /** 稼働 */
     public const ACTIVE = 1;
+
     /** 非稼働 */
     public const INACTIVE = 0;
 }

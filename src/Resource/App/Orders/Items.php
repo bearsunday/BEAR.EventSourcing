@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Orders;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\OrderItemQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
 
 /**
@@ -13,12 +13,9 @@ use Ray\Di\Di\Inject;
  */
 class Items extends ResourceObject
 {
-    private OrderItemQueryInterface $orderItemQuery;
-
     #[Inject]
-    public function __construct(OrderItemQueryInterface $orderItemQuery)
+    public function __construct(private OrderItemQueryInterface $orderItemQuery)
     {
-        $this->orderItemQuery = $orderItemQuery;
     }
 
     /**
@@ -29,6 +26,7 @@ class Items extends ResourceObject
     public function onGet(int $id): static
     {
         $this->body = $this->orderItemQuery->findByOrderId($id);
+
         return $this;
     }
 }

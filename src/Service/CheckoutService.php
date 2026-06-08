@@ -14,6 +14,14 @@ use BEAR\EventSourcing\Query\ProductClassQueryInterface;
 use BEAR\EventSourcing\Query\ShippingQueryInterface;
 use DateTimeImmutable;
 use Ramsey\Uuid\Uuid;
+use RuntimeException;
+
+use function bcadd;
+use function bccomp;
+use function bcmul;
+use function bcsub;
+use function strtoupper;
+use function substr;
 
 /**
  * Checkout service implementation
@@ -33,9 +41,7 @@ class CheckoutService implements CheckoutServiceInterface
     ) {
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function preview(array $cart): array
     {
         $items = $cart['items'] ?? [];
@@ -43,7 +49,7 @@ class CheckoutService implements CheckoutServiceInterface
         $productItems = [];
 
         foreach ($items as $item) {
-            $itemTotal = bcmul($item['price'], (string)$item['quantity']);
+            $itemTotal = bcmul($item['price'], (string) $item['quantity']);
             $subtotal = bcadd($subtotal, $itemTotal);
 
             $productItems[] = [
@@ -73,16 +79,14 @@ class CheckoutService implements CheckoutServiceInterface
         ];
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function complete(array $data): int
     {
         $cart = $data['cart'];
         $items = $cart['items'] ?? [];
 
         if (empty($items)) {
-            throw new \RuntimeException('Cart is empty');
+            throw new RuntimeException('Cart is empty');
         }
 
         // Generate order number
@@ -104,7 +108,7 @@ class CheckoutService implements CheckoutServiceInterface
 
         // Apply point discount
         $usePoint = $data['use_point'] ?? 0;
-        $paymentTotal = bcsub($total, (string)$usePoint);
+        $paymentTotal = bcsub($total, (string) $usePoint);
 
         if (bccomp($paymentTotal, '0') < 0) {
             $paymentTotal = '0';
@@ -170,7 +174,7 @@ class CheckoutService implements CheckoutServiceInterface
             // Update stock
             $this->productClassQuery->updateStock(
                 $item['product_class_id'],
-                -$item['quantity']
+                -$item['quantity'],
             );
         }
 
@@ -190,6 +194,7 @@ class CheckoutService implements CheckoutServiceInterface
     {
         $date = (new DateTimeImmutable())->format('Ymd');
         $uuid = substr(Uuid::uuid4()->toString(), 0, 8);
+
         return $date . '-' . strtoupper($uuid);
     }
 
@@ -210,6 +215,6 @@ class CheckoutService implements CheckoutServiceInterface
     private function calculateAddPoint(string $subtotal): int
     {
         // 1% point back (simplified)
-        return (int)bcmul($subtotal, '0.01', 0);
+        return (int) bcmul($subtotal, '0.01', 0);
     }
 }

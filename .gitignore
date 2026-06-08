@@ -1,45 +1,28 @@
-# Composer
 /vendor/
-composer.lock
-
-# IDE
+/vendor-bin/*/vendor/
+/build/
+/composer.lock
+/.phpunit.result.cache
+/.phpunit.cache/
+/.phpcs-cache
+/coverage.xml
+.DS_Store
+Thumbs.db
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Log files
 *.log
 var/log/*
 !var/log/.gitkeep
-
-# Temp files
 var/tmp/*
 !var/tmp/.gitkeep
-
-# Cache
 var/cache/
-
-# Environment
 .env
 .env.local
 .env.*.local
-
-# PHPUnit
-.phpunit.result.cache
-phpunit.xml
-
-# PHPStan
-phpstan.neon
-
-# Build
-/build/
-
-# Coverage
-coverage/
-.coverage
+/vendor-slogger/vendor/
+/vendor-slogger/composer.lock
+/vendor-slogger/.phpunit.result.cache
+/vendor-slogger/.phpunit.cache/

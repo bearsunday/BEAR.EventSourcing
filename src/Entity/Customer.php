@@ -14,45 +14,46 @@ use DateTimeImmutable;
  */
 class Customer extends AbstractEntity
 {
-    protected ?int $id = null;
+    protected int|null $id = null;
     protected string $email = '';
-    protected ?string $password = null;
-    protected ?string $salt = null;
+    protected string|null $password = null;
+    protected string|null $salt = null;
     protected string $name01 = '';
     protected string $name02 = '';
-    protected ?string $kana01 = null;
-    protected ?string $kana02 = null;
-    protected ?string $companyName = null;
-    protected ?string $postalCode = null;
-    protected ?Pref $pref = null;
-    protected ?string $addr01 = null;
-    protected ?string $addr02 = null;
-    protected ?string $phoneNumber = null;
-    protected ?DateTimeImmutable $birth = null;
-    protected ?Sex $sex = null;
-    protected ?CustomerStatus $status = null;
-    protected ?string $secretKey = null;
-    protected ?string $resetKey = null;
-    protected ?DateTimeImmutable $resetExpire = null;
+    protected string|null $kana01 = null;
+    protected string|null $kana02 = null;
+    protected string|null $companyName = null;
+    protected string|null $postalCode = null;
+    protected Pref|null $pref = null;
+    protected string|null $addr01 = null;
+    protected string|null $addr02 = null;
+    protected string|null $phoneNumber = null;
+    protected DateTimeImmutable|null $birth = null;
+    protected Sex|null $sex = null;
+    protected CustomerStatus|null $status = null;
+    protected string|null $secretKey = null;
+    protected string|null $resetKey = null;
+    protected DateTimeImmutable|null $resetExpire = null;
     protected int $point = 0;
-    protected ?DateTimeImmutable $firstBuyDate = null;
-    protected ?DateTimeImmutable $lastBuyDate = null;
+    protected DateTimeImmutable|null $firstBuyDate = null;
+    protected DateTimeImmutable|null $lastBuyDate = null;
     protected string $buyTimes = '0';
     protected string $buyTotal = '0';
-    protected ?string $note = null;
+    protected string|null $note = null;
     /** @var CustomerAddress[] */
     protected array $customerAddresses = [];
     /** @var Order[] */
     protected array $orders = [];
 
-    public function getId(): ?int
+    public function getId(): int|null
     {
         return $this->id;
     }
 
-    public function setId(?int $id): static
+    public function setId(int|null $id): static
     {
         $this->id = $id;
+
         return $this;
     }
 
@@ -64,28 +65,31 @@ class Customer extends AbstractEntity
     public function setEmail(string $email): static
     {
         $this->email = $email;
+
         return $this;
     }
 
-    public function getPassword(): ?string
+    public function getPassword(): string|null
     {
         return $this->password;
     }
 
-    public function setPassword(?string $password): static
+    public function setPassword(string|null $password): static
     {
         $this->password = $password;
+
         return $this;
     }
 
-    public function getSalt(): ?string
+    public function getSalt(): string|null
     {
         return $this->salt;
     }
 
-    public function setSalt(?string $salt): static
+    public function setSalt(string|null $salt): static
     {
         $this->salt = $salt;
+
         return $this;
     }
 
@@ -97,6 +101,7 @@ class Customer extends AbstractEntity
     public function setName01(string $name01): static
     {
         $this->name01 = $name01;
+
         return $this;
     }
 
@@ -108,160 +113,175 @@ class Customer extends AbstractEntity
     public function setName02(string $name02): static
     {
         $this->name02 = $name02;
+
         return $this;
     }
 
-    public function getKana01(): ?string
+    public function getKana01(): string|null
     {
         return $this->kana01;
     }
 
-    public function setKana01(?string $kana01): static
+    public function setKana01(string|null $kana01): static
     {
         $this->kana01 = $kana01;
+
         return $this;
     }
 
-    public function getKana02(): ?string
+    public function getKana02(): string|null
     {
         return $this->kana02;
     }
 
-    public function setKana02(?string $kana02): static
+    public function setKana02(string|null $kana02): static
     {
         $this->kana02 = $kana02;
+
         return $this;
     }
 
-    public function getCompanyName(): ?string
+    public function getCompanyName(): string|null
     {
         return $this->companyName;
     }
 
-    public function setCompanyName(?string $companyName): static
+    public function setCompanyName(string|null $companyName): static
     {
         $this->companyName = $companyName;
+
         return $this;
     }
 
-    public function getPostalCode(): ?string
+    public function getPostalCode(): string|null
     {
         return $this->postalCode;
     }
 
-    public function setPostalCode(?string $postalCode): static
+    public function setPostalCode(string|null $postalCode): static
     {
         $this->postalCode = $postalCode;
+
         return $this;
     }
 
-    public function getPref(): ?Pref
+    public function getPref(): Pref|null
     {
         return $this->pref;
     }
 
-    public function setPref(?Pref $pref): static
+    public function setPref(Pref|null $pref): static
     {
         $this->pref = $pref;
+
         return $this;
     }
 
-    public function getAddr01(): ?string
+    public function getAddr01(): string|null
     {
         return $this->addr01;
     }
 
-    public function setAddr01(?string $addr01): static
+    public function setAddr01(string|null $addr01): static
     {
         $this->addr01 = $addr01;
+
         return $this;
     }
 
-    public function getAddr02(): ?string
+    public function getAddr02(): string|null
     {
         return $this->addr02;
     }
 
-    public function setAddr02(?string $addr02): static
+    public function setAddr02(string|null $addr02): static
     {
         $this->addr02 = $addr02;
+
         return $this;
     }
 
-    public function getPhoneNumber(): ?string
+    public function getPhoneNumber(): string|null
     {
         return $this->phoneNumber;
     }
 
-    public function setPhoneNumber(?string $phoneNumber): static
+    public function setPhoneNumber(string|null $phoneNumber): static
     {
         $this->phoneNumber = $phoneNumber;
+
         return $this;
     }
 
-    public function getBirth(): ?DateTimeImmutable
+    public function getBirth(): DateTimeImmutable|null
     {
         return $this->birth;
     }
 
-    public function setBirth(?DateTimeImmutable $birth): static
+    public function setBirth(DateTimeImmutable|null $birth): static
     {
         $this->birth = $birth;
+
         return $this;
     }
 
-    public function getSex(): ?Sex
+    public function getSex(): Sex|null
     {
         return $this->sex;
     }
 
-    public function setSex(?Sex $sex): static
+    public function setSex(Sex|null $sex): static
     {
         $this->sex = $sex;
+
         return $this;
     }
 
-    public function getStatus(): ?CustomerStatus
+    public function getStatus(): CustomerStatus|null
     {
         return $this->status;
     }
 
-    public function setStatus(?CustomerStatus $status): static
+    public function setStatus(CustomerStatus|null $status): static
     {
         $this->status = $status;
+
         return $this;
     }
 
-    public function getSecretKey(): ?string
+    public function getSecretKey(): string|null
     {
         return $this->secretKey;
     }
 
-    public function setSecretKey(?string $secretKey): static
+    public function setSecretKey(string|null $secretKey): static
     {
         $this->secretKey = $secretKey;
+
         return $this;
     }
 
-    public function getResetKey(): ?string
+    public function getResetKey(): string|null
     {
         return $this->resetKey;
     }
 
-    public function setResetKey(?string $resetKey): static
+    public function setResetKey(string|null $resetKey): static
     {
         $this->resetKey = $resetKey;
+
         return $this;
     }
 
-    public function getResetExpire(): ?DateTimeImmutable
+    public function getResetExpire(): DateTimeImmutable|null
     {
         return $this->resetExpire;
     }
 
-    public function setResetExpire(?DateTimeImmutable $resetExpire): static
+    public function setResetExpire(DateTimeImmutable|null $resetExpire): static
     {
         $this->resetExpire = $resetExpire;
+
         return $this;
     }
 
@@ -273,28 +293,31 @@ class Customer extends AbstractEntity
     public function setPoint(int $point): static
     {
         $this->point = $point;
+
         return $this;
     }
 
-    public function getFirstBuyDate(): ?DateTimeImmutable
+    public function getFirstBuyDate(): DateTimeImmutable|null
     {
         return $this->firstBuyDate;
     }
 
-    public function setFirstBuyDate(?DateTimeImmutable $firstBuyDate): static
+    public function setFirstBuyDate(DateTimeImmutable|null $firstBuyDate): static
     {
         $this->firstBuyDate = $firstBuyDate;
+
         return $this;
     }
 
-    public function getLastBuyDate(): ?DateTimeImmutable
+    public function getLastBuyDate(): DateTimeImmutable|null
     {
         return $this->lastBuyDate;
     }
 
-    public function setLastBuyDate(?DateTimeImmutable $lastBuyDate): static
+    public function setLastBuyDate(DateTimeImmutable|null $lastBuyDate): static
     {
         $this->lastBuyDate = $lastBuyDate;
+
         return $this;
     }
 
@@ -306,6 +329,7 @@ class Customer extends AbstractEntity
     public function setBuyTimes(string $buyTimes): static
     {
         $this->buyTimes = $buyTimes;
+
         return $this;
     }
 
@@ -317,51 +341,47 @@ class Customer extends AbstractEntity
     public function setBuyTotal(string $buyTotal): static
     {
         $this->buyTotal = $buyTotal;
+
         return $this;
     }
 
-    public function getNote(): ?string
+    public function getNote(): string|null
     {
         return $this->note;
     }
 
-    public function setNote(?string $note): static
+    public function setNote(string|null $note): static
     {
         $this->note = $note;
+
         return $this;
     }
 
-    /**
-     * @return CustomerAddress[]
-     */
+    /** @return CustomerAddress[] */
     public function getCustomerAddresses(): array
     {
         return $this->customerAddresses;
     }
 
-    /**
-     * @param CustomerAddress[] $customerAddresses
-     */
+    /** @param CustomerAddress[] $customerAddresses */
     public function setCustomerAddresses(array $customerAddresses): static
     {
         $this->customerAddresses = $customerAddresses;
+
         return $this;
     }
 
-    /**
-     * @return Order[]
-     */
+    /** @return Order[] */
     public function getOrders(): array
     {
         return $this->orders;
     }
 
-    /**
-     * @param Order[] $orders
-     */
+    /** @param Order[] $orders */
     public function setOrders(array $orders): static
     {
         $this->orders = $orders;
+
         return $this;
     }
 
@@ -387,6 +407,7 @@ class Customer extends AbstractEntity
     public function getAddress(): string
     {
         $prefName = $this->pref?->getName() ?? '';
+
         return $prefName . ($this->addr01 ?? '') . ($this->addr02 ?? '');
     }
 }

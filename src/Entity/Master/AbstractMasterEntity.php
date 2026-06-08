@@ -11,18 +11,19 @@ use BEAR\EventSourcing\Entity\AbstractEntity;
  */
 abstract class AbstractMasterEntity extends AbstractEntity
 {
-    protected ?int $id = null;
+    protected int|null $id = null;
     protected string $name = '';
     protected int $sortNo = 0;
 
-    public function getId(): ?int
+    public function getId(): int|null
     {
         return $this->id;
     }
 
-    public function setId(?int $id): static
+    public function setId(int|null $id): static
     {
         $this->id = $id;
+
         return $this;
     }
 
@@ -34,6 +35,7 @@ abstract class AbstractMasterEntity extends AbstractEntity
     public function setName(string $name): static
     {
         $this->name = $name;
+
         return $this;
     }
 
@@ -45,6 +47,7 @@ abstract class AbstractMasterEntity extends AbstractEntity
     public function setSortNo(int $sortNo): static
     {
         $this->sortNo = $sortNo;
+
         return $this;
     }
 }

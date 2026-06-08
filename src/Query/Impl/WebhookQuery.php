@@ -8,18 +8,28 @@ use Aura\Sql\ExtendedPdo;
 use BEAR\EventSourcing\Query\WebhookQueryInterface;
 use DateTimeImmutable;
 
+use function array_keys;
+use function array_map;
+use function bin2hex;
+use function implode;
+use function json_decode;
+use function json_encode;
+use function random_bytes;
+
 class WebhookQuery implements WebhookQueryInterface
 {
     public function __construct(
-        private readonly ExtendedPdo $pdo
-    ) {}
+        private readonly ExtendedPdo $pdo,
+    ) {
+    }
 
-    public function findById(int $id): ?array
+    public function findById(int $id): array|null
     {
         $result = $this->pdo->fetchOne('SELECT * FROM webhook WHERE id = :id', ['id' => $id]);
         if ($result) {
             $result['events'] = json_decode($result['events'] ?? '[]', true);
         }
+
         return $result ?: null;
     }
 
@@ -29,6 +39,7 @@ class WebhookQuery implements WebhookQueryInterface
         foreach ($results as &$result) {
             $result['events'] = json_decode($result['events'] ?? '[]', true);
         }
+
         return $results;
     }
 
@@ -36,11 +47,12 @@ class WebhookQuery implements WebhookQueryInterface
     {
         $results = $this->pdo->fetchAll(
             "SELECT * FROM webhook WHERE enabled = 1 AND JSON_CONTAINS(events, :event, '$')",
-            ['event' => json_encode($event)]
+            ['event' => json_encode($event)],
         );
         foreach ($results as &$result) {
             $result['events'] = json_decode($result['events'] ?? '[]', true);
         }
+
         return $results;
     }
 
@@ -58,9 +70,10 @@ class WebhookQuery implements WebhookQueryInterface
                 'enabled' => $data['enabled'] ?? 1,
                 'create_date' => $now,
                 'update_date' => $now,
-            ]
+            ],
         );
-        return (int)$this->pdo->lastInsertId();
+
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function update(int $id, array $data): void
@@ -68,8 +81,9 @@ class WebhookQuery implements WebhookQueryInterface
         if (isset($data['events'])) {
             $data['events'] = json_encode($data['events']);
         }
+
         $data['update_date'] = (new DateTimeImmutable())->format('Y-m-d H:i:s');
-        $sets = array_map(fn($k) => "{$k} = :{$k}", array_keys($data));
+        $sets = array_map(static fn ($k) => "{$k} = :{$k}", array_keys($data));
         $data['id'] = $id;
         $this->pdo->perform('UPDATE webhook SET ' . implode(', ', $sets) . ' WHERE id = :id', $data);
     }
@@ -79,7 +93,7 @@ class WebhookQuery implements WebhookQueryInterface
         $this->pdo->perform('DELETE FROM webhook WHERE id = :id', ['id' => $id]);
     }
 
-    public function logDelivery(int $webhookId, string $event, string $payload, int $responseCode, ?string $responseBody, bool $success): int
+    public function logDelivery(int $webhookId, string $event, string $payload, int $responseCode, string|null $responseBody, bool $success): int
     {
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
         $this->pdo->perform(
@@ -93,16 +107,17 @@ class WebhookQuery implements WebhookQueryInterface
                 'response_body' => $responseBody,
                 'success' => $success ? 1 : 0,
                 'create_date' => $now,
-            ]
+            ],
         );
-        return (int)$this->pdo->lastInsertId();
+
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function getDeliveryLogs(int $webhookId, int $limit = 50): array
     {
         return $this->pdo->fetchAll(
             'SELECT * FROM webhook_log WHERE webhook_id = :webhook_id ORDER BY create_date DESC LIMIT :limit',
-            ['webhook_id' => $webhookId, 'limit' => $limit]
+            ['webhook_id' => $webhookId, 'limit' => $limit],
         );
     }
 }

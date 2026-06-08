@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Products;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\ProductImageQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
 
 /**
@@ -13,12 +13,9 @@ use Ray\Di\Di\Inject;
  */
 class Images extends ResourceObject
 {
-    private ProductImageQueryInterface $productImageQuery;
-
     #[Inject]
-    public function __construct(ProductImageQueryInterface $productImageQuery)
+    public function __construct(private ProductImageQueryInterface $productImageQuery)
     {
-        $this->productImageQuery = $productImageQuery;
     }
 
     /**
@@ -29,6 +26,7 @@ class Images extends ResourceObject
     public function onGet(int $id): static
     {
         $this->body = $this->productImageQuery->findByProductId($id);
+
         return $this;
     }
 

@@ -8,21 +8,29 @@ use Aura\Sql\ExtendedPdo;
 use BEAR\EventSourcing\Query\PluginQueryInterface;
 use DateTimeImmutable;
 
+use function array_keys;
+use function array_map;
+use function array_merge;
+use function implode;
+
 class PluginQuery implements PluginQueryInterface
 {
     public function __construct(
-        private readonly ExtendedPdo $pdo
-    ) {}
+        private readonly ExtendedPdo $pdo,
+    ) {
+    }
 
-    public function findById(int $id): ?array
+    public function findById(int $id): array|null
     {
         $result = $this->pdo->fetchOne('SELECT * FROM plugin WHERE id = :id', ['id' => $id]);
+
         return $result ?: null;
     }
 
-    public function findByCode(string $code): ?array
+    public function findByCode(string $code): array|null
     {
         $result = $this->pdo->fetchOne('SELECT * FROM plugin WHERE code = :code', ['code' => $code]);
+
         return $result ?: null;
     }
 
@@ -32,7 +40,9 @@ class PluginQuery implements PluginQueryInterface
         if ($enabledOnly) {
             $sql .= ' WHERE enabled = 1';
         }
+
         $sql .= ' ORDER BY sort_no ASC';
+
         return $this->pdo->fetchAll($sql);
     }
 
@@ -47,9 +57,10 @@ class PluginQuery implements PluginQueryInterface
                 'sort_no' => $data['sort_no'] ?? 0,
                 'create_date' => $now,
                 'update_date' => $now,
-            ])
+            ]),
         );
-        return (int)$this->pdo->lastInsertId();
+
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function enable(int $id): void
@@ -57,7 +68,7 @@ class PluginQuery implements PluginQueryInterface
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
         $this->pdo->perform(
             'UPDATE plugin SET enabled = 1, update_date = :update_date WHERE id = :id',
-            ['id' => $id, 'update_date' => $now]
+            ['id' => $id, 'update_date' => $now],
         );
     }
 
@@ -66,7 +77,7 @@ class PluginQuery implements PluginQueryInterface
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
         $this->pdo->perform(
             'UPDATE plugin SET enabled = 0, update_date = :update_date WHERE id = :id',
-            ['id' => $id, 'update_date' => $now]
+            ['id' => $id, 'update_date' => $now],
         );
     }
 
@@ -78,7 +89,7 @@ class PluginQuery implements PluginQueryInterface
     public function update(int $id, array $data): void
     {
         $data['update_date'] = (new DateTimeImmutable())->format('Y-m-d H:i:s');
-        $sets = array_map(fn($k) => "{$k} = :{$k}", array_keys($data));
+        $sets = array_map(static fn ($k) => "{$k} = :{$k}", array_keys($data));
         $data['id'] = $id;
         $this->pdo->perform('UPDATE plugin SET ' . implode(', ', $sets) . ' WHERE id = :id', $data);
     }

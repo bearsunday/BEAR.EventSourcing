@@ -6,5 +6,5 @@ namespace BEAR\EventSourcing\Service;
 
 interface MailerInterface
 {
-    public function send(string $to, string $subject, string $body, ?string $htmlBody = null): bool;
+    public function send(string $to, string $subject, string $body, string|null $htmlBody = null): bool;
 }

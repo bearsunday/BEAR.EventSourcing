@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Products;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\ProductCategoryQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
 
 /**
@@ -13,12 +13,9 @@ use Ray\Di\Di\Inject;
  */
 class Categories extends ResourceObject
 {
-    private ProductCategoryQueryInterface $productCategoryQuery;
-
     #[Inject]
-    public function __construct(ProductCategoryQueryInterface $productCategoryQuery)
+    public function __construct(private ProductCategoryQueryInterface $productCategoryQuery)
     {
-        $this->productCategoryQuery = $productCategoryQuery;
     }
 
     /**
@@ -29,6 +26,7 @@ class Categories extends ResourceObject
     public function onGet(int $id): static
     {
         $this->body = $this->productCategoryQuery->findByProductId($id);
+
         return $this;
     }
 

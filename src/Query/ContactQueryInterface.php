@@ -6,7 +6,7 @@ namespace BEAR\EventSourcing\Query;
 
 interface ContactQueryInterface
 {
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
     public function findByFilters(array $filters, int $limit = 20, int $offset = 0): array;
 

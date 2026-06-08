@@ -12,13 +12,11 @@ use BEAR\EventSourcing\Query\ProductClassQueryInterface;
 class StockService implements StockServiceInterface
 {
     public function __construct(
-        private readonly ProductClassQueryInterface $productClassQuery
+        private readonly ProductClassQueryInterface $productClassQuery,
     ) {
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function checkStock(int $productClassId, int $quantity): bool
     {
         $productClass = $this->productClassQuery->findById($productClassId);
@@ -34,10 +32,8 @@ class StockService implements StockServiceInterface
         return $productClass['stock'] >= $quantity;
     }
 
-    /**
-     * @inheritDoc
-     */
-    public function getStock(int $productClassId): ?int
+    /** @inheritDoc */
+    public function getStock(int $productClassId): int|null
     {
         $productClass = $this->productClassQuery->findById($productClassId);
 
@@ -49,34 +45,29 @@ class StockService implements StockServiceInterface
             return null; // null indicates unlimited
         }
 
-        return (int)$productClass['stock'];
+        return (int) $productClass['stock'];
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function reduceStock(int $productClassId, int $quantity): bool
     {
-        if (!$this->checkStock($productClassId, $quantity)) {
+        if (! $this->checkStock($productClassId, $quantity)) {
             return false;
         }
 
         $this->productClassQuery->updateStock($productClassId, -$quantity);
+
         return true;
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function addStock(int $productClassId, int $quantity): void
     {
         $this->productClassQuery->updateStock($productClassId, $quantity);
     }
 
-    /**
-     * @inheritDoc
-     */
-    public function setStock(int $productClassId, ?int $stock, bool $unlimited = false): void
+    /** @inheritDoc */
+    public function setStock(int $productClassId, int|null $stock, bool $unlimited = false): void
     {
         $this->productClassQuery->update($productClassId, [
             'stock' => $stock,

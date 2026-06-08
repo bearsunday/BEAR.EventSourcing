@@ -21,17 +21,17 @@ interface CustomerQueryInterface
      * @return array<int, array<string, mixed>>
      */
     public function findAll(
-        ?string $email = null,
-        ?string $name = null,
-        ?int $status = null,
+        string|null $email = null,
+        string|null $name = null,
+        int|null $status = null,
         int $limit = 20,
-        int $offset = 0
+        int $offset = 0,
     ): array;
 
     /**
      * Count customers with optional filters
      */
-    public function count(?string $email = null, ?string $name = null, ?int $status = null): int;
+    public function count(string|null $email = null, string|null $name = null, int|null $status = null): int;
 
     /**
      * Find customer by ID
@@ -40,7 +40,7 @@ interface CustomerQueryInterface
      *
      * @return array<string, mixed>|null
      */
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
     /**
      * Find customer by email
@@ -49,7 +49,7 @@ interface CustomerQueryInterface
      *
      * @return array<string, mixed>|null
      */
-    public function findByEmail(string $email): ?array;
+    public function findByEmail(string $email): array|null;
 
     /**
      * Create a new customer

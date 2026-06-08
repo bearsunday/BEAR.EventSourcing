@@ -4,21 +4,23 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\CouponQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
+
+use function bccomp;
+use function bcdiv;
+use function bcmul;
+use function bcsub;
 
 /**
  * Coupons resource (クーポン)
  */
 class Coupons extends ResourceObject
 {
-    private CouponQueryInterface $couponQuery;
-
     #[Inject]
-    public function __construct(CouponQueryInterface $couponQuery)
+    public function __construct(private CouponQueryInterface $couponQuery)
     {
-        $this->couponQuery = $couponQuery;
     }
 
     /**
@@ -33,16 +35,19 @@ class Coupons extends ResourceObject
         if ($coupon === null) {
             $this->code = 404;
             $this->body = ['error' => 'Coupon not found'];
+
             return $this;
         }
 
-        if (!$coupon['is_available']) {
+        if (! $coupon['is_available']) {
             $this->code = 400;
             $this->body = ['error' => 'Coupon is not available'];
+
             return $this;
         }
 
         $this->body = $coupon;
+
         return $this;
     }
 
@@ -59,12 +64,14 @@ class Coupons extends ResourceObject
         if ($coupon === null) {
             $this->code = 404;
             $this->body = ['error' => 'Coupon not found'];
+
             return $this;
         }
 
-        if (!$coupon['is_available']) {
+        if (! $coupon['is_available']) {
             $this->code = 400;
             $this->body = ['error' => 'Coupon is not available'];
+
             return $this;
         }
 
@@ -75,6 +82,7 @@ class Coupons extends ResourceObject
                 'error' => 'Order amount is below minimum',
                 'minimum' => $coupon['coupon_lower_limit'],
             ];
+
             return $this;
         }
 
@@ -96,6 +104,7 @@ class Coupons extends ResourceObject
         if ($coupon['discount_type'] === 'rate') {
             return bcmul($subtotal, bcdiv($coupon['discount_rate'], '100', 4), 0);
         }
+
         return $coupon['discount_price'];
     }
 }

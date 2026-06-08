@@ -11,8 +11,9 @@ use DateTimeImmutable;
 class OrderStatusHistoryQuery implements OrderStatusHistoryQueryInterface
 {
     public function __construct(
-        private readonly ExtendedPdo $pdo
-    ) {}
+        private readonly ExtendedPdo $pdo,
+    ) {
+    }
 
     public function findByOrderId(int $orderId): array
     {
@@ -23,11 +24,11 @@ class OrderStatusHistoryQuery implements OrderStatusHistoryQueryInterface
              LEFT JOIN member m ON osh.member_id = m.id
              WHERE osh.order_id = :order_id
              ORDER BY osh.create_date ASC',
-            ['order_id' => $orderId]
+            ['order_id' => $orderId],
         );
     }
 
-    public function create(int $orderId, int $orderStatusId, ?int $memberId = null, ?string $note = null): int
+    public function create(int $orderId, int $orderStatusId, int|null $memberId = null, string|null $note = null): int
     {
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
         $this->pdo->perform(
@@ -39,8 +40,9 @@ class OrderStatusHistoryQuery implements OrderStatusHistoryQueryInterface
                 'member_id' => $memberId,
                 'note' => $note,
                 'create_date' => $now,
-            ]
+            ],
         );
-        return (int)$this->pdo->lastInsertId();
+
+        return (int) $this->pdo->lastInsertId();
     }
 }

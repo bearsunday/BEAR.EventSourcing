@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Admin;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Annotation\RequireAuth;
 use BEAR\EventSourcing\Query\PointQueryInterface;
+use BEAR\Resource\ResourceObject;
 
 class Points extends ResourceObject
 {
     public function __construct(
-        private readonly PointQueryInterface $query
-    ) {}
+        private readonly PointQueryInterface $query,
+    ) {
+    }
 
     #[RequireAuth(role: 'admin')]
     public function onGet(int $customer_id, int $limit = 50, int $offset = 0): static
@@ -25,6 +26,7 @@ class Points extends ResourceObject
             'balance' => $balance,
             'history' => $history,
         ];
+
         return $this;
     }
 
@@ -41,6 +43,7 @@ class Points extends ResourceObject
             'adjusted' => $point,
             'new_balance' => $newBalance,
         ];
+
         return $this;
     }
 }

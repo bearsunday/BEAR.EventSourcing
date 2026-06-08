@@ -4,28 +4,32 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Entity;
 
+use function array_unshift;
+use function implode;
+
 /**
  * Category entity (カテゴリ)
  */
 class Category extends AbstractEntity
 {
-    protected ?int $id = null;
+    protected int|null $id = null;
     protected string $name = '';
     protected int $sortNo = 0;
     protected int $level = 1;
-    protected ?int $parentId = null;
-    protected ?Category $parent = null;
+    protected int|null $parentId = null;
+    protected Category|null $parent = null;
     /** @var Category[] */
     protected array $children = [];
 
-    public function getId(): ?int
+    public function getId(): int|null
     {
         return $this->id;
     }
 
-    public function setId(?int $id): static
+    public function setId(int|null $id): static
     {
         $this->id = $id;
+
         return $this;
     }
 
@@ -37,6 +41,7 @@ class Category extends AbstractEntity
     public function setName(string $name): static
     {
         $this->name = $name;
+
         return $this;
     }
 
@@ -48,6 +53,7 @@ class Category extends AbstractEntity
     public function setSortNo(int $sortNo): static
     {
         $this->sortNo = $sortNo;
+
         return $this;
     }
 
@@ -59,51 +65,52 @@ class Category extends AbstractEntity
     public function setLevel(int $level): static
     {
         $this->level = $level;
+
         return $this;
     }
 
-    public function getParentId(): ?int
+    public function getParentId(): int|null
     {
         return $this->parentId;
     }
 
-    public function setParentId(?int $parentId): static
+    public function setParentId(int|null $parentId): static
     {
         $this->parentId = $parentId;
+
         return $this;
     }
 
-    public function getParent(): ?Category
+    public function getParent(): Category|null
     {
         return $this->parent;
     }
 
-    public function setParent(?Category $parent): static
+    public function setParent(Category|null $parent): static
     {
         $this->parent = $parent;
+
         return $this;
     }
 
-    /**
-     * @return Category[]
-     */
+    /** @return Category[] */
     public function getChildren(): array
     {
         return $this->children;
     }
 
-    /**
-     * @param Category[] $children
-     */
+    /** @param Category[] $children */
     public function setChildren(array $children): static
     {
         $this->children = $children;
+
         return $this;
     }
 
     public function addChild(Category $child): static
     {
         $this->children[] = $child;
+
         return $this;
     }
 

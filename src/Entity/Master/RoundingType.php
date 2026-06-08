@@ -11,8 +11,10 @@ class RoundingType extends AbstractMasterEntity
 {
     /** 四捨五入 */
     public const ROUND = 1;
+
     /** 切り捨て */
     public const FLOOR = 2;
+
     /** 切り上げ */
     public const CEIL = 3;
 }

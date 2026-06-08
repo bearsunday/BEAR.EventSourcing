@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
+use BEAR\EventSourcing\Query\ProductQueryInterface;
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BEAR\EventSourcing\Query\ProductQueryInterface;
 use Ray\Di\Di\Inject;
+
+use function array_filter;
 
 /**
  * Product resource (商品詳細)
@@ -19,12 +21,9 @@ use Ray\Di\Di\Inject;
  */
 class Product extends ResourceObject
 {
-    private ProductQueryInterface $productQuery;
-
     #[Inject]
-    public function __construct(ProductQueryInterface $productQuery)
+    public function __construct(private ProductQueryInterface $productQuery)
     {
-        $this->productQuery = $productQuery;
     }
 
     /**
@@ -43,6 +42,7 @@ class Product extends ResourceObject
         if ($product === null) {
             $this->code = 404;
             $this->body = ['error' => 'Product not found'];
+
             return $this;
         }
 
@@ -64,18 +64,19 @@ class Product extends ResourceObject
      */
     public function onPut(
         int $id,
-        ?string $name = null,
-        ?int $status = null,
-        ?string $descriptionList = null,
-        ?string $descriptionDetail = null,
-        ?string $searchWord = null,
-        ?string $note = null
+        string|null $name = null,
+        int|null $status = null,
+        string|null $descriptionList = null,
+        string|null $descriptionDetail = null,
+        string|null $searchWord = null,
+        string|null $note = null,
     ): static {
         $product = $this->productQuery->findById($id);
 
         if ($product === null) {
             $this->code = 404;
             $this->body = ['error' => 'Product not found'];
+
             return $this;
         }
 
@@ -86,7 +87,7 @@ class Product extends ResourceObject
             'description_detail' => $descriptionDetail,
             'search_word' => $searchWord,
             'note' => $note,
-        ], fn($v) => $v !== null);
+        ], static fn ($v) => $v !== null);
 
         $this->productQuery->update($id, $data);
 
@@ -107,6 +108,7 @@ class Product extends ResourceObject
         if ($product === null) {
             $this->code = 404;
             $this->body = ['error' => 'Product not found'];
+
             return $this;
         }
 

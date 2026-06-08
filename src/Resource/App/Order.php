@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
+use BEAR\EventSourcing\Query\OrderQueryInterface;
 use BEAR\Resource\Annotation\Embed;
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BEAR\EventSourcing\Query\OrderQueryInterface;
 use Ray\Di\Di\Inject;
+
+use function array_filter;
 
 /**
  * Order resource (注文詳細)
@@ -19,12 +21,9 @@ use Ray\Di\Di\Inject;
  */
 class Order extends ResourceObject
 {
-    private OrderQueryInterface $orderQuery;
-
     #[Inject]
-    public function __construct(OrderQueryInterface $orderQuery)
+    public function __construct(private OrderQueryInterface $orderQuery)
     {
-        $this->orderQuery = $orderQuery;
     }
 
     /**
@@ -42,6 +41,7 @@ class Order extends ResourceObject
         if ($order === null) {
             $this->code = 404;
             $this->body = ['error' => 'Order not found'];
+
             return $this;
         }
 
@@ -53,24 +53,25 @@ class Order extends ResourceObject
     /**
      * Update order status
      *
-     * @param int      $id      Order ID
-     * @param int|null $status  Order status ID
-     * @param string|null $note Admin note
+     * @param int         $id     Order ID
+     * @param int|null    $status Order status ID
+     * @param string|null $note   Admin note
      */
-    public function onPut(int $id, ?int $status = null, ?string $note = null): static
+    public function onPut(int $id, int|null $status = null, string|null $note = null): static
     {
         $order = $this->orderQuery->findById($id);
 
         if ($order === null) {
             $this->code = 404;
             $this->body = ['error' => 'Order not found'];
+
             return $this;
         }
 
         $data = array_filter([
             'order_status_id' => $status,
             'note' => $note,
-        ], fn($v) => $v !== null);
+        ], static fn ($v) => $v !== null);
 
         $this->orderQuery->update($id, $data);
 
@@ -91,6 +92,7 @@ class Order extends ResourceObject
         if ($order === null) {
             $this->code = 404;
             $this->body = ['error' => 'Order not found'];
+
             return $this;
         }
 

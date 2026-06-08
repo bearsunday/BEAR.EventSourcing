@@ -7,9 +7,14 @@ namespace BEAR\EventSourcing\Query\Impl;
 use Aura\Sql\ExtendedPdo;
 use BEAR\EventSourcing\Query\SearchQueryInterface;
 
+use function implode;
+use function strtoupper;
+
 class SearchQuery implements SearchQueryInterface
 {
-    public function __construct(private readonly ExtendedPdo $pdo) {}
+    public function __construct(private readonly ExtendedPdo $pdo)
+    {
+    }
 
     public function searchProducts(array $filters, string $sort, string $order, int $limit, int $offset): array
     {
@@ -32,7 +37,8 @@ class SearchQuery implements SearchQueryInterface
     public function countProducts(array $filters): int
     {
         [$sql, $params] = $this->buildSearchQuery($filters, true);
-        return (int)$this->pdo->fetchValue($sql, $params);
+
+        return (int) $this->pdo->fetchValue($sql, $params);
     }
 
     public function getFacets(array $filters): array
@@ -78,34 +84,34 @@ class SearchQuery implements SearchQueryInterface
 
         $where = ['p.product_status_id = 1'];
 
-        if (!empty($filters['category_id'])) {
+        if (! empty($filters['category_id'])) {
             $sql .= ' JOIN product_category pcat ON pcat.product_id = p.id';
             $where[] = 'pcat.category_id = :category_id';
             $params['category_id'] = $filters['category_id'];
         }
 
-        if (!empty($filters['keyword'])) {
+        if (! empty($filters['keyword'])) {
             $where[] = '(p.name LIKE :keyword OR p.search_word LIKE :keyword OR p.description_detail LIKE :keyword)';
             $params['keyword'] = '%' . $filters['keyword'] . '%';
         }
 
-        if (!empty($filters['price_min'])) {
+        if (! empty($filters['price_min'])) {
             $where[] = 'pc2.price02 >= :price_min';
             $params['price_min'] = $filters['price_min'];
         }
 
-        if (!empty($filters['price_max'])) {
+        if (! empty($filters['price_max'])) {
             $where[] = 'pc2.price02 <= :price_max';
             $params['price_max'] = $filters['price_max'];
         }
 
-        if (!empty($filters['in_stock'])) {
+        if (! empty($filters['in_stock'])) {
             $where[] = '(pc2.stock_unlimited = 1 OR pc2.stock > 0)';
         }
 
         $sql .= ' WHERE ' . implode(' AND ', $where);
 
-        if (!$countOnly) {
+        if (! $countOnly) {
             $sql .= ' GROUP BY p.id';
         }
 

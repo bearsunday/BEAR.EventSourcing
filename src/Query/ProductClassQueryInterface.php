@@ -25,7 +25,7 @@ interface ProductClassQueryInterface
      *
      * @return array<string, mixed>|null
      */
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
     /**
      * Create a new product class

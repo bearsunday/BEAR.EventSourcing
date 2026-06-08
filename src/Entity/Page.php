@@ -11,55 +11,163 @@ use BEAR\EventSourcing\Entity\Master\PageType;
  */
 class Page extends AbstractEntity
 {
-    protected ?int $id = null;
-    protected ?PageType $pageType = null;
+    protected int|null $id = null;
+    protected PageType|null $pageType = null;
     protected string $name = '';
     protected string $url = '';
-    protected ?string $fileName = null;
-    protected ?string $author = null;
-    protected ?string $description = null;
-    protected ?string $keyword = null;
-    protected ?string $metaRobots = null;
-    protected ?string $metaTags = null;
+    protected string|null $fileName = null;
+    protected string|null $author = null;
+    protected string|null $description = null;
+    protected string|null $keyword = null;
+    protected string|null $metaRobots = null;
+    protected string|null $metaTags = null;
     protected int $editType = 0; // 0: user, 1: system
     /** @var PageLayout[] */
     protected array $pageLayouts = [];
 
-    public function getId(): ?int { return $this->id; }
-    public function setId(?int $id): static { $this->id = $id; return $this; }
+    public function getId(): int|null
+    {
+        return $this->id;
+    }
 
-    public function getPageType(): ?PageType { return $this->pageType; }
-    public function setPageType(?PageType $pageType): static { $this->pageType = $pageType; return $this; }
+    public function setId(int|null $id): static
+    {
+        $this->id = $id;
 
-    public function getName(): string { return $this->name; }
-    public function setName(string $name): static { $this->name = $name; return $this; }
+        return $this;
+    }
 
-    public function getUrl(): string { return $this->url; }
-    public function setUrl(string $url): static { $this->url = $url; return $this; }
+    public function getPageType(): PageType|null
+    {
+        return $this->pageType;
+    }
 
-    public function getFileName(): ?string { return $this->fileName; }
-    public function setFileName(?string $fileName): static { $this->fileName = $fileName; return $this; }
+    public function setPageType(PageType|null $pageType): static
+    {
+        $this->pageType = $pageType;
 
-    public function getAuthor(): ?string { return $this->author; }
-    public function setAuthor(?string $author): static { $this->author = $author; return $this; }
+        return $this;
+    }
 
-    public function getDescription(): ?string { return $this->description; }
-    public function setDescription(?string $description): static { $this->description = $description; return $this; }
+    public function getName(): string
+    {
+        return $this->name;
+    }
 
-    public function getKeyword(): ?string { return $this->keyword; }
-    public function setKeyword(?string $keyword): static { $this->keyword = $keyword; return $this; }
+    public function setName(string $name): static
+    {
+        $this->name = $name;
 
-    public function getMetaRobots(): ?string { return $this->metaRobots; }
-    public function setMetaRobots(?string $metaRobots): static { $this->metaRobots = $metaRobots; return $this; }
+        return $this;
+    }
 
-    public function getMetaTags(): ?string { return $this->metaTags; }
-    public function setMetaTags(?string $metaTags): static { $this->metaTags = $metaTags; return $this; }
+    public function getUrl(): string
+    {
+        return $this->url;
+    }
 
-    public function getEditType(): int { return $this->editType; }
-    public function setEditType(int $editType): static { $this->editType = $editType; return $this; }
+    public function setUrl(string $url): static
+    {
+        $this->url = $url;
+
+        return $this;
+    }
+
+    public function getFileName(): string|null
+    {
+        return $this->fileName;
+    }
+
+    public function setFileName(string|null $fileName): static
+    {
+        $this->fileName = $fileName;
+
+        return $this;
+    }
+
+    public function getAuthor(): string|null
+    {
+        return $this->author;
+    }
+
+    public function setAuthor(string|null $author): static
+    {
+        $this->author = $author;
+
+        return $this;
+    }
+
+    public function getDescription(): string|null
+    {
+        return $this->description;
+    }
+
+    public function setDescription(string|null $description): static
+    {
+        $this->description = $description;
+
+        return $this;
+    }
+
+    public function getKeyword(): string|null
+    {
+        return $this->keyword;
+    }
+
+    public function setKeyword(string|null $keyword): static
+    {
+        $this->keyword = $keyword;
+
+        return $this;
+    }
+
+    public function getMetaRobots(): string|null
+    {
+        return $this->metaRobots;
+    }
+
+    public function setMetaRobots(string|null $metaRobots): static
+    {
+        $this->metaRobots = $metaRobots;
+
+        return $this;
+    }
+
+    public function getMetaTags(): string|null
+    {
+        return $this->metaTags;
+    }
+
+    public function setMetaTags(string|null $metaTags): static
+    {
+        $this->metaTags = $metaTags;
+
+        return $this;
+    }
+
+    public function getEditType(): int
+    {
+        return $this->editType;
+    }
+
+    public function setEditType(int $editType): static
+    {
+        $this->editType = $editType;
+
+        return $this;
+    }
 
     /** @return PageLayout[] */
-    public function getPageLayouts(): array { return $this->pageLayouts; }
+    public function getPageLayouts(): array
+    {
+        return $this->pageLayouts;
+    }
+
     /** @param PageLayout[] $pageLayouts */
-    public function setPageLayouts(array $pageLayouts): static { $this->pageLayouts = $pageLayouts; return $this; }
+    public function setPageLayouts(array $pageLayouts): static
+    {
+        $this->pageLayouts = $pageLayouts;
+
+        return $this;
+    }
 }

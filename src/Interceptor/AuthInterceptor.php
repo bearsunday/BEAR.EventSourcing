@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Interceptor;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Auth\AuthServiceInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Aop\MethodInterceptor;
 use Ray\Aop\MethodInvocation;
+
+use function method_exists;
+use function str_starts_with;
+use function strtolower;
+use function substr;
 
 /**
  * Authentication interceptor
@@ -15,7 +20,7 @@ use Ray\Aop\MethodInvocation;
 class AuthInterceptor implements MethodInterceptor
 {
     public function __construct(
-        private readonly AuthServiceInterface $authService
+        private readonly AuthServiceInterface $authService,
     ) {
     }
 
@@ -29,6 +34,7 @@ class AuthInterceptor implements MethodInterceptor
         if ($token === null) {
             $resource->code = 401;
             $resource->body = ['error' => 'Authentication required'];
+
             return $resource;
         }
 
@@ -37,6 +43,7 @@ class AuthInterceptor implements MethodInterceptor
         if ($user === null) {
             $resource->code = 401;
             $resource->body = ['error' => 'Invalid or expired token'];
+
             return $resource;
         }
 
@@ -48,15 +55,17 @@ class AuthInterceptor implements MethodInterceptor
         return $invocation->proceed();
     }
 
-    private function extractToken(ResourceObject $resource): ?string
+    private function extractToken(ResourceObject $resource): string|null
     {
         // Try Authorization header
         $headers = $resource->headers ?? [];
         foreach ($headers as $name => $value) {
-            if (strtolower($name) === 'authorization') {
-                if (str_starts_with($value, 'Bearer ')) {
-                    return substr($value, 7);
-                }
+            if (strtolower($name) !== 'authorization') {
+                continue;
+            }
+
+            if (str_starts_with($value, 'Bearer ')) {
+                return substr($value, 7);
             }
         }
 

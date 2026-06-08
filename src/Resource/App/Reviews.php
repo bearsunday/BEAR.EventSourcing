@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\ReviewQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
 
 /**
@@ -13,12 +13,9 @@ use Ray\Di\Di\Inject;
  */
 class Reviews extends ResourceObject
 {
-    private ReviewQueryInterface $reviewQuery;
-
     #[Inject]
-    public function __construct(ReviewQueryInterface $reviewQuery)
+    public function __construct(private ReviewQueryInterface $reviewQuery)
     {
-        $this->reviewQuery = $reviewQuery;
     }
 
     /**
@@ -62,12 +59,13 @@ class Reviews extends ResourceObject
         string $title,
         string $comment,
         string $reviewerName,
-        ?int $customerId = null,
-        ?string $reviewerUrl = null
+        int|null $customerId = null,
+        string|null $reviewerUrl = null,
     ): static {
         if ($rating < 1 || $rating > 5) {
             $this->code = 400;
             $this->body = ['error' => 'Rating must be between 1 and 5'];
+
             return $this;
         }
 

@@ -23,24 +23,24 @@ interface OrderQueryInterface
      * @return array<int, array<string, mixed>>
      */
     public function findAll(
-        ?int $customerId = null,
-        ?int $status = null,
-        ?string $orderNo = null,
-        ?string $dateFrom = null,
-        ?string $dateTo = null,
+        int|null $customerId = null,
+        int|null $status = null,
+        string|null $orderNo = null,
+        string|null $dateFrom = null,
+        string|null $dateTo = null,
         int $limit = 20,
-        int $offset = 0
+        int $offset = 0,
     ): array;
 
     /**
      * Count orders with optional filters
      */
     public function count(
-        ?int $customerId = null,
-        ?int $status = null,
-        ?string $orderNo = null,
-        ?string $dateFrom = null,
-        ?string $dateTo = null
+        int|null $customerId = null,
+        int|null $status = null,
+        string|null $orderNo = null,
+        string|null $dateFrom = null,
+        string|null $dateTo = null,
     ): int;
 
     /**
@@ -50,7 +50,7 @@ interface OrderQueryInterface
      *
      * @return array<string, mixed>|null
      */
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
     /**
      * Find order by order number
@@ -59,7 +59,7 @@ interface OrderQueryInterface
      *
      * @return array<string, mixed>|null
      */
-    public function findByOrderNo(string $orderNo): ?array;
+    public function findByOrderNo(string $orderNo): array|null;
 
     /**
      * Create a new order

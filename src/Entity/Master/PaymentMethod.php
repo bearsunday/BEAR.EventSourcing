@@ -9,28 +9,30 @@ namespace BEAR\EventSourcing\Entity\Master;
  */
 class PaymentMethod extends AbstractMasterEntity
 {
-    protected ?string $chargeFlg = null;
-    protected ?string $fixFlg = null;
+    protected string|null $chargeFlg = null;
+    protected string|null $fixFlg = null;
 
-    public function getChargeFlg(): ?string
+    public function getChargeFlg(): string|null
     {
         return $this->chargeFlg;
     }
 
-    public function setChargeFlg(?string $chargeFlg): static
+    public function setChargeFlg(string|null $chargeFlg): static
     {
         $this->chargeFlg = $chargeFlg;
+
         return $this;
     }
 
-    public function getFixFlg(): ?string
+    public function getFixFlg(): string|null
     {
         return $this->fixFlg;
     }
 
-    public function setFixFlg(?string $fixFlg): static
+    public function setFixFlg(string|null $fixFlg): static
     {
         $this->fixFlg = $fixFlg;
+
         return $this;
     }
 }

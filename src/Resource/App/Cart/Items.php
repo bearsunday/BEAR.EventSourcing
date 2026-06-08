@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Cart;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\CartItemQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
 
 /**
@@ -13,12 +13,9 @@ use Ray\Di\Di\Inject;
  */
 class Items extends ResourceObject
 {
-    private CartItemQueryInterface $cartItemQuery;
-
     #[Inject]
-    public function __construct(CartItemQueryInterface $cartItemQuery)
+    public function __construct(private CartItemQueryInterface $cartItemQuery)
     {
-        $this->cartItemQuery = $cartItemQuery;
     }
 
     /**
@@ -27,9 +24,10 @@ class Items extends ResourceObject
      * @param string|null $cartKey    Cart key (for guest)
      * @param int|null    $customerId Customer ID (for logged-in user)
      */
-    public function onGet(?string $cartKey = null, ?int $customerId = null): static
+    public function onGet(string|null $cartKey = null, int|null $customerId = null): static
     {
         $this->body = $this->cartItemQuery->findByCartKeyOrCustomerId($cartKey, $customerId);
+
         return $this;
     }
 
@@ -44,8 +42,8 @@ class Items extends ResourceObject
     public function onPost(
         int $productClassId,
         int $quantity = 1,
-        ?string $cartKey = null,
-        ?int $customerId = null
+        string|null $cartKey = null,
+        int|null $customerId = null,
     ): static {
         $id = $this->cartItemQuery->addItem($productClassId, $quantity, $cartKey, $customerId);
 
@@ -67,6 +65,7 @@ class Items extends ResourceObject
             $this->cartItemQuery->removeItem($id);
             $this->code = 204;
             $this->body = null;
+
             return $this;
         }
 

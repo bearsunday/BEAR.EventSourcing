@@ -11,6 +11,7 @@ class TaxDisplayType extends AbstractMasterEntity
 {
     /** 税込価格 */
     public const INCLUDED = 1;
+
     /** 税抜価格 */
     public const EXCLUDED = 2;
 }

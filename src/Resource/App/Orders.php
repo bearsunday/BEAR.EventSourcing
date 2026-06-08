@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
+use BEAR\EventSourcing\Query\OrderQueryInterface;
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BEAR\EventSourcing\Query\OrderQueryInterface;
 use Ray\Di\Di\Inject;
 
 /**
@@ -16,12 +16,9 @@ use Ray\Di\Di\Inject;
  */
 class Orders extends ResourceObject
 {
-    private OrderQueryInterface $orderQuery;
-
     #[Inject]
-    public function __construct(OrderQueryInterface $orderQuery)
+    public function __construct(private OrderQueryInterface $orderQuery)
     {
-        $this->orderQuery = $orderQuery;
     }
 
     /**
@@ -36,13 +33,13 @@ class Orders extends ResourceObject
      * @param int         $limit      Items per page
      */
     public function onGet(
-        ?int $customerId = null,
-        ?int $status = null,
-        ?string $orderNo = null,
-        ?string $dateFrom = null,
-        ?string $dateTo = null,
+        int|null $customerId = null,
+        int|null $status = null,
+        string|null $orderNo = null,
+        string|null $dateFrom = null,
+        string|null $dateTo = null,
         int $page = 1,
-        int $limit = 20
+        int $limit = 20,
     ): static {
         $offset = ($page - 1) * $limit;
 
@@ -54,7 +51,7 @@ class Orders extends ResourceObject
                 $dateFrom,
                 $dateTo,
                 $limit,
-                $offset
+                $offset,
             ),
             'pagination' => [
                 'page' => $page,

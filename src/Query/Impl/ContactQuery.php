@@ -8,21 +8,28 @@ use Aura\Sql\ExtendedPdo;
 use BEAR\EventSourcing\Query\ContactQueryInterface;
 use DateTimeImmutable;
 
+use function array_keys;
+use function array_map;
+use function array_merge;
+use function implode;
+
 class ContactQuery implements ContactQueryInterface
 {
     public function __construct(
-        private readonly ExtendedPdo $pdo
-    ) {}
+        private readonly ExtendedPdo $pdo,
+    ) {
+    }
 
-    public function findById(int $id): ?array
+    public function findById(int $id): array|null
     {
         $result = $this->pdo->fetchOne(
             'SELECT c.*, p.name as pref_name
              FROM contact c
              LEFT JOIN mtb_pref p ON c.pref_id = p.id
              WHERE c.id = :id',
-            ['id' => $id]
+            ['id' => $id],
         );
+
         return $result ?: null;
     }
 
@@ -35,10 +42,12 @@ class ContactQuery implements ContactQueryInterface
             $where[] = 'c.status = :status';
             $params['status'] = $filters['status'];
         }
+
         if (isset($filters['email'])) {
             $where[] = 'c.email LIKE :email';
             $params['email'] = '%' . $filters['email'] . '%';
         }
+
         if (isset($filters['customer_id'])) {
             $where[] = 'c.customer_id = :customer_id';
             $params['customer_id'] = $filters['customer_id'];
@@ -51,7 +60,7 @@ class ContactQuery implements ContactQueryInterface
              WHERE ' . implode(' AND ', $where) . '
              ORDER BY c.create_date DESC
              LIMIT :limit OFFSET :offset',
-            $params
+            $params,
         );
     }
 
@@ -64,18 +73,20 @@ class ContactQuery implements ContactQueryInterface
             $where[] = 'status = :status';
             $params['status'] = $filters['status'];
         }
+
         if (isset($filters['email'])) {
             $where[] = 'email LIKE :email';
             $params['email'] = '%' . $filters['email'] . '%';
         }
+
         if (isset($filters['customer_id'])) {
             $where[] = 'customer_id = :customer_id';
             $params['customer_id'] = $filters['customer_id'];
         }
 
-        return (int)$this->pdo->fetchValue(
+        return (int) $this->pdo->fetchValue(
             'SELECT COUNT(*) FROM contact WHERE ' . implode(' AND ', $where),
-            $params
+            $params,
         );
     }
 
@@ -91,15 +102,16 @@ class ContactQuery implements ContactQueryInterface
                 'status' => $data['status'] ?? 1,
                 'create_date' => $now,
                 'update_date' => $now,
-            ])
+            ]),
         );
-        return (int)$this->pdo->lastInsertId();
+
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function update(int $id, array $data): void
     {
         $data['update_date'] = (new DateTimeImmutable())->format('Y-m-d H:i:s');
-        $sets = array_map(fn($k) => "{$k} = :{$k}", array_keys($data));
+        $sets = array_map(static fn ($k) => "{$k} = :{$k}", array_keys($data));
         $data['id'] = $id;
         $this->pdo->perform('UPDATE contact SET ' . implode(', ', $sets) . ' WHERE id = :id', $data);
     }

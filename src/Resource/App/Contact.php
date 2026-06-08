@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\ContactQueryInterface;
 use BEAR\EventSourcing\Service\MailServiceInterface;
+use BEAR\Resource\ResourceObject;
 
 class Contact extends ResourceObject
 {
     public function __construct(
         private readonly ContactQueryInterface $query,
-        private readonly MailServiceInterface $mailService
-    ) {}
+        private readonly MailServiceInterface $mailService,
+    ) {
+    }
 
     public function onPost(
         string $name01,
@@ -21,14 +22,14 @@ class Contact extends ResourceObject
         string $email,
         string $subject,
         string $message,
-        ?string $kana01 = null,
-        ?string $kana02 = null,
-        ?string $phone_number = null,
-        ?string $postal_code = null,
-        ?int $pref_id = null,
-        ?string $addr01 = null,
-        ?string $addr02 = null,
-        ?int $customer_id = null
+        string|null $kana01 = null,
+        string|null $kana02 = null,
+        string|null $phone_number = null,
+        string|null $postal_code = null,
+        int|null $pref_id = null,
+        string|null $addr01 = null,
+        string|null $addr02 = null,
+        int|null $customer_id = null,
     ): static {
         $id = $this->query->create([
             'customer_id' => $customer_id,
@@ -54,11 +55,12 @@ class Contact extends ResourceObject
             "お問い合わせありがとうございます。\n\n" .
             "件名: {$subject}\n" .
             "内容:\n{$message}\n\n" .
-            "担当者より折り返しご連絡いたします。"
+            '担当者より折り返しご連絡いたします。',
         );
 
         $this->code = 201;
         $this->body = ['id' => $id, 'message' => 'お問い合わせを受け付けました'];
+
         return $this;
     }
 }

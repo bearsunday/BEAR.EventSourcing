@@ -4,21 +4,20 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Orders;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\ShippingQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
+
+use function array_filter;
 
 /**
  * Order shippings resource (配送情報一覧)
  */
 class Shippings extends ResourceObject
 {
-    private ShippingQueryInterface $shippingQuery;
-
     #[Inject]
-    public function __construct(ShippingQueryInterface $shippingQuery)
+    public function __construct(private ShippingQueryInterface $shippingQuery)
     {
-        $this->shippingQuery = $shippingQuery;
     }
 
     /**
@@ -29,6 +28,7 @@ class Shippings extends ResourceObject
     public function onGet(int $id): static
     {
         $this->body = $this->shippingQuery->findByOrderId($id);
+
         return $this;
     }
 
@@ -43,13 +43,13 @@ class Shippings extends ResourceObject
     public function onPut(
         int $id,
         int $shippingId,
-        ?string $trackingNumber = null,
-        ?string $shippingDate = null
+        string|null $trackingNumber = null,
+        string|null $shippingDate = null,
     ): static {
         $data = array_filter([
             'tracking_number' => $trackingNumber,
             'shipping_date' => $shippingDate,
-        ], fn($v) => $v !== null);
+        ], static fn ($v) => $v !== null);
 
         $this->shippingQuery->update($shippingId, $data);
 

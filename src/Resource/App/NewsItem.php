@@ -4,21 +4,20 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\NewsQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
+
+use function array_filter;
 
 /**
  * News item resource (新着情報詳細)
  */
 class NewsItem extends ResourceObject
 {
-    private NewsQueryInterface $newsQuery;
-
     #[Inject]
-    public function __construct(NewsQueryInterface $newsQuery)
+    public function __construct(private NewsQueryInterface $newsQuery)
     {
-        $this->newsQuery = $newsQuery;
     }
 
     /**
@@ -33,10 +32,12 @@ class NewsItem extends ResourceObject
         if ($news === null) {
             $this->code = 404;
             $this->body = ['error' => 'News not found'];
+
             return $this;
         }
 
         $this->body = $news;
+
         return $this;
     }
 
@@ -51,16 +52,17 @@ class NewsItem extends ResourceObject
      */
     public function onPut(
         int $id,
-        ?string $title = null,
-        ?string $description = null,
-        ?string $url = null,
-        ?bool $visible = null
+        string|null $title = null,
+        string|null $description = null,
+        string|null $url = null,
+        bool|null $visible = null,
     ): static {
         $news = $this->newsQuery->findById($id);
 
         if ($news === null) {
             $this->code = 404;
             $this->body = ['error' => 'News not found'];
+
             return $this;
         }
 
@@ -69,7 +71,7 @@ class NewsItem extends ResourceObject
             'description' => $description,
             'url' => $url,
             'visible' => $visible,
-        ], fn($v) => $v !== null);
+        ], static fn ($v) => $v !== null);
 
         $this->newsQuery->update($id, $data);
         $this->body = $this->newsQuery->findById($id);
@@ -89,6 +91,7 @@ class NewsItem extends ResourceObject
         if ($news === null) {
             $this->code = 404;
             $this->body = ['error' => 'News not found'];
+
             return $this;
         }
 

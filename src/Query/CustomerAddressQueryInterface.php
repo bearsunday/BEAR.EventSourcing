@@ -6,11 +6,11 @@ namespace BEAR\EventSourcing\Query;
 
 interface CustomerAddressQueryInterface
 {
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
     public function findByCustomerId(int $customerId): array;
 
-    public function findDefaultByCustomerId(int $customerId): ?array;
+    public function findDefaultByCustomerId(int $customerId): array|null;
 
     public function create(array $data): int;
 

@@ -1,0 +1,78 @@
+{
+    "name": "bear/semantic-logger",
+    "description": "Semantic logging system for BEAR.Sunday with structured profiling",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Akihito Koriyama",
+            "email": "akihito.koriyama@gmail.com"
+        }
+    ],
+    "keywords": [
+        "logging",
+        "semantic",
+        "profiling",
+        "BEAR.Sunday"
+    ],
+    "homepage": "https://github.com/bearsunday/BEAR.EventSourcing/tree/main/semantic-logger",
+    "support": {
+        "issues": "https://github.com/bearsunday/BEAR.EventSourcing/issues",
+        "source": "https://github.com/bearsunday/BEAR.EventSourcing/tree/main/semantic-logger"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require": {
+        "php": "^8.2",
+        "koriym/semantic-logger": "^0.8",
+        "bear/resource": "^1.0",
+        "ray/di": "^2.0"
+    },
+    "require-dev": {
+        "bamarni/composer-bin-plugin": "^1.8",
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "BEAR\\SemanticLogger\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BEAR\\SemanticLogger\\": [
+                "tests",
+                "tests/Fake"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "coverage": "php -dzend_extension=xdebug.so -dxdebug.mode=coverage phpunit --coverage-text --coverage-html=build/coverage",
+        "cs": "phpcs",
+        "cs-fix": "phpcbf src tests",
+        "phpstan": "phpstan analyse -c phpstan.neon --memory-limit=-1",
+        "psalm": "psalm --show-info=false",
+        "sa": [
+            "@phpstan",
+            "@psalm"
+        ],
+        "tests": [
+            "@cs",
+            "@sa",
+            "@test"
+        ],
+        "post-install-cmd": "@composer bin all install --ansi",
+        "post-update-cmd": "@composer bin all update --ansi"
+    },
+    "config": {
+        "allow-plugins": {
+            "bamarni/composer-bin-plugin": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "extra": {
+        "bamarni-bin": {
+            "bin-links": true,
+            "forward-command": true
+        }
+    }
+}

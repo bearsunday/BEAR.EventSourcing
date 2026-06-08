@@ -7,13 +7,15 @@ namespace BEAR\EventSourcing\Auth;
 use Aura\Sql\ExtendedPdo;
 use DateTimeImmutable;
 
+use function hash;
+
 /**
  * Database-backed token storage
  */
 class DbTokenStorage implements TokenStorageInterface
 {
     public function __construct(
-        private readonly ExtendedPdo $pdo
+        private readonly ExtendedPdo $pdo,
     ) {
     }
 
@@ -32,18 +34,18 @@ class DbTokenStorage implements TokenStorageInterface
         ]);
     }
 
-    public function get(string $token): ?array
+    public function get(string $token): array|null
     {
         $sql = 'SELECT user_type, user_id, expires_at FROM auth_token WHERE token = :token';
         $result = $this->pdo->fetchOne($sql, ['token' => hash('sha256', $token)]);
 
-        if (!$result) {
+        if (! $result) {
             return null;
         }
 
         return [
             'type' => $result['user_type'],
-            'id' => (int)$result['user_id'],
+            'id' => (int) $result['user_id'],
             'expires_at' => $result['expires_at'],
         ];
     }

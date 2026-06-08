@@ -4,31 +4,35 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Admin;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Annotation\RequireAuth;
 use BEAR\EventSourcing\Query\WebhookQueryInterface;
+use BEAR\Resource\ResourceObject;
 
 class Webhooks extends ResourceObject
 {
     public function __construct(
-        private readonly WebhookQueryInterface $query
-    ) {}
+        private readonly WebhookQueryInterface $query,
+    ) {
+    }
 
     #[RequireAuth(role: 'admin')]
-    public function onGet(?int $id = null): static
+    public function onGet(int|null $id = null): static
     {
         if ($id !== null) {
             $webhook = $this->query->findById($id);
             if ($webhook === null) {
                 $this->code = 404;
                 $this->body = ['error' => 'Webhook not found'];
+
                 return $this;
             }
+
             $webhook['logs'] = $this->query->getDeliveryLogs($id, 20);
             $this->body = $webhook;
         } else {
             $this->body = ['webhooks' => $this->query->findAll()];
         }
+
         return $this;
     }
 
@@ -49,36 +53,50 @@ class Webhooks extends ResourceObject
             'id' => $id,
             'secret' => $webhook['secret'],
         ];
+
         return $this;
     }
 
     #[RequireAuth(role: 'admin')]
     public function onPut(
         int $id,
-        ?string $name = null,
-        ?string $url = null,
-        ?array $events = null,
-        ?bool $enabled = null
+        string|null $name = null,
+        string|null $url = null,
+        array|null $events = null,
+        bool|null $enabled = null,
     ): static {
         $webhook = $this->query->findById($id);
         if ($webhook === null) {
             $this->code = 404;
             $this->body = ['error' => 'Webhook not found'];
+
             return $this;
         }
 
         $data = [];
-        if ($name !== null) $data['name'] = $name;
-        if ($url !== null) $data['url'] = $url;
-        if ($events !== null) $data['events'] = $events;
-        if ($enabled !== null) $data['enabled'] = $enabled ? 1 : 0;
+        if ($name !== null) {
+            $data['name'] = $name;
+        }
 
-        if (!empty($data)) {
+        if ($url !== null) {
+            $data['url'] = $url;
+        }
+
+        if ($events !== null) {
+            $data['events'] = $events;
+        }
+
+        if ($enabled !== null) {
+            $data['enabled'] = $enabled ? 1 : 0;
+        }
+
+        if (! empty($data)) {
             $this->query->update($id, $data);
         }
 
         $this->code = 200;
         $this->body = ['id' => $id, 'updated' => true];
+
         return $this;
     }
 
@@ -89,6 +107,7 @@ class Webhooks extends ResourceObject
         if ($webhook === null) {
             $this->code = 404;
             $this->body = ['error' => 'Webhook not found'];
+
             return $this;
         }
 
@@ -96,6 +115,7 @@ class Webhooks extends ResourceObject
 
         $this->code = 200;
         $this->body = ['deleted' => true];
+
         return $this;
     }
 }

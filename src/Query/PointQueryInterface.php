@@ -10,7 +10,7 @@ interface PointQueryInterface
 
     public function getHistory(int $customerId, int $limit = 20, int $offset = 0): array;
 
-    public function addPoints(int $customerId, int $point, int $actionType, ?string $reason = null, ?int $orderId = null): int;
+    public function addPoints(int $customerId, int $point, int $actionType, string|null $reason = null, int|null $orderId = null): int;
 
     public function usePoints(int $customerId, int $point, int $orderId): bool;
 

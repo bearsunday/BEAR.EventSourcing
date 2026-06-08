@@ -8,21 +8,28 @@ use Aura\Sql\ExtendedPdo;
 use BEAR\EventSourcing\Query\CustomerAddressQueryInterface;
 use DateTimeImmutable;
 
+use function array_keys;
+use function array_map;
+use function array_merge;
+use function implode;
+
 class CustomerAddressQuery implements CustomerAddressQueryInterface
 {
     public function __construct(
-        private readonly ExtendedPdo $pdo
-    ) {}
+        private readonly ExtendedPdo $pdo,
+    ) {
+    }
 
-    public function findById(int $id): ?array
+    public function findById(int $id): array|null
     {
         $result = $this->pdo->fetchOne(
             'SELECT ca.*, p.name as pref_name
              FROM customer_address ca
              LEFT JOIN mtb_pref p ON ca.pref_id = p.id
              WHERE ca.id = :id',
-            ['id' => $id]
+            ['id' => $id],
         );
+
         return $result ?: null;
     }
 
@@ -34,19 +41,20 @@ class CustomerAddressQuery implements CustomerAddressQueryInterface
              LEFT JOIN mtb_pref p ON ca.pref_id = p.id
              WHERE ca.customer_id = :customer_id
              ORDER BY ca.is_default DESC, ca.id ASC',
-            ['customer_id' => $customerId]
+            ['customer_id' => $customerId],
         );
     }
 
-    public function findDefaultByCustomerId(int $customerId): ?array
+    public function findDefaultByCustomerId(int $customerId): array|null
     {
         $result = $this->pdo->fetchOne(
             'SELECT ca.*, p.name as pref_name
              FROM customer_address ca
              LEFT JOIN mtb_pref p ON ca.pref_id = p.id
              WHERE ca.customer_id = :customer_id AND ca.is_default = 1',
-            ['customer_id' => $customerId]
+            ['customer_id' => $customerId],
         );
+
         return $result ?: null;
     }
 
@@ -62,15 +70,16 @@ class CustomerAddressQuery implements CustomerAddressQueryInterface
                 'is_default' => $data['is_default'] ?? 0,
                 'create_date' => $now,
                 'update_date' => $now,
-            ])
+            ]),
         );
-        return (int)$this->pdo->lastInsertId();
+
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function update(int $id, array $data): void
     {
         $data['update_date'] = (new DateTimeImmutable())->format('Y-m-d H:i:s');
-        $sets = array_map(fn($k) => "{$k} = :{$k}", array_keys($data));
+        $sets = array_map(static fn ($k) => "{$k} = :{$k}", array_keys($data));
         $data['id'] = $id;
         $this->pdo->perform('UPDATE customer_address SET ' . implode(', ', $sets) . ' WHERE id = :id', $data);
     }
@@ -80,11 +89,11 @@ class CustomerAddressQuery implements CustomerAddressQueryInterface
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
         $this->pdo->perform(
             'UPDATE customer_address SET is_default = 0, update_date = :update_date WHERE customer_id = :customer_id',
-            ['customer_id' => $customerId, 'update_date' => $now]
+            ['customer_id' => $customerId, 'update_date' => $now],
         );
         $this->pdo->perform(
             'UPDATE customer_address SET is_default = 1, update_date = :update_date WHERE id = :id',
-            ['id' => $addressId, 'update_date' => $now]
+            ['id' => $addressId, 'update_date' => $now],
         );
     }
 

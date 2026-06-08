@@ -4,21 +4,22 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\PaymentQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
+
+use function array_filter;
+use function array_values;
+use function bccomp;
 
 /**
  * Payments resource (支払方法一覧)
  */
 class Payments extends ResourceObject
 {
-    private PaymentQueryInterface $paymentQuery;
-
     #[Inject]
-    public function __construct(PaymentQueryInterface $paymentQuery)
+    public function __construct(private PaymentQueryInterface $paymentQuery)
     {
-        $this->paymentQuery = $paymentQuery;
     }
 
     /**
@@ -27,7 +28,7 @@ class Payments extends ResourceObject
      * @param int|null    $deliveryId Filter by delivery method
      * @param string|null $amount     Order amount to check rules
      */
-    public function onGet(?int $deliveryId = null, ?string $amount = null): static
+    public function onGet(int|null $deliveryId = null, string|null $amount = null): static
     {
         if ($deliveryId !== null) {
             $payments = $this->paymentQuery->findByDeliveryId($deliveryId);
@@ -37,18 +38,17 @@ class Payments extends ResourceObject
 
         // Filter by amount rules if provided
         if ($amount !== null) {
-            $payments = array_filter($payments, function ($payment) use ($amount) {
+            $payments = array_filter($payments, static function ($payment) use ($amount) {
                 if ($payment['rule_min'] && bccomp($amount, $payment['rule_min']) < 0) {
                     return false;
                 }
-                if ($payment['rule_max'] && bccomp($amount, $payment['rule_max']) > 0) {
-                    return false;
-                }
-                return true;
+
+                return ! $payment['rule_max'] || bccomp($amount, $payment['rule_max']) <= 0;
             });
         }
 
         $this->body = array_values($payments);
+
         return $this;
     }
 }

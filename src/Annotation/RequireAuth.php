@@ -12,11 +12,9 @@ use Attribute;
 #[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS)]
 class RequireAuth
 {
-    /**
-     * @param string $type User type required ('customer', 'member', 'any')
-     */
+    /** @param string $type User type required ('customer', 'member', 'any') */
     public function __construct(
-        public readonly string $type = 'any'
+        public readonly string $type = 'any',
     ) {
     }
 }

@@ -23,7 +23,7 @@ interface DeliveryQueryInterface
      *
      * @return array<string, mixed>|null
      */
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
     /**
      * Get delivery fee by delivery ID and prefecture ID

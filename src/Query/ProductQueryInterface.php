@@ -20,10 +20,10 @@ interface ProductQueryInterface
      * @return array<int, array<string, mixed>>
      */
     public function findAll(
-        ?int $categoryId = null,
-        ?string $name = null,
+        int|null $categoryId = null,
+        string|null $name = null,
         int $limit = 20,
-        int $offset = 0
+        int $offset = 0,
     ): array;
 
     /**
@@ -32,7 +32,7 @@ interface ProductQueryInterface
      * @param int|null    $categoryId Category ID filter
      * @param string|null $name       Name search
      */
-    public function count(?int $categoryId = null, ?string $name = null): int;
+    public function count(int|null $categoryId = null, string|null $name = null): int;
 
     /**
      * Find product by ID
@@ -41,7 +41,7 @@ interface ProductQueryInterface
      *
      * @return array<string, mixed>|null
      */
-    public function findById(int $id): ?array;
+    public function findById(int $id): array|null;
 
     /**
      * Create a new product

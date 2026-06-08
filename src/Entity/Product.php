@@ -6,19 +6,22 @@ namespace BEAR\EventSourcing\Entity;
 
 use BEAR\EventSourcing\Entity\Master\ProductStatus;
 
+use function max;
+use function min;
+
 /**
  * Product entity (商品)
  */
 class Product extends AbstractEntity
 {
-    protected ?int $id = null;
+    protected int|null $id = null;
     protected string $name = '';
-    protected ?string $note = null;
-    protected ?string $descriptionList = null;
-    protected ?string $descriptionDetail = null;
-    protected ?string $searchWord = null;
-    protected ?string $freeArea = null;
-    protected ?ProductStatus $status = null;
+    protected string|null $note = null;
+    protected string|null $descriptionList = null;
+    protected string|null $descriptionDetail = null;
+    protected string|null $searchWord = null;
+    protected string|null $freeArea = null;
+    protected ProductStatus|null $status = null;
     /** @var ProductClass[] */
     protected array $productClasses = [];
     /** @var ProductImage[] */
@@ -28,14 +31,15 @@ class Product extends AbstractEntity
     /** @var ProductTag[] */
     protected array $productTags = [];
 
-    public function getId(): ?int
+    public function getId(): int|null
     {
         return $this->id;
     }
 
-    public function setId(?int $id): static
+    public function setId(int|null $id): static
     {
         $this->id = $id;
+
         return $this;
     }
 
@@ -47,165 +51,163 @@ class Product extends AbstractEntity
     public function setName(string $name): static
     {
         $this->name = $name;
+
         return $this;
     }
 
-    public function getNote(): ?string
+    public function getNote(): string|null
     {
         return $this->note;
     }
 
-    public function setNote(?string $note): static
+    public function setNote(string|null $note): static
     {
         $this->note = $note;
+
         return $this;
     }
 
-    public function getDescriptionList(): ?string
+    public function getDescriptionList(): string|null
     {
         return $this->descriptionList;
     }
 
-    public function setDescriptionList(?string $descriptionList): static
+    public function setDescriptionList(string|null $descriptionList): static
     {
         $this->descriptionList = $descriptionList;
+
         return $this;
     }
 
-    public function getDescriptionDetail(): ?string
+    public function getDescriptionDetail(): string|null
     {
         return $this->descriptionDetail;
     }
 
-    public function setDescriptionDetail(?string $descriptionDetail): static
+    public function setDescriptionDetail(string|null $descriptionDetail): static
     {
         $this->descriptionDetail = $descriptionDetail;
+
         return $this;
     }
 
-    public function getSearchWord(): ?string
+    public function getSearchWord(): string|null
     {
         return $this->searchWord;
     }
 
-    public function setSearchWord(?string $searchWord): static
+    public function setSearchWord(string|null $searchWord): static
     {
         $this->searchWord = $searchWord;
+
         return $this;
     }
 
-    public function getFreeArea(): ?string
+    public function getFreeArea(): string|null
     {
         return $this->freeArea;
     }
 
-    public function setFreeArea(?string $freeArea): static
+    public function setFreeArea(string|null $freeArea): static
     {
         $this->freeArea = $freeArea;
+
         return $this;
     }
 
-    public function getStatus(): ?ProductStatus
+    public function getStatus(): ProductStatus|null
     {
         return $this->status;
     }
 
-    public function setStatus(?ProductStatus $status): static
+    public function setStatus(ProductStatus|null $status): static
     {
         $this->status = $status;
+
         return $this;
     }
 
-    /**
-     * @return ProductClass[]
-     */
+    /** @return ProductClass[] */
     public function getProductClasses(): array
     {
         return $this->productClasses;
     }
 
-    /**
-     * @param ProductClass[] $productClasses
-     */
+    /** @param ProductClass[] $productClasses */
     public function setProductClasses(array $productClasses): static
     {
         $this->productClasses = $productClasses;
+
         return $this;
     }
 
     public function addProductClass(ProductClass $productClass): static
     {
         $this->productClasses[] = $productClass;
+
         return $this;
     }
 
-    /**
-     * @return ProductImage[]
-     */
+    /** @return ProductImage[] */
     public function getProductImages(): array
     {
         return $this->productImages;
     }
 
-    /**
-     * @param ProductImage[] $productImages
-     */
+    /** @param ProductImage[] $productImages */
     public function setProductImages(array $productImages): static
     {
         $this->productImages = $productImages;
+
         return $this;
     }
 
     public function addProductImage(ProductImage $productImage): static
     {
         $this->productImages[] = $productImage;
+
         return $this;
     }
 
-    /**
-     * @return ProductCategory[]
-     */
+    /** @return ProductCategory[] */
     public function getProductCategories(): array
     {
         return $this->productCategories;
     }
 
-    /**
-     * @param ProductCategory[] $productCategories
-     */
+    /** @param ProductCategory[] $productCategories */
     public function setProductCategories(array $productCategories): static
     {
         $this->productCategories = $productCategories;
+
         return $this;
     }
 
-    /**
-     * @return ProductTag[]
-     */
+    /** @return ProductTag[] */
     public function getProductTags(): array
     {
         return $this->productTags;
     }
 
-    /**
-     * @param ProductTag[] $productTags
-     */
+    /** @param ProductTag[] $productTags */
     public function setProductTags(array $productTags): static
     {
         $this->productTags = $productTags;
+
         return $this;
     }
 
     /**
      * Get main product image
      */
-    public function getMainImage(): ?ProductImage
+    public function getMainImage(): ProductImage|null
     {
         foreach ($this->productImages as $image) {
             if ($image->getSortNo() === 0) {
                 return $image;
             }
         }
+
         return $this->productImages[0] ?? null;
     }
 
@@ -218,9 +220,11 @@ class Product extends AbstractEntity
     {
         $prices = [];
         foreach ($this->productClasses as $class) {
-            if ($class->getPrice02() !== null) {
-                $prices[] = $class->getPrice02();
+            if ($class->getPrice02() === null) {
+                continue;
             }
+
+            $prices[] = $class->getPrice02();
         }
 
         if (empty($prices)) {
@@ -243,6 +247,7 @@ class Product extends AbstractEntity
                 return true;
             }
         }
+
         return false;
     }
 }

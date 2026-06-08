@@ -9,21 +9,22 @@ namespace BEAR\EventSourcing\Entity;
  */
 class ClassName extends AbstractEntity
 {
-    protected ?int $id = null;
+    protected int|null $id = null;
     protected string $name = '';
     protected string $backendName = '';
     protected int $sortNo = 0;
     /** @var ClassCategory[] */
     protected array $classCategories = [];
 
-    public function getId(): ?int
+    public function getId(): int|null
     {
         return $this->id;
     }
 
-    public function setId(?int $id): static
+    public function setId(int|null $id): static
     {
         $this->id = $id;
+
         return $this;
     }
 
@@ -35,6 +36,7 @@ class ClassName extends AbstractEntity
     public function setName(string $name): static
     {
         $this->name = $name;
+
         return $this;
     }
 
@@ -46,6 +48,7 @@ class ClassName extends AbstractEntity
     public function setBackendName(string $backendName): static
     {
         $this->backendName = $backendName;
+
         return $this;
     }
 
@@ -57,23 +60,21 @@ class ClassName extends AbstractEntity
     public function setSortNo(int $sortNo): static
     {
         $this->sortNo = $sortNo;
+
         return $this;
     }
 
-    /**
-     * @return ClassCategory[]
-     */
+    /** @return ClassCategory[] */
     public function getClassCategories(): array
     {
         return $this->classCategories;
     }
 
-    /**
-     * @param ClassCategory[] $classCategories
-     */
+    /** @param ClassCategory[] $classCategories */
     public function setClassCategories(array $classCategories): static
     {
         $this->classCategories = $classCategories;
+
         return $this;
     }
 }

@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
+use BEAR\EventSourcing\Query\CustomerQueryInterface;
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BEAR\EventSourcing\Query\CustomerQueryInterface;
 use Ray\Di\Di\Inject;
+
+use function password_hash;
+
+use const PASSWORD_DEFAULT;
 
 /**
  * Customers resource (会員一覧)
@@ -16,12 +20,9 @@ use Ray\Di\Di\Inject;
  */
 class Customers extends ResourceObject
 {
-    private CustomerQueryInterface $customerQuery;
-
     #[Inject]
-    public function __construct(CustomerQueryInterface $customerQuery)
+    public function __construct(private CustomerQueryInterface $customerQuery)
     {
-        $this->customerQuery = $customerQuery;
     }
 
     /**
@@ -34,11 +35,11 @@ class Customers extends ResourceObject
      * @param int         $limit  Items per page
      */
     public function onGet(
-        ?string $email = null,
-        ?string $name = null,
-        ?int $status = null,
+        string|null $email = null,
+        string|null $name = null,
+        int|null $status = null,
         int $page = 1,
-        int $limit = 20
+        int $limit = 20,
     ): static {
         $offset = ($page - 1) * $limit;
 
@@ -74,13 +75,13 @@ class Customers extends ResourceObject
         string $password,
         string $name01,
         string $name02,
-        ?string $kana01 = null,
-        ?string $kana02 = null,
-        ?string $postalCode = null,
-        ?int $prefId = null,
-        ?string $addr01 = null,
-        ?string $addr02 = null,
-        ?string $phone = null
+        string|null $kana01 = null,
+        string|null $kana02 = null,
+        string|null $postalCode = null,
+        int|null $prefId = null,
+        string|null $addr01 = null,
+        string|null $addr02 = null,
+        string|null $phone = null,
     ): static {
         $id = $this->customerQuery->create([
             'email' => $email,

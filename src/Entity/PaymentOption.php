@@ -9,52 +9,56 @@ namespace BEAR\EventSourcing\Entity;
  */
 class PaymentOption extends AbstractEntity
 {
-    protected ?int $deliveryId = null;
-    protected ?int $paymentId = null;
-    protected ?Delivery $delivery = null;
-    protected ?Payment $payment = null;
+    protected int|null $deliveryId = null;
+    protected int|null $paymentId = null;
+    protected Delivery|null $delivery = null;
+    protected Payment|null $payment = null;
 
-    public function getDeliveryId(): ?int
+    public function getDeliveryId(): int|null
     {
         return $this->deliveryId;
     }
 
-    public function setDeliveryId(?int $deliveryId): static
+    public function setDeliveryId(int|null $deliveryId): static
     {
         $this->deliveryId = $deliveryId;
+
         return $this;
     }
 
-    public function getPaymentId(): ?int
+    public function getPaymentId(): int|null
     {
         return $this->paymentId;
     }
 
-    public function setPaymentId(?int $paymentId): static
+    public function setPaymentId(int|null $paymentId): static
     {
         $this->paymentId = $paymentId;
+
         return $this;
     }
 
-    public function getDelivery(): ?Delivery
+    public function getDelivery(): Delivery|null
     {
         return $this->delivery;
     }
 
-    public function setDelivery(?Delivery $delivery): static
+    public function setDelivery(Delivery|null $delivery): static
     {
         $this->delivery = $delivery;
+
         return $this;
     }
 
-    public function getPayment(): ?Payment
+    public function getPayment(): Payment|null
     {
         return $this->payment;
     }
 
-    public function setPayment(?Payment $payment): static
+    public function setPayment(Payment|null $payment): static
     {
         $this->payment = $payment;
+
         return $this;
     }
 }

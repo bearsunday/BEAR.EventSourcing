@@ -12,6 +12,8 @@ use BEAR\EventSourcing\Auth\TokenStorageInterface;
 use BEAR\EventSourcing\Interceptor\AuthInterceptor;
 use Ray\Di\AbstractModule;
 
+use function getenv;
+
 /**
  * Authentication module - binds auth interfaces and sets up interceptors
  */
@@ -27,14 +29,14 @@ class AuthModule extends AbstractModule
 
         // Bind JWT secret
         $this->bind()->annotatedWith('jwt_secret')->toInstance(
-            getenv('JWT_SECRET') ?: 'your-secret-key-change-in-production'
+            getenv('JWT_SECRET') ?: 'your-secret-key-change-in-production',
         );
 
         // Bind authentication interceptor
         $this->bindInterceptor(
             $this->matcher->any(),
             $this->matcher->annotatedWith(RequireAuth::class),
-            [AuthInterceptor::class]
+            [AuthInterceptor::class],
         );
     }
 }

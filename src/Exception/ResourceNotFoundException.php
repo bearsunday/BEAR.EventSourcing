@@ -6,6 +6,8 @@ namespace BEAR\EventSourcing\Exception;
 
 use RuntimeException;
 
+use function sprintf;
+
 class ResourceNotFoundException extends RuntimeException
 {
     public function __construct(string $resource, int|string $id)

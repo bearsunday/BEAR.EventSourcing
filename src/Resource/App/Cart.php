@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
+use BEAR\EventSourcing\Query\CartQueryInterface;
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BEAR\EventSourcing\Query\CartQueryInterface;
 use Ray\Di\Di\Inject;
 
 /**
@@ -17,12 +17,9 @@ use Ray\Di\Di\Inject;
  */
 class Cart extends ResourceObject
 {
-    private CartQueryInterface $cartQuery;
-
     #[Inject]
-    public function __construct(CartQueryInterface $cartQuery)
+    public function __construct(private CartQueryInterface $cartQuery)
     {
-        $this->cartQuery = $cartQuery;
     }
 
     /**
@@ -31,7 +28,7 @@ class Cart extends ResourceObject
      * @param string|null $cartKey    Cart key (for guest)
      * @param int|null    $customerId Customer ID (for logged-in user)
      */
-    public function onGet(?string $cartKey = null, ?int $customerId = null): static
+    public function onGet(string|null $cartKey = null, int|null $customerId = null): static
     {
         $cart = $this->cartQuery->findByKeyOrCustomerId($cartKey, $customerId);
 
@@ -41,6 +38,7 @@ class Cart extends ResourceObject
                 'total_quantity' => 0,
                 'total_price' => '0',
             ];
+
             return $this;
         }
 
@@ -55,7 +53,7 @@ class Cart extends ResourceObject
      * @param string|null $cartKey    Cart key (for guest)
      * @param int|null    $customerId Customer ID (for logged-in user)
      */
-    public function onPost(?string $cartKey = null, ?int $customerId = null): static
+    public function onPost(string|null $cartKey = null, int|null $customerId = null): static
     {
         $id = $this->cartQuery->createOrGet($cartKey, $customerId);
 
@@ -71,7 +69,7 @@ class Cart extends ResourceObject
      * @param string|null $cartKey    Cart key (for guest)
      * @param int|null    $customerId Customer ID (for logged-in user)
      */
-    public function onDelete(?string $cartKey = null, ?int $customerId = null): static
+    public function onDelete(string|null $cartKey = null, int|null $customerId = null): static
     {
         $this->cartQuery->clear($cartKey, $customerId);
 

@@ -9,7 +9,9 @@ use BEAR\EventSourcing\Query\MasterQueryInterface;
 
 class MasterQuery implements MasterQueryInterface
 {
-    public function __construct(private readonly ExtendedPdo $pdo) {}
+    public function __construct(private readonly ExtendedPdo $pdo)
+    {
+    }
 
     public function getPrefectures(): array
     {

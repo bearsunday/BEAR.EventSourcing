@@ -6,6 +6,8 @@ namespace BEAR\EventSourcing\Exception;
 
 use RuntimeException;
 
+use function sprintf;
+
 class InsufficientStockException extends RuntimeException
 {
     public function __construct(int $productClassId, int $requested, int $available)
@@ -14,7 +16,7 @@ class InsufficientStockException extends RuntimeException
             'Insufficient stock for product class %d: requested %d, available %d',
             $productClassId,
             $requested,
-            $available
+            $available,
         ));
     }
 }

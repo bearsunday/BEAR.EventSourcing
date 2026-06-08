@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Auth;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Auth\AuthServiceInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
 
 /**
@@ -13,12 +13,9 @@ use Ray\Di\Di\Inject;
  */
 class Refresh extends ResourceObject
 {
-    private AuthServiceInterface $authService;
-
     #[Inject]
-    public function __construct(AuthServiceInterface $authService)
+    public function __construct(private AuthServiceInterface $authService)
     {
-        $this->authService = $authService;
     }
 
     /**
@@ -33,10 +30,12 @@ class Refresh extends ResourceObject
         if ($newToken === null) {
             $this->code = 401;
             $this->body = ['error' => 'Invalid or expired token'];
+
             return $this;
         }
 
         $this->body = ['token' => $newToken];
+
         return $this;
     }
 }

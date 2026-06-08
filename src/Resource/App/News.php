@@ -4,21 +4,20 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Query\NewsQueryInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
+
+use function date;
 
 /**
  * News resource (新着情報)
  */
 class News extends ResourceObject
 {
-    private NewsQueryInterface $newsQuery;
-
     #[Inject]
-    public function __construct(NewsQueryInterface $newsQuery)
+    public function __construct(private NewsQueryInterface $newsQuery)
     {
-        $this->newsQuery = $newsQuery;
     }
 
     /**
@@ -54,10 +53,10 @@ class News extends ResourceObject
      */
     public function onPost(
         string $title,
-        ?string $description = null,
-        ?string $url = null,
+        string|null $description = null,
+        string|null $url = null,
         bool $linkMethod = false,
-        ?string $publishDate = null
+        string|null $publishDate = null,
     ): static {
         $id = $this->newsQuery->create([
             'title' => $title,

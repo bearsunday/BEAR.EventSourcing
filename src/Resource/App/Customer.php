@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App;
 
+use BEAR\EventSourcing\Query\CustomerQueryInterface;
 use BEAR\Resource\Annotation\Link;
 use BEAR\Resource\ResourceObject;
-use BEAR\EventSourcing\Query\CustomerQueryInterface;
 use Ray\Di\Di\Inject;
+
+use function array_filter;
 
 /**
  * Customer resource (会員詳細)
@@ -17,12 +19,9 @@ use Ray\Di\Di\Inject;
  */
 class Customer extends ResourceObject
 {
-    private CustomerQueryInterface $customerQuery;
-
     #[Inject]
-    public function __construct(CustomerQueryInterface $customerQuery)
+    public function __construct(private CustomerQueryInterface $customerQuery)
     {
-        $this->customerQuery = $customerQuery;
     }
 
     /**
@@ -37,6 +36,7 @@ class Customer extends ResourceObject
         if ($customer === null) {
             $this->code = 404;
             $this->body = ['error' => 'Customer not found'];
+
             return $this;
         }
 
@@ -63,23 +63,24 @@ class Customer extends ResourceObject
      */
     public function onPut(
         int $id,
-        ?string $email = null,
-        ?string $name01 = null,
-        ?string $name02 = null,
-        ?string $kana01 = null,
-        ?string $kana02 = null,
-        ?string $postalCode = null,
-        ?int $prefId = null,
-        ?string $addr01 = null,
-        ?string $addr02 = null,
-        ?string $phone = null,
-        ?int $status = null
+        string|null $email = null,
+        string|null $name01 = null,
+        string|null $name02 = null,
+        string|null $kana01 = null,
+        string|null $kana02 = null,
+        string|null $postalCode = null,
+        int|null $prefId = null,
+        string|null $addr01 = null,
+        string|null $addr02 = null,
+        string|null $phone = null,
+        int|null $status = null,
     ): static {
         $customer = $this->customerQuery->findById($id);
 
         if ($customer === null) {
             $this->code = 404;
             $this->body = ['error' => 'Customer not found'];
+
             return $this;
         }
 
@@ -95,7 +96,7 @@ class Customer extends ResourceObject
             'addr02' => $addr02,
             'phone_number' => $phone,
             'status_id' => $status,
-        ], fn($v) => $v !== null);
+        ], static fn ($v) => $v !== null);
 
         $this->customerQuery->update($id, $data);
 
@@ -116,6 +117,7 @@ class Customer extends ResourceObject
         if ($customer === null) {
             $this->code = 404;
             $this->body = ['error' => 'Customer not found'];
+
             return $this;
         }
 

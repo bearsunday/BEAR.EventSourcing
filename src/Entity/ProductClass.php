@@ -6,89 +6,97 @@ namespace BEAR\EventSourcing\Entity;
 
 use BEAR\EventSourcing\Entity\Master\SaleType;
 
+use function implode;
+
 /**
  * Product class entity (商品規格)
  */
 class ProductClass extends AbstractEntity
 {
-    protected ?int $id = null;
-    protected ?int $productId = null;
-    protected ?Product $product = null;
-    protected ?SaleType $saleType = null;
-    protected ?ClassCategory $classCategory1 = null;
-    protected ?ClassCategory $classCategory2 = null;
+    protected int|null $id = null;
+    protected int|null $productId = null;
+    protected Product|null $product = null;
+    protected SaleType|null $saleType = null;
+    protected ClassCategory|null $classCategory1 = null;
+    protected ClassCategory|null $classCategory2 = null;
     protected string $code = '';
-    protected ?int $stock = null;
+    protected int|null $stock = null;
     protected bool $stockUnlimited = false;
-    protected ?string $price01 = null; // 通常価格
-    protected ?string $price02 = null; // 販売価格
-    protected ?string $deliveryFee = null;
+    protected string|null $price01 = null; // 通常価格
+    protected string|null $price02 = null; // 販売価格
+    protected string|null $deliveryFee = null;
     protected bool $visible = true;
-    protected ?ProductStock $productStock = null;
+    protected ProductStock|null $productStock = null;
 
-    public function getId(): ?int
+    public function getId(): int|null
     {
         return $this->id;
     }
 
-    public function setId(?int $id): static
+    public function setId(int|null $id): static
     {
         $this->id = $id;
+
         return $this;
     }
 
-    public function getProductId(): ?int
+    public function getProductId(): int|null
     {
         return $this->productId;
     }
 
-    public function setProductId(?int $productId): static
+    public function setProductId(int|null $productId): static
     {
         $this->productId = $productId;
+
         return $this;
     }
 
-    public function getProduct(): ?Product
+    public function getProduct(): Product|null
     {
         return $this->product;
     }
 
-    public function setProduct(?Product $product): static
+    public function setProduct(Product|null $product): static
     {
         $this->product = $product;
+
         return $this;
     }
 
-    public function getSaleType(): ?SaleType
+    public function getSaleType(): SaleType|null
     {
         return $this->saleType;
     }
 
-    public function setSaleType(?SaleType $saleType): static
+    public function setSaleType(SaleType|null $saleType): static
     {
         $this->saleType = $saleType;
+
         return $this;
     }
 
-    public function getClassCategory1(): ?ClassCategory
+    public function getClassCategory1(): ClassCategory|null
     {
         return $this->classCategory1;
     }
 
-    public function setClassCategory1(?ClassCategory $classCategory1): static
+    public function setClassCategory1(ClassCategory|null $classCategory1): static
     {
         $this->classCategory1 = $classCategory1;
+
         return $this;
     }
 
-    public function getClassCategory2(): ?ClassCategory
+    public function getClassCategory2(): ClassCategory|null
     {
         return $this->classCategory2;
     }
 
-    public function setClassCategory2(?ClassCategory $classCategory2): static
+    public function setClassCategory2(ClassCategory|null $classCategory2): static
     {
         $this->classCategory2 = $classCategory2;
+
         return $this;
     }
 
@@ -100,17 +108,19 @@ class ProductClass extends AbstractEntity
     public function setCode(string $code): static
     {
         $this->code = $code;
+
         return $this;
     }
 
-    public function getStock(): ?int
+    public function getStock(): int|null
     {
         return $this->stock;
     }
 
-    public function setStock(?int $stock): static
+    public function setStock(int|null $stock): static
     {
         $this->stock = $stock;
+
         return $this;
     }
 
@@ -122,39 +132,43 @@ class ProductClass extends AbstractEntity
     public function setStockUnlimited(bool $stockUnlimited): static
     {
         $this->stockUnlimited = $stockUnlimited;
+
         return $this;
     }
 
-    public function getPrice01(): ?string
+    public function getPrice01(): string|null
     {
         return $this->price01;
     }
 
-    public function setPrice01(?string $price01): static
+    public function setPrice01(string|null $price01): static
     {
         $this->price01 = $price01;
+
         return $this;
     }
 
-    public function getPrice02(): ?string
+    public function getPrice02(): string|null
     {
         return $this->price02;
     }
 
-    public function setPrice02(?string $price02): static
+    public function setPrice02(string|null $price02): static
     {
         $this->price02 = $price02;
+
         return $this;
     }
 
-    public function getDeliveryFee(): ?string
+    public function getDeliveryFee(): string|null
     {
         return $this->deliveryFee;
     }
 
-    public function setDeliveryFee(?string $deliveryFee): static
+    public function setDeliveryFee(string|null $deliveryFee): static
     {
         $this->deliveryFee = $deliveryFee;
+
         return $this;
     }
 
@@ -166,17 +180,19 @@ class ProductClass extends AbstractEntity
     public function setVisible(bool $visible): static
     {
         $this->visible = $visible;
+
         return $this;
     }
 
-    public function getProductStock(): ?ProductStock
+    public function getProductStock(): ProductStock|null
     {
         return $this->productStock;
     }
 
-    public function setProductStock(?ProductStock $productStock): static
+    public function setProductStock(ProductStock|null $productStock): static
     {
         $this->productStock = $productStock;
+
         return $this;
     }
 
@@ -188,6 +204,7 @@ class ProductClass extends AbstractEntity
         if ($this->stockUnlimited) {
             return true;
         }
+
         return $this->stock !== null && $this->stock > 0;
     }
 
@@ -200,9 +217,11 @@ class ProductClass extends AbstractEntity
         if ($this->classCategory1 !== null) {
             $parts[] = $this->classCategory1->getName();
         }
+
         if ($this->classCategory2 !== null) {
             $parts[] = $this->classCategory2->getName();
         }
+
         return implode(' / ', $parts);
     }
 }

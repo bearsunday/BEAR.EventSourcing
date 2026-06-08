@@ -21,7 +21,7 @@ interface OrderItemQueryInterface
     /**
      * Create order items
      *
-     * @param int                        $orderId Order ID
+     * @param int                         $orderId Order ID
      * @param array<array<string, mixed>> $items   Items data
      */
     public function createItems(int $orderId, array $items): void;

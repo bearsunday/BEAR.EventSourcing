@@ -13,8 +13,8 @@ interface TaxServiceInterface
      */
     public function calculateTax(
         string $price,
-        ?int $productClassId = null,
-        ?int $prefId = null
+        int|null $productClassId = null,
+        int|null $prefId = null,
     ): array;
 
     /**
@@ -22,8 +22,8 @@ interface TaxServiceInterface
      */
     public function getTaxIncludedPrice(
         string $price,
-        ?int $productClassId = null,
-        ?int $prefId = null
+        int|null $productClassId = null,
+        int|null $prefId = null,
     ): string;
 
     /**
@@ -31,7 +31,7 @@ interface TaxServiceInterface
      */
     public function getTaxExcludedPrice(
         string $priceIncTax,
-        ?int $productClassId = null,
-        ?int $prefId = null
+        int|null $productClassId = null,
+        int|null $prefId = null,
     ): string;
 }

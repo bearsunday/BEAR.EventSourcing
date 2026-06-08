@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource\App\Auth;
 
-use BEAR\Resource\ResourceObject;
 use BEAR\EventSourcing\Auth\AuthServiceInterface;
+use BEAR\Resource\ResourceObject;
 use Ray\Di\Di\Inject;
 
 /**
@@ -13,12 +13,9 @@ use Ray\Di\Di\Inject;
  */
 class Logout extends ResourceObject
 {
-    private AuthServiceInterface $authService;
-
     #[Inject]
-    public function __construct(AuthServiceInterface $authService)
+    public function __construct(private AuthServiceInterface $authService)
     {
-        $this->authService = $authService;
     }
 
     /**
@@ -32,6 +29,7 @@ class Logout extends ResourceObject
 
         $this->code = 204;
         $this->body = null;
+
         return $this;
     }
 }

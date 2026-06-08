@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Service;
 
+use function array_keys;
+use function array_map;
+use function array_values;
+use function implode;
+use function mail;
+use function md5;
+use function uniqid;
+
 /**
  * SMTP Mailer implementation
  */
@@ -15,7 +23,7 @@ class SmtpMailer implements MailerInterface
     ) {
     }
 
-    public function send(string $to, string $subject, string $body, ?string $htmlBody = null): bool
+    public function send(string $to, string $subject, string $body, string|null $htmlBody = null): bool
     {
         $headers = [
             'From' => "{$this->fromName} <{$this->fromEmail}>",
@@ -40,9 +48,9 @@ class SmtpMailer implements MailerInterface
         }
 
         $headerString = implode("\r\n", array_map(
-            fn($k, $v) => "{$k}: {$v}",
+            static fn ($k, $v) => "{$k}: {$v}",
             array_keys($headers),
-            array_values($headers)
+            array_values($headers),
         ));
 
         return mail($to, $subject, $body, $headerString);

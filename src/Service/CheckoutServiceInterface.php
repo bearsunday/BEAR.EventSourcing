@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Service;
 
+use RuntimeException;
+
 /**
  * Checkout service interface
  */
@@ -25,7 +27,7 @@ interface CheckoutServiceInterface
      *
      * @return int Created order ID
      *
-     * @throws \RuntimeException If checkout fails
+     * @throws RuntimeException If checkout fails
      */
     public function complete(array $data): int;
 }
