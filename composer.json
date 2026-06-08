@@ -13,6 +13,7 @@
         "php": "^8.2",
         "aura/sql": "^5.0 || ^6.0",
         "bear/resource": "^1.32",
+        "bear/semantic-logger": "^1.0@dev",
         "ext-json": "*",
         "ext-pdo": "*",
         "ramsey/uuid": "^4.9",
@@ -24,6 +25,15 @@
         "bamarni/composer-bin-plugin": "^1.9",
         "phpunit/phpunit": "^11.5"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "./vendor-slogger",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
     "autoload": {
         "psr-4": {
             "BEAR\\EventSourcing\\": "src/"
@@ -31,7 +41,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "BEAR\\EventSourcing\\": "tests/"
+            "BEAR\\EventSourcing\\": "tests/",
+            "BEAR\\EventSourcing\\Demo\\": "demo/"
         }
     },
     "scripts": {
@@ -65,5 +76,7 @@
             "bin-links": true,
             "forward-command": true
         }
-    }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }

@@ -290,3 +290,8 @@ $this->bind(EventStoreInterface::class)->to(InMemoryEventStore::class);
 Event Sourcing extracts one aspect of semantic observation: **state changed**.
 
 Replay needs facts. Analysis may need richer context. Semantic Logger supplies that context; Event Sourcing keeps only the fact stream needed for replay.
+
+
+## Semantic Logger bridge
+
+This branch also includes a `vendor-slogger/` path package that adapts `BEAR\Resource\LoggerInterface` events into Koriym SemanticLogger contexts. `Events::fromSemanticLog()` can extract state-change events from that semantic log while keeping the current EventSourcing store implementation.

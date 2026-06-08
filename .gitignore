@@ -7,3 +7,7 @@
 /.phpcs-cache
 /coverage.xml
 .DS_Store
+/vendor-slogger/vendor/
+/vendor-slogger/composer.lock
+/vendor-slogger/.phpunit.result.cache
+/vendor-slogger/.phpunit.cache/

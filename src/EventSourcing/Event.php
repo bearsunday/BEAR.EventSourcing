@@ -31,20 +31,21 @@ final readonly class Event implements JsonSerializable
     /**
      * Create a new event from a resource request
      *
-     * @param string               $uri    Resource URI
-     * @param string               $method HTTP method
-     * @param array<string, mixed> $params Request parameters
-     * @param mixed                $result Request result
+     * @param string                  $uri    Resource URI
+     * @param string                  $method HTTP method
+     * @param array<array-key, mixed> $params Request parameters
+     * @param mixed                   $result Request result
      */
     public static function create(
         string $uri,
         string $method,
         array $params,
         mixed $result,
+        DateTimeImmutable|null $timestamp = null,
     ): self {
         return new self(
             Uuid::uuid4()->toString(),
-            new DateTimeImmutable(),
+            $timestamp ?? new DateTimeImmutable(),
             $uri,
             $method,
             $params,
