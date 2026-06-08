@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\EventSourcing;
 
 use Countable;
+use DateTimeInterface;
 use IteratorAggregate;
 
 /**
@@ -42,7 +43,7 @@ interface EventsInterface extends IteratorAggregate, Countable
     /**
      * Filter events since a specific time
      */
-    public function since(\DateTimeInterface $since): self;
+    public function since(DateTimeInterface $since): self;
 
     /**
      * Replay events with a handler
