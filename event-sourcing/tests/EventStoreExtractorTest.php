@@ -79,9 +79,7 @@ final class EventStoreExtractorTest extends TestCase
         $this->assertCount(0, $events);
     }
 
-    /**
-     * @return list<array{0: string}>
-     */
+    /** @return list<array{0: string}> */
     public static function safeMethodsProvider(): array
     {
         return [['HEAD'], ['OPTIONS'], ['TRACE']];
