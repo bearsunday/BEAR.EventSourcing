@@ -12,6 +12,7 @@ use BEAR\SemanticLogger\SemanticLogger as BearSemanticLogger;
 use DateTimeImmutable;
 use Koriym\SemanticLogger\SemanticLogger;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 use function array_map;
 
@@ -52,6 +53,45 @@ final class EventsFromSemanticLogTest extends TestCase
     public function testEmptyLogProducesEmptyCollection(): void
     {
         $events = Events::fromSemanticLog([]);
+
+        $this->assertCount(0, $events);
+    }
+
+    public function testMalformedLogEntriesAreIgnored(): void
+    {
+        $events = Events::fromSemanticLog([
+            'open' => [
+                'not-an-entry',
+                ['type' => ResourceRequestContext::TYPE],
+                [
+                    'type' => ResourceRequestContext::TYPE,
+                    'context' => ['uri' => 'app://self/users', 'method' => 'GET'],
+                    'close' => ['type' => ResourceResponseContext::TYPE, 'context' => ['body' => null]],
+                ],
+                [
+                    'type' => ResourceRequestContext::TYPE,
+                    'context' => ['uri' => new stdClass(), 'method' => 'POST'],
+                    'close' => ['type' => ResourceResponseContext::TYPE, 'context' => ['body' => null]],
+                ],
+                [
+                    'type' => ResourceRequestContext::TYPE,
+                    'context' => ['uri' => 'app://self/users', 'method' => 'POST', 'query' => 'invalid'],
+                    'close' => ['type' => ResourceResponseContext::TYPE, 'context' => ['body' => ['ok' => true]]],
+                    'open' => 'not-children',
+                ],
+            ],
+        ]);
+
+        $this->assertCount(1, $events);
+        $event = $events->all()[0];
+        $this->assertSame('app://self/users', $event->uri);
+        $this->assertSame([], $event->params);
+        $this->assertSame(['ok' => true], $event->result);
+    }
+
+    public function testInvalidOpenRootProducesEmptyCollection(): void
+    {
+        $events = Events::fromSemanticLog(['open' => 'invalid']);
 
         $this->assertCount(0, $events);
     }
