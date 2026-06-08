@@ -15,12 +15,13 @@ use PHPUnit\Framework\TestCase;
 use Ray\AuraSqlModule\Pagerfanta\AuraSqlPagerModule;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
-use Ray\MediaQuery\MediaQuerySqlModule;
+use Ray\MediaQuery\DbQueryConfig;
+use Ray\MediaQuery\MediaQueryModule;
+use Ray\MediaQuery\Queries;
 use UnexpectedValueException;
 
 class SqlEventStoreTest extends TestCase
 {
-    private const QUERY_DIR = __DIR__ . '/../../src/Query';
     private const SQL_DIR = __DIR__ . '/../../sql';
 
     public function testAppendAndGetEvents(): void
@@ -136,10 +137,9 @@ class SqlEventStoreTest extends TestCase
     private function newEventStore(): array
     {
         $pdo = new ExtendedPdo('sqlite::memory:');
-        $injector = new Injector(new class ($pdo, self::QUERY_DIR, self::SQL_DIR) extends AbstractModule {
+        $injector = new Injector(new class ($pdo, self::SQL_DIR) extends AbstractModule {
             public function __construct(
                 private readonly ExtendedPdo $pdo,
-                private readonly string $queryDir,
                 private readonly string $sqlDir,
             ) {
                 parent::__construct();
@@ -149,7 +149,15 @@ class SqlEventStoreTest extends TestCase
             {
                 $this->bind(ExtendedPdoInterface::class)->toInstance($this->pdo);
                 $this->install(new AuraSqlPagerModule());
-                $this->install(new MediaQuerySqlModule($this->queryDir, $this->sqlDir));
+                $queries = Queries::fromClasses([
+                    EventStoreQueryInterface::class,
+                    EventStoreCommandInterface::class,
+                ]);
+                /**
+                 * @psalm-suppress InternalClass
+                 * @psalm-suppress InternalMethod
+                 */
+                $this->install(new MediaQueryModule($queries, [new DbQueryConfig($this->sqlDir)]));
             }
         });
         $eventStore = $injector->getInstance(SqlEventStore::class);

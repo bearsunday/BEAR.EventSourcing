@@ -8,7 +8,12 @@
     findUnusedCode="false"
 >
     <projectFiles>
-        <directory name="src"/>
+        <directory name="src/EventSourcing"/>
+        <directory name="src/Logger"/>
+        <file name="src/Module/EventSourcingModule.php"/>
+        <file name="src/Query/EventStoreCommandInterface.php"/>
+        <file name="src/Query/EventStoreQueryInterface.php"/>
+        <directory name="src/Result"/>
         <directory name="tests"/>
         <ignoreFiles>
             <directory name="vendor"/>

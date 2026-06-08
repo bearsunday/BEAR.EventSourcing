@@ -295,3 +295,10 @@ Replay needs facts. Analysis may need richer context. Semantic Logger supplies t
 ## Semantic Logger bridge
 
 This branch also includes a `vendor-slogger/` path package that adapts `BEAR\Resource\LoggerInterface` events into Koriym SemanticLogger contexts. `Events::fromSemanticLog()` can extract state-change events from that semantic log while keeping the current EventSourcing store implementation.
+
+
+## EC-CUBE port prototype
+
+PR #2 adds an EC-CUBE-inspired application prototype under the domain, query, resource, service, authentication, and validation namespaces. The EventSourcing core implementation remains the current `src/EventSourcing/*` implementation from `1.x`; the prototype code is kept as application-layer material on top of that core.
+
+The repository quality gates continue to target the EventSourcing core and its tests. The EC-CUBE application-layer prototype is retained for follow-up integration without replacing the core implementation.

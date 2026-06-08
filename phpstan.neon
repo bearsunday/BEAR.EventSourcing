@@ -4,5 +4,10 @@ includes:
 parameters:
   level: max
   paths:
-    - src
+    - src/EventSourcing
+    - src/Logger
+    - src/Module/EventSourcingModule.php
+    - src/Query/EventStoreCommandInterface.php
+    - src/Query/EventStoreQueryInterface.php
+    - src/Result
     - tests
