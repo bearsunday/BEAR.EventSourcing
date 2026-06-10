@@ -57,6 +57,25 @@ final class EventsTest extends TestCase
         $this->assertSame('app://self/users', $events->all()[0]->uri);
     }
 
+    public function testSinceFiltersByTimestamp(): void
+    {
+        $old = Event::create(
+            'app://self/users/1',
+            'PUT',
+            timestamp: new DateTimeImmutable('2026-06-10T10:00:00.000000+00:00'),
+        );
+        $new = Event::create(
+            'app://self/users/2',
+            'PUT',
+            timestamp: new DateTimeImmutable('2026-06-10T12:00:00.000000+00:00'),
+        );
+
+        $events = (new Events([$old, $new]))->since(new DateTimeImmutable('2026-06-10T11:00:00.000000+00:00'));
+
+        $this->assertCount(1, $events);
+        $this->assertSame('app://self/users/2', $events->all()[0]->uri);
+    }
+
     public function testReplayCallsHandlerForEachEvent(): void
     {
         $events = new Events([
