@@ -9,6 +9,14 @@ use JsonSerializable;
 
 use function strtoupper;
 
+/**
+ * @psalm-import-type EventInput from Types
+ * @psalm-import-type EventOutput from Types
+ * @psalm-import-type EventParams from Types
+ * @phpstan-import-type EventInput from Types
+ * @phpstan-import-type EventOutput from Types
+ * @phpstan-import-type EventParams from Types
+ */
 final readonly class Event implements JsonSerializable
 {
     public const TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
@@ -16,7 +24,7 @@ final readonly class Event implements JsonSerializable
     public string $method;
     public DateTimeImmutable $timestamp;
 
-    /** @param array<string, mixed> $params */
+    /** @param EventParams $params */
     public function __construct(
         public string $uri,
         string $method,
@@ -28,7 +36,7 @@ final readonly class Event implements JsonSerializable
         $this->timestamp = $timestamp ?? new DateTimeImmutable();
     }
 
-    /** @param array<string, mixed> $params */
+    /** @param EventParams $params */
     public static function create(
         string $uri,
         string $method,
@@ -39,15 +47,7 @@ final readonly class Event implements JsonSerializable
         return new self($uri, $method, $params, $result, $timestamp);
     }
 
-    /**
-     * @param array{
-     *   uri: string,
-     *   method: string,
-     *   params?: array<string, mixed>,
-     *   result?: mixed,
-     *   timestamp?: string
-     * } $data
-     */
+    /** @param EventInput $data */
     public static function fromArray(array $data): self
     {
         return new self(
@@ -59,15 +59,7 @@ final readonly class Event implements JsonSerializable
         );
     }
 
-    /**
-     * @return array{
-     *   uri: string,
-     *   method: string,
-     *   params: array<string, mixed>,
-     *   result: mixed,
-     *   timestamp: string
-     * }
-     */
+    /** @return EventOutput */
     public function toArray(): array
     {
         return [
@@ -79,15 +71,7 @@ final readonly class Event implements JsonSerializable
         ];
     }
 
-    /**
-     * @return array{
-     *   uri: string,
-     *   method: string,
-     *   params: array<string, mixed>,
-     *   result: mixed,
-     *   timestamp: string
-     * }
-     */
+    /** @return EventOutput */
     public function jsonSerialize(): array
     {
         return $this->toArray();

@@ -34,18 +34,33 @@ use const JSON_UNESCAPED_UNICODE;
 
 /**
  * @implements IteratorAggregate<int, Event>
+ * @psalm-import-type EventInput from Types
+ * @psalm-import-type EventList from Types
+ * @psalm-import-type EventParams from Types
+ * @psalm-import-type RecordedMethod from Types
+ * @psalm-import-type SemanticContext from Types
+ * @psalm-import-type SemanticEntry from Types
+ * @psalm-import-type SemanticLog from Types
+ * @phpstan-import-type EventInput from Types
+ * @phpstan-import-type EventList from Types
+ * @phpstan-import-type EventParams from Types
+ * @phpstan-import-type RecordedMethod from Types
+ * @phpstan-import-type SemanticContext from Types
+ * @phpstan-import-type SemanticEntry from Types
+ * @phpstan-import-type SemanticLog from Types
  * @psalm-suppress MixedAssignment Semantic log input is intentionally untyped external data.
  */
 final readonly class Events implements Countable, IteratorAggregate
 {
+    /** @var list<RecordedMethod> */
     private const RECORDED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
-    /** @param list<Event> $events */
+    /** @param EventList $events */
     public function __construct(private array $events = [])
     {
     }
 
-    /** @param array<array-key, mixed> $semanticLog */
+    /** @param SemanticLog $semanticLog */
     public static function fromSemanticLog(array $semanticLog): self
     {
         $open = $semanticLog['open'] ?? [];
@@ -74,7 +89,7 @@ final readonly class Events implements Countable, IteratorAggregate
             }
 
             try {
-                /** @var array{uri: string, method: string, params?: array<string, mixed>, result?: mixed, timestamp?: string} $item */
+                /** @var EventInput $item */
                 $events[] = Event::fromArray($item);
             } catch (Throwable) {
                 continue;
@@ -130,7 +145,7 @@ final readonly class Events implements Countable, IteratorAggregate
         }
     }
 
-    /** @return list<Event> */
+    /** @return EventList */
     public function all(): array
     {
         return $this->events;
@@ -148,8 +163,8 @@ final readonly class Events implements Countable, IteratorAggregate
     }
 
     /**
-     * @param array<array-key, mixed> $opens
-     * @param list<Event>             $events
+     * @param SemanticLog $opens
+     * @param EventList   $events
      */
     private static function walk(array $opens, array &$events): void
     {
@@ -168,8 +183,8 @@ final readonly class Events implements Countable, IteratorAggregate
     }
 
     /**
-     * @param array<array-key, mixed> $entry
-     * @param list<Event>             $events
+     * @param SemanticEntry $entry
+     * @param EventList     $events
      */
     private static function appendEvent(array $entry, array &$events): void
     {
@@ -195,8 +210,8 @@ final readonly class Events implements Countable, IteratorAggregate
     }
 
     /**
-     * @param array<array-key, mixed> $entry
-     * @return array<array-key, mixed>|null
+     * @param SemanticEntry $entry
+     * @return SemanticContext|null
      */
     private static function context(array $entry): array|null
     {
@@ -206,8 +221,8 @@ final readonly class Events implements Countable, IteratorAggregate
     }
 
     /**
-     * @param array<array-key, mixed> $entry
-     * @return array<array-key, mixed>|null
+     * @param SemanticEntry $entry
+     * @return SemanticContext|null
      */
     private static function closeContext(array $entry): array|null
     {
@@ -221,7 +236,10 @@ final readonly class Events implements Countable, IteratorAggregate
         return is_array($context) ? $context : null;
     }
 
-    /** @param array<array-key, mixed> $context */
+    /**
+     * @param SemanticContext $context
+     * @return RecordedMethod|null
+     */
     private static function recordedMethod(array $context): string|null
     {
         $methodValue = self::stringValue($context, 'method');
@@ -234,7 +252,7 @@ final readonly class Events implements Countable, IteratorAggregate
         return in_array($method, self::RECORDED_METHODS, true) ? $method : null;
     }
 
-    /** @param array<array-key, mixed> $context */
+    /** @param SemanticContext $context */
     private static function isSuccessful(array $context): bool
     {
         $code = $context['code'] ?? null;
@@ -242,7 +260,7 @@ final readonly class Events implements Countable, IteratorAggregate
         return ! is_int($code) || $code < 400;
     }
 
-    /** @param array<array-key, mixed> $context */
+    /** @param SemanticContext $context */
     private static function stringValue(array $context, string $key): string|null
     {
         $value = $context[$key] ?? null;
@@ -251,8 +269,8 @@ final readonly class Events implements Countable, IteratorAggregate
     }
 
     /**
-     * @param array<array-key, mixed> $context
-     * @return array<string, mixed>
+     * @param SemanticContext $context
+     * @return EventParams
      */
     private static function params(array $context): array
     {
@@ -271,7 +289,7 @@ final readonly class Events implements Countable, IteratorAggregate
         return $result;
     }
 
-    /** @param array<array-key, mixed> $context */
+    /** @param SemanticContext $context */
     private static function timestamp(array $context): DateTimeImmutable|null
     {
         $timestamp = self::stringValue($context, 'timestamp');
