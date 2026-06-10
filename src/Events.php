@@ -32,7 +32,10 @@ use const JSON_THROW_ON_ERROR;
 use const JSON_UNESCAPED_SLASHES;
 use const JSON_UNESCAPED_UNICODE;
 
-/** @implements IteratorAggregate<int, Event> */
+/**
+ * @implements IteratorAggregate<int, Event>
+ * @psalm-suppress MixedAssignment Semantic log input is intentionally untyped external data.
+ */
 final readonly class Events implements Countable, IteratorAggregate
 {
     private const RECORDED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
