@@ -11,6 +11,13 @@ namespace BEAR\EventSourcing;
  * @psalm-type RecordedMethodList = list<RecordedMethod>
  * @psalm-type EventParams = array<string, mixed>
  * @psalm-type EventList = list<Event>
+ * @psalm-type EventStoreRow = array{
+ *   uri: string,
+ *   method: string,
+ *   params_json: string,
+ *   result_json: string,
+ *   recorded_at: string
+ * }
  * @psalm-type SemanticEntry = array<array-key, mixed>
  * @psalm-type SemanticContext = array<array-key, mixed>
  */

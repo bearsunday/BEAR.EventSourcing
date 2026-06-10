@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Query;
 
+use BEAR\EventSourcing\Types;
 use Ray\MediaQuery\Annotation\DbQuery;
 use Ray\MediaQuery\Result\AffectedRows;
 
+/** @psalm-import-type EventStoreRow from Types */
 interface EventStoreQueryInterface
 {
     #[DbQuery('event_store_append')]
@@ -19,13 +21,8 @@ interface EventStoreQueryInterface
     ): AffectedRows;
 
     /**
-     * @return list<array{
-     *   uri: string,
-     *   method: string,
-     *   params_json: string,
-     *   result_json: string,
-     *   recorded_at: string
-     * }>
+     * @return array
+     * @psalm-return list<EventStoreRow>
      */
     #[DbQuery('event_store_list')]
     public function list(): array;

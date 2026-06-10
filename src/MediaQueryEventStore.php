@@ -18,13 +18,7 @@ use const JSON_THROW_ON_ERROR;
 
 /**
  * @psalm-import-type EventParams from Types
- * @psalm-type EventRow = array{
- *   uri: string,
- *   method: string,
- *   params_json: string,
- *   result_json: string,
- *   recorded_at: string
- * }
+ * @psalm-import-type EventStoreRow from Types
  */
 final readonly class MediaQueryEventStore implements EventStoreInterface
 {
@@ -72,7 +66,7 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
         }
     }
 
-    /** @param EventRow $row */
+    /** @param EventStoreRow $row */
     private static function event(array $row): Event
     {
         try {
