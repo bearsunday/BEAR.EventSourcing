@@ -82,6 +82,17 @@ $writesToUsers = $events->filterByUri('app://self/users*');
 $posts = $events->filterByMethod('POST');
 ```
 
+Persist extracted events explicitly when an application needs storage:
+
+```php
+use BEAR\EventSourcing\InMemoryEventStore;
+
+$store = new InMemoryEventStore();
+$store->appendAll($events);
+```
+
+`EventStoreInterface` is intentionally small. It is a persistence port for already-extracted events, not a runtime hook.
+
 ## Non-goals for the first iteration
 
 - No EC-CUBE prototype
