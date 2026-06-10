@@ -7,7 +7,11 @@ namespace BEAR\EventSourcing;
 use Countable;
 use IteratorAggregate;
 
-/** @extends IteratorAggregate<int, Event> */
+/**
+ * Countable iterable stream of extracted events.
+ *
+ * @extends IteratorAggregate<int, Event>
+ */
 interface EventsInterface extends Countable, IteratorAggregate
 {
 }

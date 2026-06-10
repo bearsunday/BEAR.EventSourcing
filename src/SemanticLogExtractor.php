@@ -17,11 +17,6 @@ use function is_string;
  * @psalm-import-type SemanticContext from Types
  * @psalm-import-type SemanticEntry from Types
  * @psalm-import-type SemanticLog from Types
- * @phpstan-import-type EventList from Types
- * @phpstan-import-type EventParams from Types
- * @phpstan-import-type SemanticContext from Types
- * @phpstan-import-type SemanticEntry from Types
- * @phpstan-import-type SemanticLog from Types
  * @psalm-suppress MixedAssignment Semantic log input is intentionally untyped external data.
  */
 final readonly class SemanticLogExtractor implements SemanticLogExtractorInterface

@@ -14,8 +14,6 @@ use function strtoupper;
 /**
  * @psalm-import-type RecordedMethod from Types
  * @psalm-import-type RecordedMethodList from Types
- * @phpstan-import-type RecordedMethod from Types
- * @phpstan-import-type RecordedMethodList from Types
  */
 final readonly class RecordedMethods
 {

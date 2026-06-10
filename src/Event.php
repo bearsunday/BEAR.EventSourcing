@@ -13,9 +13,6 @@ use function strtoupper;
  * @psalm-import-type EventInput from Types
  * @psalm-import-type EventOutput from Types
  * @psalm-import-type EventParams from Types
- * @phpstan-import-type EventInput from Types
- * @phpstan-import-type EventOutput from Types
- * @phpstan-import-type EventParams from Types
  */
 final readonly class Event implements JsonSerializable
 {
