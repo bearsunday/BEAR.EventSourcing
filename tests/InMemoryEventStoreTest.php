@@ -17,7 +17,7 @@ final class InMemoryEventStoreTest extends TestCase
         $store->append(Event::create('app://self/users', 'POST'));
 
         $this->assertCount(1, $store->all());
-        $this->assertSame('POST', $store->all()->all()[0]->method);
+        $this->assertSame('POST', iterator_to_array($store->all())[0]->method);
     }
 
     public function testAppendAllStoresCollection(): void

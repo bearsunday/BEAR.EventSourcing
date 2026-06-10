@@ -43,7 +43,7 @@ final class EventsFromSemanticLogTest extends TestCase
         $events = (new SemanticLogExtractor())->extract($logger->flush()->toArray());
 
         $this->assertCount(1, $events);
-        $event = $events->all()[0];
+        $event = iterator_to_array($events)[0];
         $this->assertSame('app://self/users', $event->uri);
         $this->assertSame($method, $event->method);
         $this->assertSame(['name' => 'Ada'], $event->params);
@@ -81,7 +81,7 @@ final class EventsFromSemanticLogTest extends TestCase
         $events = $extractor->extract($logger->flush()->toArray());
 
         $this->assertCount(1, $events);
-        $event = $events->all()[0];
+        $event = iterator_to_array($events)[0];
         $this->assertSame('GET', $event->method);
         $this->assertSame('app://self/users/1', $event->uri);
         $this->assertSame(['id' => 1], $event->result);
@@ -106,7 +106,7 @@ final class EventsFromSemanticLogTest extends TestCase
 
         $this->assertSame(
             ['app://self/orders', 'app://self/inventory/1'],
-            array_map(static fn (Event $event): string => $event->uri, $events->all()),
+            array_map(static fn (Event $event): string => $event->uri, iterator_to_array($events)),
         );
     }
 
@@ -129,7 +129,7 @@ final class EventsFromSemanticLogTest extends TestCase
         ]);
 
         $this->assertCount(1, $events);
-        $event = $events->all()[0];
+        $event = iterator_to_array($events)[0];
         $this->assertSame('app://self/users', $event->uri);
         $this->assertSame([], $event->params);
         $this->assertSame(['ok' => true], $event->result);
@@ -145,7 +145,7 @@ final class EventsFromSemanticLogTest extends TestCase
         $events = (new SemanticLogExtractor())->extract($logger->flush()->toArray());
         $after = new DateTimeImmutable('+1 second');
 
-        $timestamp = $events->all()[0]->timestamp;
+        $timestamp = iterator_to_array($events)[0]->timestamp;
         $this->assertGreaterThanOrEqual($before, $timestamp);
         $this->assertLessThanOrEqual($after, $timestamp);
     }

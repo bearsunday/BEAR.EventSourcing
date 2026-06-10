@@ -17,7 +17,7 @@ Semantic Logger observations -> Events -> optional EventStore
 The package provides:
 
 - `Event`: one immutable state-change fact
-- `Events`: an iterable collection of events
+- `EventsInterface` / `Events`: countable, iterable event collection
 - `SemanticLogExtractorInterface` / `SemanticLogExtractor`: extract events from a flushed Semantic Logger log
 - `RecordedMethods`: injectable extraction policy for recorded methods
 - `EventStoreInterface`: optional persistence port for extracted events
@@ -50,7 +50,7 @@ $log = $semanticLogger->flush()->toArray();
 $events = $extractor->extract($log);
 
 foreach ($events as $event) {
-    // append to an EventStore, replay, or inspect
+    // append to an EventStore, project, replay, or inspect
 }
 ```
 
@@ -72,28 +72,6 @@ The extractor expects an `open` tree where each operation has a context with:
 - `timestamp`: optional ISO-8601 timestamp
 
 The matching `close.context.body` becomes the event result. If `close.context.code` exists and is `400` or greater, the operation is treated as unsuccessful and ignored.
-
-Serialize and restore events:
-
-```php
-$json = $events->toJson();
-$restored = Events::fromJson($json);
-```
-
-Replay events through an application handler:
-
-```php
-$events->replay(static function (Event $event) use ($handler): void {
-    $handler($event->method, $event->uri, $event->params);
-});
-```
-
-Filter events:
-
-```php
-$writesToUsers = $events->filterByUri('app://self/users*');
-$posts = $events->filterByMethod('POST');
-```
 
 Persist extracted events explicitly when an application needs storage:
 

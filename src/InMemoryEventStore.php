@@ -4,29 +4,37 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing;
 
+/** @psalm-import-type EventList from Types */
 final class InMemoryEventStore implements EventStoreInterface
 {
-    private Events $events;
+    /** @var EventList */
+    private array $events = [];
 
-    public function __construct(Events|null $events = null)
+    public function __construct(EventsInterface|null $events = null)
     {
-        $this->events = $events ?? new Events();
+        if ($events === null) {
+            return;
+        }
+
+        foreach ($events as $event) {
+            $this->events[] = $event;
+        }
     }
 
     public function append(Event $event): void
     {
-        $this->events = $this->events->add($event);
+        $this->events[] = $event;
     }
 
-    public function appendAll(Events $events): void
+    public function appendAll(EventsInterface $events): void
     {
         foreach ($events as $event) {
             $this->append($event);
         }
     }
 
-    public function all(): Events
+    public function all(): EventsInterface
     {
-        return $this->events;
+        return new Events($this->events);
     }
 }

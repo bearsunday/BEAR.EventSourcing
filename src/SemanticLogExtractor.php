@@ -34,7 +34,7 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
     }
 
     /** @param SemanticLog $semanticLog */
-    public function extract(array $semanticLog): Events
+    public function extract(array $semanticLog): EventsInterface
     {
         $open = $semanticLog['open'] ?? [];
         if (! is_array($open)) {

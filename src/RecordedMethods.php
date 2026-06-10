@@ -60,10 +60,4 @@ final readonly class RecordedMethods
         /** @var RecordedMethod $recordedMethod */
         return $recordedMethod;
     }
-
-    /** @return RecordedMethodList */
-    public function all(): array
-    {
-        return $this->methods;
-    }
 }

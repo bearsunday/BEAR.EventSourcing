@@ -31,7 +31,7 @@ Semantic Logger observations -> Events -> optional EventStore
 Core components:
 
 - `Event`
-- `Events`
+- `EventsInterface` / `Events`
 - `SemanticLogExtractorInterface` / `SemanticLogExtractor`
 - `RecordedMethods`
 - Semantic Logger log fixtures and extractor tests
