@@ -73,6 +73,35 @@ The extractor expects an `open` tree where each operation has a context with:
 
 The matching `close.context.body` becomes the event result. If `close.context.code` exists and is `400` or greater, the operation is treated as unsuccessful and ignored.
 
+Filter events with PHP's standard iterators. Iterator filters can be stacked without adding methods to `Events`:
+
+```php
+use BEAR\EventSourcing\Event;
+
+$userEvents = new CallbackFilterIterator(
+    $events->getIterator(),
+    static fn (Event $event): bool => ($event->params['id'] ?? null) === 'koriym',
+);
+
+$userWrites = new CallbackFilterIterator(
+    $userEvents,
+    static fn (Event $event): bool => $event->method !== 'GET',
+);
+
+foreach ($userWrites as $event) {
+    // replay, project, or inspect events for id=koriym
+}
+```
+
+URI prefixes and timestamps can be handled the same way:
+
+```php
+$orderEvents = new CallbackFilterIterator(
+    $events->getIterator(),
+    static fn (Event $event): bool => str_starts_with($event->uri, 'app://self/orders/123'),
+);
+```
+
 Persist extracted events explicitly when an application needs storage:
 
 ```php
