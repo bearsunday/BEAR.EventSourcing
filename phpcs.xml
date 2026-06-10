@@ -12,12 +12,7 @@
 
     <arg value="nps"/>
 
-    <file>src/EventSourcing</file>
-    <file>src/Logger</file>
-    <file>src/Module/EventSourcingModule.php</file>
-    <file>src/Query/EventStoreCommandInterface.php</file>
-    <file>src/Query/EventStoreQueryInterface.php</file>
-    <file>src/Result</file>
+    <file>src</file>
     <file>tests</file>
 
     <rule ref="PSR12"/>

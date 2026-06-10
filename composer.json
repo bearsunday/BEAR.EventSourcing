@@ -17,7 +17,6 @@
         "ext-json": "*",
         "ext-pdo": "*",
         "ramsey/uuid": "^4.9",
-        "ray/aop": "^2.19",
         "ray/di": "^2.20",
         "ray/media-query": "^1.1"
     },
@@ -57,10 +56,10 @@
         "psalm": ["psalm --monochrome --show-info=false"],
         "sa": ["psalm --monochrome --show-info=false", "phpstan analyse -c phpstan.neon --memory-limit=-1 --no-progress"],
         "metrics": ["@test", "php -d error_reporting=8191 vendor/bin/phpmetrics --report-html=build/metrics src"],
-        "phpmd": ["php -d error_reporting=8191 vendor/bin/phpmd src/EventSourcing,src/Logger,src/Module/EventSourcingModule.php,src/Query/EventStoreCommandInterface.php,src/Query/EventStoreQueryInterface.php,src/Result text ./phpmd.xml"],
+        "phpmd": ["php -d error_reporting=8191 vendor/bin/phpmd src text ./phpmd.xml"],
         "rector": ["rector process --dry-run --no-progress-bar --debug"],
         "rector-fix": ["rector process --no-progress-bar --debug"],
-        "require-checker": ["composer-require-checker check composer.json --config-file=composer-require-checker.json"],
+        "require-checker": ["composer-require-checker check composer.json"],
         "build": ["@cs", "@sa", "@pcov", "@metrics"],
         "baseline": ["phpstan analyse -c phpstan.neon --memory-limit=-1 --generate-baseline", "psalm --set-baseline=psalm-baseline.xml"]
     },
