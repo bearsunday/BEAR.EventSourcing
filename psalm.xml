@@ -3,6 +3,7 @@
     errorLevel="1"
     resolveFromConfigFile="true"
     findUnusedCode="false"
+    ensureOverrideAttribute="false"
 >
     <projectFiles>
         <directory name="src"/>
