@@ -1,10 +1,10 @@
-# event-sourcing
+# BEAR.EventSourcing
 
 Event sourcing primitives extracted from Semantic Logger observations.
 
 ## Intent
 
-This project starts from one constraint: the Semantic Logger log is the observation source.
+This project starts from one constraint: **Semantic Logger is the observation source**.
 
 The package does not observe BEAR.Resource directly, and it does not decorate `BEAR\Resource\LoggerInterface` to write to an event store during resource execution. It reads Semantic Logger observations and derives immutable event facts from them.
 
@@ -12,19 +12,20 @@ The package does not observe BEAR.Resource directly, and it does not decorate `B
 Semantic Logger observations -> Events -> optional EventStore
 ```
 
-## First API shape
+## API
 
-The first implementation should stay small:
+The package provides:
 
 - `Event`: one immutable state-change fact
-- `Events`: a collection of events
+- `Events`: an iterable collection of events
 - `Events::fromSemanticLog(array $log): Events`: extract events from a flushed Semantic Logger log
+- `EventStoreInterface`: optional persistence port for extracted events
 
-No runtime module, SQL store, framework hook, or application prototype belongs in the first step.
+Persistence and framework integration are explicit application choices, not automatic runtime behavior.
 
 ## Event boundary
 
-An event represents a successful state-changing resource operation.
+An event represents a successful state-changing resource-like operation observed in a Semantic Logger open/close pair.
 
 Recorded methods:
 
@@ -34,3 +35,16 @@ Recorded methods:
 - `DELETE`
 
 `GET` is observation data, not an event.
+
+## Usage sketch
+
+```php
+use BEAR\EventSourcing\Events;
+
+$log = $semanticLogger->flush()->toArray();
+$events = Events::fromSemanticLog($log);
+
+foreach ($events as $event) {
+    // append to an EventStore, replay, or inspect
+}
+```
