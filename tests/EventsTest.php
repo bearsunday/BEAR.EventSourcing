@@ -42,6 +42,14 @@ final class EventsTest extends TestCase
         $this->assertSame($events->all()[0]->toArray(), $restored->all()[0]->toArray());
     }
 
+    public function testFromJsonSkipsMalformedEntries(): void
+    {
+        $events = Events::fromJson('[{"uri":"app://self/users","method":"POST"},{"method":"POST"},"bad"]');
+
+        $this->assertCount(1, $events);
+        $this->assertSame('app://self/users', $events->all()[0]->uri);
+    }
+
     public function testReplayCallsHandlerForEachEvent(): void
     {
         $events = new Events([
