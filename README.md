@@ -36,7 +36,9 @@ Initial recorded methods:
 
 `GET` is observation data, not an event.
 
-## Usage sketch
+## Usage
+
+Extract events from a flushed Semantic Logger log:
 
 ```php
 use BEAR\EventSourcing\Events;
@@ -47,6 +49,37 @@ $events = Events::fromSemanticLog($log);
 foreach ($events as $event) {
     // append to an EventStore, replay, or inspect
 }
+```
+
+The extractor expects an `open` tree where each operation has a context with:
+
+- `uri`: resource-like identifier
+- `method`: HTTP-style method
+- `query` or `params`: operation input
+- `timestamp`: optional ISO-8601 timestamp
+
+The matching `close.context.body` becomes the event result. If `close.context.code` exists and is `400` or greater, the operation is treated as unsuccessful and ignored.
+
+Serialize and restore events:
+
+```php
+$json = $events->toJson();
+$restored = Events::fromJson($json);
+```
+
+Replay events through an application handler:
+
+```php
+$events->replay(static function (Event $event) use ($handler): void {
+    $handler($event->method, $event->uri, $event->params);
+});
+```
+
+Filter events:
+
+```php
+$writesToUsers = $events->filterByUri('app://self/users*');
+$posts = $events->filterByMethod('POST');
 ```
 
 ## Non-goals for the first iteration
