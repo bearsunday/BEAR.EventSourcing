@@ -80,12 +80,12 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
             return;
         }
 
-        $events[] = Event::create(
+        $events[] = new Event(
             uri: $uri,
             method: $method,
+            timestamp: self::timestamp($request) ?? new DateTimeImmutable(),
             params: self::params($request),
             result: $response['body'] ?? null,
-            timestamp: self::timestamp($request),
         );
     }
 

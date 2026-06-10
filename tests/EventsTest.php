@@ -7,14 +7,16 @@ namespace BEAR\EventSourcing\Tests;
 use BEAR\EventSourcing\Event;
 use BEAR\EventSourcing\Events;
 use BEAR\EventSourcing\EventsInterface;
+use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
 final class EventsTest extends TestCase
 {
     public function testCollectionIsIterableAndCountable(): void
     {
-        $post = Event::create('app://self/users', 'POST', ['name' => 'Ada']);
-        $put = Event::create('app://self/users/1', 'PUT', ['name' => 'Grace']);
+        $timestamp = new DateTimeImmutable('2026-06-10T12:34:56.123456+00:00');
+        $post = new Event('app://self/users', 'POST', $timestamp, ['name' => 'Ada']);
+        $put = new Event('app://self/users/1', 'PUT', $timestamp, ['name' => 'Grace']);
 
         $events = new Events([$post, $put]);
 
