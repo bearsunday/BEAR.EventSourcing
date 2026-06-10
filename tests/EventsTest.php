@@ -75,7 +75,6 @@ final class EventsTest extends TestCase
         $this->assertCount(1, $events);
         $this->assertSame('app://self/users/2', $events->all()[0]->uri);
     }
-    }
 
     public function testReplayCallsHandlerForEachEvent(): void
     {
