@@ -18,7 +18,8 @@ The package provides:
 
 - `Event`: one immutable state-change fact
 - `Events`: an iterable collection of events
-- `Events::fromSemanticLog(array $log): Events`: extract events from a flushed Semantic Logger log
+- `SemanticLogExtractorInterface` / `SemanticLogExtractor`: extract events from a flushed Semantic Logger log
+- `RecordedMethods`: injectable extraction policy for recorded methods
 - `EventStoreInterface`: optional persistence port for extracted events
 
 Persistence and framework integration are explicit application choices, not automatic runtime behavior.
@@ -27,28 +28,40 @@ Persistence and framework integration are explicit application choices, not auto
 
 An event represents a successful state-changing resource-like operation observed in a Semantic Logger open/close pair.
 
-Recorded methods:
+Recorded methods by default:
 
 - `POST`
 - `PUT`
 - `PATCH`
 - `DELETE`
 
-`GET` is observation data, not an event.
+`GET` is observation data by default. Applications can include it explicitly for development-time read tracing by injecting a different `RecordedMethods` policy.
 
 ## Usage
 
-Extract events from a flushed Semantic Logger log:
+Extract events from a flushed Semantic Logger log through an injected extractor:
 
 ```php
-use BEAR\EventSourcing\Events;
+use BEAR\EventSourcing\SemanticLogExtractorInterface;
 
 $log = $semanticLogger->flush()->toArray();
-$events = Events::fromSemanticLog($log);
+
+/** @var SemanticLogExtractorInterface $extractor */
+$events = $extractor->extract($log);
 
 foreach ($events as $event) {
     // append to an EventStore, replay, or inspect
 }
+```
+
+Configure the extractor through dependency injection. Bind `RecordedMethods` with reads included for development-time tracing:
+
+```php
+use BEAR\EventSourcing\RecordedMethods;
+use BEAR\EventSourcing\SemanticLogExtractor;
+
+$extractor = new SemanticLogExtractor(new RecordedMethods(RecordedMethods::WITH_READS));
+$events = $extractor->extract($log);
 ```
 
 The extractor expects an `open` tree where each operation has a context with:

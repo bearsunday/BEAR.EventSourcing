@@ -7,8 +7,11 @@ namespace BEAR\EventSourcing;
 /**
  * BEAR.EventSourcing domain types for static analysis.
  *
- * @psalm-type RecordedMethod = 'POST'|'PUT'|'PATCH'|'DELETE'
- * @phpstan-type RecordedMethod 'POST'|'PUT'|'PATCH'|'DELETE'
+ * @psalm-type RecordedMethod = 'GET'|'POST'|'PUT'|'PATCH'|'DELETE'
+ * @phpstan-type RecordedMethod 'GET'|'POST'|'PUT'|'PATCH'|'DELETE'
+ *
+ * @psalm-type RecordedMethodList = list<RecordedMethod>
+ * @phpstan-type RecordedMethodList list<RecordedMethod>
  *
  * @psalm-type EventParams = array<string, mixed>
  * @phpstan-type EventParams array<string, mixed>

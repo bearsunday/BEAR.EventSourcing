@@ -32,7 +32,8 @@ Core components:
 
 - `Event`
 - `Events`
-- `Events::fromSemanticLog(array $log)`
+- `SemanticLogExtractorInterface` / `SemanticLogExtractor`
+- `RecordedMethods`
 - Semantic Logger log fixtures and extractor tests
 - Optional `EventStoreInterface` and in-memory implementation
 
