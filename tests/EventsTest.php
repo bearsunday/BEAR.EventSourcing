@@ -44,7 +44,14 @@ final class EventsTest extends TestCase
 
     public function testFromJsonSkipsMalformedEntries(): void
     {
-        $events = Events::fromJson('[{"uri":"app://self/users","method":"POST"},{"method":"POST"},"bad"]');
+        $json = '['
+            . '{"uri":"app://self/users","method":"POST"},'
+            . '{"uri":"app://self/bad","method":"POST","timestamp":"not-a-date"},'
+            . '{"method":"POST"},'
+            . '"bad"'
+            . ']';
+
+        $events = Events::fromJson($json);
 
         $this->assertCount(1, $events);
         $this->assertSame('app://self/users', $events->all()[0]->uri);

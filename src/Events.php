@@ -9,6 +9,7 @@ use Countable;
 use DateTimeInterface;
 use IteratorAggregate;
 use JsonException;
+use Throwable;
 use Traversable;
 
 use function array_filter;
@@ -48,8 +49,12 @@ final readonly class Events implements Countable, IteratorAggregate
                 continue;
             }
 
-            /** @var array{uri: string, method: string, params?: array<string, mixed>, result?: mixed, timestamp?: string} $item */
-            $events[] = Event::fromArray($item);
+            try {
+                /** @var array{uri: string, method: string, params?: array<string, mixed>, result?: mixed, timestamp?: string} $item */
+                $events[] = Event::fromArray($item);
+            } catch (Throwable) {
+                continue;
+            }
         }
 
         return new self($events);
