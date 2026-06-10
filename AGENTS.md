@@ -36,11 +36,13 @@ Core components:
 - `RecordedMethods`
 - Semantic Logger log fixtures and extractor tests
 - `EventStoreInterface`, in-memory implementation, and Ray.MediaQuery SQL implementation
+- `EventSourcingModule` and `MediaQueryEventStoreModule` for optional ES bindings
 
 Keep out of this package:
 
 - BEAR.Resource logger decorator
 - Runtime auto-persistence
-- BEAR module wiring
+- Application-specific BEAR module wiring
+- Hidden installation of application-owned MediaQuery or database modules from ES modules
 - Application-specific domain code
 - Bundled subpackages

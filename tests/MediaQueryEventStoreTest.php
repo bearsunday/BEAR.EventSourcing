@@ -8,7 +8,7 @@ use BEAR\EventSourcing\Event;
 use BEAR\EventSourcing\Events;
 use BEAR\EventSourcing\EventStoreInterface;
 use BEAR\EventSourcing\MediaQueryEventStore;
-use BEAR\EventSourcing\Tests\Fixture\MediaQueryEventStoreModule;
+use BEAR\EventSourcing\Tests\Fixture\MediaQueryEventStoreAppModule;
 use DateTimeImmutable;
 use PDO;
 use PHPUnit\Framework\Attributes\RequiresPhp;
@@ -82,7 +82,7 @@ final class MediaQueryEventStoreTest extends TestCase
         );
     }
 
-    private function store(): MediaQueryEventStore
+    private function store(): EventStoreInterface
     {
         $databaseFile = tempnam(sys_get_temp_dir(), 'bear_es_');
         $this->assertIsString($databaseFile);
@@ -92,9 +92,11 @@ final class MediaQueryEventStoreTest extends TestCase
         $this->assertIsString($schema);
         (new PDO('sqlite:' . $this->databaseFile))->exec($schema);
 
-        $injector = new Injector(new MediaQueryEventStoreModule($this->databaseFile));
+        $injector = new Injector(new MediaQueryEventStoreAppModule($this->databaseFile));
+        $store = $injector->getInstance(EventStoreInterface::class);
+        $this->assertInstanceOf(MediaQueryEventStore::class, $store);
 
-        return $injector->getInstance(MediaQueryEventStore::class);
+        return $store;
     }
 
     private function assertEventEquals(Event $expected, Event $actual): void

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Tests\Fixture;
 
+use BEAR\EventSourcing\EventSourcingModule;
+use BEAR\EventSourcing\MediaQueryEventStoreModule;
 use Ray\AuraSqlModule\AuraSqlModule;
 use Ray\Di\AbstractModule;
 use Ray\MediaQuery\MediaQuerySqlModule;
 
-final class MediaQueryEventStoreModule extends AbstractModule
+final class MediaQueryEventStoreAppModule extends AbstractModule
 {
     public function __construct(
         private readonly string $databaseFile,
@@ -19,10 +21,13 @@ final class MediaQueryEventStoreModule extends AbstractModule
     protected function configure(): void
     {
         $projectDir = dirname(__DIR__, 2);
+        $this->install(new AuraSqlModule('sqlite:' . $this->databaseFile));
         $this->install(new MediaQuerySqlModule(
             interfaceDir: $projectDir . '/src/Query',
             sqlDir: $projectDir . '/sql/event_store',
         ));
-        $this->install(new AuraSqlModule('sqlite:' . $this->databaseFile));
+        $this->install(new EventSourcingModule(
+            store: new MediaQueryEventStoreModule(),
+        ));
     }
 }

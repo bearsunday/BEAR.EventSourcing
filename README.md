@@ -23,6 +23,8 @@ The package provides:
 - `EventStoreInterface`: persistence port for extracted events
 - `InMemoryEventStore`: in-memory EventStore implementation for tests and development
 - `MediaQueryEventStore`: Ray.MediaQuery SQL EventStore implementation
+- `EventSourcingModule`: optional Ray.Di bindings for extraction and store selection
+- `MediaQueryEventStoreModule`: EventStore binding for an existing Ray.MediaQuery setup
 
 Persistence and framework integration are explicit application choices, not automatic runtime behavior.
 
@@ -56,14 +58,22 @@ foreach ($events as $event) {
 }
 ```
 
-Configure the extractor through dependency injection. Bind `RecordedMethods` with reads included for development-time tracing:
+Configure the extractor through dependency injection. Install `EventSourcingModule` and pass `RecordedMethods` only when the extraction policy differs from the default:
 
 ```php
+use BEAR\EventSourcing\EventSourcingModule;
 use BEAR\EventSourcing\RecordedMethods;
-use BEAR\EventSourcing\SemanticLogExtractor;
+use Ray\Di\AbstractModule;
 
-$extractor = new SemanticLogExtractor(new RecordedMethods(RecordedMethods::WITH_READS));
-$events = $extractor->extract($log);
+final class AppModule extends AbstractModule
+{
+    protected function configure(): void
+    {
+        $this->install(new EventSourcingModule(
+            methods: new RecordedMethods(RecordedMethods::WITH_READS),
+        ));
+    }
+}
 ```
 
 The extractor accepts Semantic Logger `LogJson` and reads its public `open` tree. Each recorded operation has a context with:
@@ -113,10 +123,12 @@ $store = new InMemoryEventStore();
 $store->appendAll($events);
 ```
 
-Use `MediaQueryEventStore` when the EventStore should be backed by SQL through Ray.MediaQuery:
+Use `MediaQueryEventStore` when the EventStore should be backed by SQL through Ray.MediaQuery. MediaQuery remains application-owned; the EventSourcing module only adds EventStore bindings:
 
 ```php
-use BEAR\EventSourcing\MediaQueryEventStore;
+use BEAR\EventSourcing\EventSourcingModule;
+use BEAR\EventSourcing\EventStoreInterface;
+use BEAR\EventSourcing\MediaQueryEventStoreModule;
 use Ray\AuraSqlModule\AuraSqlModule;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -127,19 +139,22 @@ final class AppModule extends AbstractModule
     protected function configure(): void
     {
         $packageDir = __DIR__ . '/vendor/bear/event-sourcing';
+        $this->install(new AuraSqlModule('sqlite:' . __DIR__ . '/events.sqlite'));
         $this->install(new MediaQuerySqlModule(
             interfaceDir: $packageDir . '/src/Query',
             sqlDir: $packageDir . '/sql/event_store',
         ));
-        $this->install(new AuraSqlModule('sqlite:' . __DIR__ . '/events.sqlite'));
+        $this->install(new EventSourcingModule(
+            store: new MediaQueryEventStoreModule(),
+        ));
     }
 }
 
-$store = (new Injector(new AppModule()))->getInstance(MediaQueryEventStore::class);
+$store = (new Injector(new AppModule()))->getInstance(EventStoreInterface::class);
 $store->appendAll($events);
 ```
 
-Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store.
+`EventSourcingModule` does not install `MediaQuerySqlModule`. If your application already uses Ray.MediaQuery, keep that configuration in the application and add the EventStore query interface and SQL statements to that MediaQuery setup. Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store.
 
 `EventStoreInterface` is intentionally small. It is a persistence port for already-extracted events, not a runtime hook.
 `MediaQueryEventStore` keeps JSON and timestamp database mapping inside the adapter, not on `Event`.
