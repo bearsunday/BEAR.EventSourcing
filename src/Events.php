@@ -254,8 +254,18 @@ final readonly class Events implements Countable, IteratorAggregate
     private static function params(array $context): array
     {
         $params = $context['params'] ?? $context['query'] ?? [];
+        if (! is_array($params)) {
+            return [];
+        }
 
-        return is_array($params) ? $params : [];
+        $result = [];
+        foreach ($params as $key => $value) {
+            if (is_string($key)) {
+                $result[$key] = $value;
+            }
+        }
+
+        return $result;
     }
 
     /** @param array<array-key, mixed> $context */
