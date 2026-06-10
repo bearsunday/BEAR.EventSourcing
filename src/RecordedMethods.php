@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing;
 
-use InvalidArgumentException;
-
 use function in_array;
 use function is_string;
 use function sprintf;
@@ -32,12 +30,12 @@ final readonly class RecordedMethods
         $recordedMethods = [];
         foreach ($methods as $method) {
             if (! is_string($method)) {
-                throw new InvalidArgumentException('Recorded method must be a string.');
+                throw new InvalidRecordedMethod('Recorded method must be a string.');
             }
 
             $recordedMethod = strtoupper($method);
             if (! in_array($recordedMethod, self::WITH_READS, true)) {
-                throw new InvalidArgumentException(sprintf('Unsupported recorded method: %s', $method));
+                throw new InvalidRecordedMethod(sprintf('Unsupported recorded method: %s', $method));
             }
 
             /** @var RecordedMethod $recordedMethod */

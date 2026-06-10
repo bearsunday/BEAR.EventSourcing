@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\Tests;
 
 use BEAR\EventSourcing\Event;
+use BEAR\EventSourcing\InvalidRecordedMethod;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\SemanticLogExtractorInterface;
 use DateTimeImmutable;
-use InvalidArgumentException;
 use Koriym\SemanticLogger\SemanticLogger;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -89,9 +89,16 @@ final class EventsFromSemanticLogTest extends TestCase
 
     public function testRejectsUnsupportedRecordedMethod(): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(InvalidRecordedMethod::class);
 
         new RecordedMethods(['POST', 'OPTIONS']);
+    }
+
+    public function testRejectsNonStringRecordedMethod(): void
+    {
+        $this->expectException(InvalidRecordedMethod::class);
+
+        new RecordedMethods(['POST', 1]);
     }
 
     public function testExtractsNestedEventsInOpenOrder(): void
