@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing;
 
-/**
- * Converts a flushed Semantic Logger log into extracted events.
- *
- * @psalm-import-type SemanticLog from Types
- */
+use Koriym\SemanticLogger\LogJson;
+
+/** Converts a flushed Semantic Logger log into extracted events. */
 interface SemanticLogExtractorInterface
 {
-    /** @param SemanticLog $semanticLog */
-    public function extract(array $semanticLog): EventsInterface;
+    public function extract(LogJson $semanticLog): EventsInterface;
 }

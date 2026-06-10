@@ -44,7 +44,7 @@ Extract events from a flushed Semantic Logger log through an injected extractor:
 ```php
 use BEAR\EventSourcing\SemanticLogExtractorInterface;
 
-$log = $semanticLogger->flush()->toArray();
+$log = $semanticLogger->flush();
 
 /** @var SemanticLogExtractorInterface $extractor */
 $events = $extractor->extract($log);
@@ -64,7 +64,7 @@ $extractor = new SemanticLogExtractor(new RecordedMethods(RecordedMethods::WITH_
 $events = $extractor->extract($log);
 ```
 
-The extractor expects an `open` tree where each operation has a context with:
+The extractor accepts Semantic Logger `LogJson` and reads its public `open` tree. Each recorded operation has a context with:
 
 - `uri`: resource-like identifier
 - `method`: HTTP-style method

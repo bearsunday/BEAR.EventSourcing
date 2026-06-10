@@ -11,7 +11,6 @@ namespace BEAR\EventSourcing;
  * @psalm-type RecordedMethodList = list<RecordedMethod>
  * @psalm-type EventParams = array<string, mixed>
  * @psalm-type EventList = list<Event>
- * @psalm-type SemanticLog = array<array-key, mixed>
  * @psalm-type SemanticEntry = array<array-key, mixed>
  * @psalm-type SemanticContext = array<array-key, mixed>
  */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing;
 
 use DateTimeImmutable;
+use Koriym\SemanticLogger\LogJson;
 use Throwable;
 
 use function is_array;
@@ -16,8 +17,7 @@ use function is_string;
  * @psalm-import-type EventParams from Types
  * @psalm-import-type SemanticContext from Types
  * @psalm-import-type SemanticEntry from Types
- * @psalm-import-type SemanticLog from Types
- * @psalm-suppress MixedAssignment Semantic log input is intentionally untyped external data.
+ * @psalm-suppress MixedAssignment LogJson public context data is schema-defined but array-shaped.
  */
 final readonly class SemanticLogExtractor implements SemanticLogExtractorInterface
 {
@@ -28,22 +28,16 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
         $this->recordedMethods = $recordedMethods ?? new RecordedMethods();
     }
 
-    /** @param SemanticLog $semanticLog */
-    public function extract(array $semanticLog): EventsInterface
+    public function extract(LogJson $semanticLog): EventsInterface
     {
-        $open = $semanticLog['open'] ?? [];
-        if (! is_array($open)) {
-            return new Events();
-        }
-
         $events = [];
-        $this->walk($open, $events);
+        $this->walk($semanticLog->toArray()['open'], $events);
 
         return new Events($events);
     }
 
     /**
-     * @param SemanticLog $opens
+     * @param array<array-key, mixed> $opens
      * @param EventList   $events
      */
     private function walk(array $opens, array &$events): void
