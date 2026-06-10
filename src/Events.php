@@ -44,7 +44,7 @@ final readonly class Events implements Countable, IteratorAggregate
 
         $events = [];
         foreach ($data as $item) {
-            if (! is_array($item)) {
+            if (! is_array($item) || ! isset($item['uri'], $item['method'])) {
                 continue;
             }
 
