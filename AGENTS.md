@@ -14,7 +14,7 @@ Semantic Logger observations -> Events -> optional EventStore
 
 ## Dependency policy
 
-- Require `koriym/semantic-logger` as the external Composer dependency.
+- Require `koriym/semantic-logger` for observations and `ray/media-query` for SQL EventStore support.
 - Do not copy Semantic Logger code into this repository.
 - If Semantic Logger behavior must be changed temporarily, isolate it with `cweagans/composer-patches` and files under `patches/`.
 - Upstream Semantic Logger changes later as a separate PR.
@@ -35,13 +35,12 @@ Core components:
 - `SemanticLogExtractorInterface` / `SemanticLogExtractor`
 - `RecordedMethods`
 - Semantic Logger log fixtures and extractor tests
-- Optional `EventStoreInterface` and in-memory implementation
+- `EventStoreInterface`, in-memory implementation, and Ray.MediaQuery SQL implementation
 
 Keep out of this package:
 
 - BEAR.Resource logger decorator
 - Runtime auto-persistence
-- SQL EventStore
 - BEAR module wiring
 - Application-specific domain code
 - Bundled subpackages

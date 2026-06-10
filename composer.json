@@ -22,7 +22,8 @@
     },
     "require": {
         "php": "^8.2",
-        "koriym/semantic-logger": "^0.8"
+        "koriym/semantic-logger": "^0.8",
+        "ray/media-query": "^1.1"
     },
     "require-dev": {
         "maglnet/composer-require-checker": "^4.14",

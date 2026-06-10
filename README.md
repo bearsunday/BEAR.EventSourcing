@@ -20,7 +20,9 @@ The package provides:
 - `EventsInterface` / `Events`: countable, iterable event collection
 - `SemanticLogExtractorInterface` / `SemanticLogExtractor`: extract events from a flushed Semantic Logger log
 - `RecordedMethods`: injectable extraction policy for recorded methods
-- `EventStoreInterface`: optional persistence port for extracted events
+- `EventStoreInterface`: persistence port for extracted events
+- `InMemoryEventStore`: in-memory EventStore implementation for tests and development
+- `MediaQueryEventStore`: Ray.MediaQuery SQL EventStore implementation
 
 Persistence and framework integration are explicit application choices, not automatic runtime behavior.
 
@@ -102,7 +104,7 @@ $orderEvents = new CallbackFilterIterator(
 );
 ```
 
-Persist extracted events explicitly when an application needs storage:
+Persist extracted events explicitly when an application needs storage. Use `InMemoryEventStore` for tests and development:
 
 ```php
 use BEAR\EventSourcing\InMemoryEventStore;
@@ -111,4 +113,33 @@ $store = new InMemoryEventStore();
 $store->appendAll($events);
 ```
 
+Use `MediaQueryEventStore` when the EventStore should be backed by SQL through Ray.MediaQuery:
+
+```php
+use BEAR\EventSourcing\MediaQueryEventStore;
+use Ray\AuraSqlModule\AuraSqlModule;
+use Ray\Di\AbstractModule;
+use Ray\Di\Injector;
+use Ray\MediaQuery\MediaQuerySqlModule;
+
+final class AppModule extends AbstractModule
+{
+    protected function configure(): void
+    {
+        $packageDir = __DIR__ . '/vendor/bear/event-sourcing';
+        $this->install(new MediaQuerySqlModule(
+            interfaceDir: $packageDir . '/src/Query',
+            sqlDir: $packageDir . '/sql/event_store',
+        ));
+        $this->install(new AuraSqlModule('sqlite:' . __DIR__ . '/events.sqlite'));
+    }
+}
+
+$store = (new Injector(new AppModule()))->getInstance(MediaQueryEventStore::class);
+$store->appendAll($events);
+```
+
+Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store.
+
 `EventStoreInterface` is intentionally small. It is a persistence port for already-extracted events, not a runtime hook.
+`MediaQueryEventStore` keeps JSON and timestamp database mapping inside the adapter, not on `Event`.
