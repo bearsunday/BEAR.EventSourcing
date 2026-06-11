@@ -17,8 +17,9 @@ Semantic Logger observations -> Events -> optional EventStore
 The package provides:
 
 - `Event`: one immutable state-change fact
-- `Events`: an iterable collection of events
-- `Events::fromSemanticLog(array $log): Events`: extract events from a flushed Semantic Logger log
+- `EventsInterface` / `Events`: countable, iterable event collection
+- `SemanticLogExtractorInterface` / `SemanticLogExtractor`: extract events from a flushed Semantic Logger log
+- `RecordedMethods`: injectable extraction policy for recorded methods
 - `EventStoreInterface`: optional persistence port for extracted events
 
 Persistence and framework integration are explicit application choices, not automatic runtime behavior.
@@ -27,31 +28,43 @@ Persistence and framework integration are explicit application choices, not auto
 
 An event represents a successful state-changing resource-like operation observed in a Semantic Logger open/close pair.
 
-Recorded methods:
+Recorded methods by default:
 
 - `POST`
 - `PUT`
 - `PATCH`
 - `DELETE`
 
-`GET` is observation data, not an event.
+`GET` is observation data by default. Applications can include it explicitly for development-time read tracing by injecting a different `RecordedMethods` policy.
 
 ## Usage
 
-Extract events from a flushed Semantic Logger log:
+Extract events from a flushed Semantic Logger log through an injected extractor:
 
 ```php
-use BEAR\EventSourcing\Events;
+use BEAR\EventSourcing\SemanticLogExtractorInterface;
 
-$log = $semanticLogger->flush()->toArray();
-$events = Events::fromSemanticLog($log);
+$log = $semanticLogger->flush();
+
+/** @var SemanticLogExtractorInterface $extractor */
+$events = $extractor->extract($log);
 
 foreach ($events as $event) {
-    // append to an EventStore, replay, or inspect
+    // append to an EventStore, project, replay, or inspect
 }
 ```
 
-The extractor expects an `open` tree where each operation has a context with:
+Configure the extractor through dependency injection. Bind `RecordedMethods` with reads included for development-time tracing:
+
+```php
+use BEAR\EventSourcing\RecordedMethods;
+use BEAR\EventSourcing\SemanticLogExtractor;
+
+$extractor = new SemanticLogExtractor(new RecordedMethods(RecordedMethods::WITH_READS));
+$events = $extractor->extract($log);
+```
+
+The extractor accepts Semantic Logger `LogJson` and reads its public `open` tree. Each recorded operation has a context with:
 
 - `uri`: resource-like identifier
 - `method`: HTTP-style method
@@ -60,26 +73,33 @@ The extractor expects an `open` tree where each operation has a context with:
 
 The matching `close.context.body` becomes the event result. If `close.context.code` exists and is `400` or greater, the operation is treated as unsuccessful and ignored.
 
-Serialize and restore events:
+Filter events with PHP's standard iterators. Iterator filters can be stacked without adding methods to `Events`:
 
 ```php
-$json = $events->toJson();
-$restored = Events::fromJson($json);
+use BEAR\EventSourcing\Event;
+
+$userEvents = new CallbackFilterIterator(
+    $events->getIterator(),
+    static fn (Event $event): bool => ($event->params['id'] ?? null) === 'koriym',
+);
+
+$userWrites = new CallbackFilterIterator(
+    $userEvents,
+    static fn (Event $event): bool => $event->method !== 'GET',
+);
+
+foreach ($userWrites as $event) {
+    // replay, project, or inspect events for id=koriym
+}
 ```
 
-Replay events through an application handler:
+URI prefixes and timestamps can be handled the same way:
 
 ```php
-$events->replay(static function (Event $event) use ($handler): void {
-    $handler($event->method, $event->uri, $event->params);
-});
-```
-
-Filter events:
-
-```php
-$writesToUsers = $events->filterByUri('app://self/users*');
-$posts = $events->filterByMethod('POST');
+$orderEvents = new CallbackFilterIterator(
+    $events->getIterator(),
+    static fn (Event $event): bool => str_starts_with($event->uri, 'app://self/orders/123'),
+);
 ```
 
 Persist extracted events explicitly when an application needs storage:

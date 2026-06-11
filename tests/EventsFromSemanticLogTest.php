@@ -5,19 +5,31 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\Tests;
 
 use BEAR\EventSourcing\Event;
-use BEAR\EventSourcing\Events;
+use BEAR\EventSourcing\InvalidRecordedMethod;
+use BEAR\EventSourcing\RecordedMethods;
+use BEAR\EventSourcing\SemanticLogExtractor;
+use BEAR\EventSourcing\SemanticLogExtractorInterface;
 use DateTimeImmutable;
+use Koriym\SemanticLogger\EventEntry;
+use Koriym\SemanticLogger\LogJson;
+use Koriym\SemanticLogger\OpenCloseEntry;
 use Koriym\SemanticLogger\SemanticLogger;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use BEAR\EventSourcing\Tests\Fixture\ResourceRequestContext;
 use BEAR\EventSourcing\Tests\Fixture\ResourceResponseContext;
-use stdClass;
 
 use function array_map;
 
 final class EventsFromSemanticLogTest extends TestCase
 {
+    public function testExtractorCanBeInjectedByInterface(): void
+    {
+        $extractor = new SemanticLogExtractor();
+
+        $this->assertInstanceOf(SemanticLogExtractorInterface::class, $extractor);
+    }
+
     #[DataProvider('recordedMethodsProvider')]
     public function testExtractsStateChangingMethods(string $method): void
     {
@@ -30,10 +42,10 @@ final class EventsFromSemanticLogTest extends TestCase
         ));
         $logger->close(new ResourceResponseContext(201, ['id' => 1]), $openId);
 
-        $events = Events::fromSemanticLog($logger->flush()->toArray());
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
 
         $this->assertCount(1, $events);
-        $event = $events->all()[0];
+        $event = iterator_to_array($events)[0];
         $this->assertSame('app://self/users', $event->uri);
         $this->assertSame($method, $event->method);
         $this->assertSame(['name' => 'Ada'], $event->params);
@@ -47,7 +59,7 @@ final class EventsFromSemanticLogTest extends TestCase
         return [['POST'], ['PUT'], ['PATCH'], ['DELETE']];
     }
 
-    public function testIgnoresGetAndFailedResponses(): void
+    public function testIgnoresGetByDefaultAndFailedResponses(): void
     {
         $logger = new SemanticLogger();
         $getId = $logger->open(new ResourceRequestContext('app://self/users/1', 'GET'));
@@ -55,9 +67,40 @@ final class EventsFromSemanticLogTest extends TestCase
         $postId = $logger->open(new ResourceRequestContext('app://self/users', 'POST'));
         $logger->close(new ResourceResponseContext(422, ['error' => 'invalid']), $postId);
 
-        $events = Events::fromSemanticLog($logger->flush()->toArray());
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
 
         $this->assertCount(0, $events);
+    }
+
+    public function testCanRecordGetForDevelopment(): void
+    {
+        $logger = new SemanticLogger();
+        $openId = $logger->open(new ResourceRequestContext('app://self/users/1', 'GET'));
+        $logger->close(new ResourceResponseContext(200, ['id' => 1]), $openId);
+
+        $extractor = new SemanticLogExtractor(new RecordedMethods(RecordedMethods::WITH_READS));
+
+        $events = $extractor->extract($logger->flush());
+
+        $this->assertCount(1, $events);
+        $event = iterator_to_array($events)[0];
+        $this->assertSame('GET', $event->method);
+        $this->assertSame('app://self/users/1', $event->uri);
+        $this->assertSame(['id' => 1], $event->result);
+    }
+
+    public function testRejectsUnsupportedRecordedMethod(): void
+    {
+        $this->expectException(InvalidRecordedMethod::class);
+
+        new RecordedMethods(['POST', 'OPTIONS']);
+    }
+
+    public function testRejectsNonStringRecordedMethod(): void
+    {
+        $this->expectException(InvalidRecordedMethod::class);
+
+        new RecordedMethods(['POST', 1]);
     }
 
     public function testExtractsNestedEventsInOpenOrder(): void
@@ -68,37 +111,36 @@ final class EventsFromSemanticLogTest extends TestCase
         $logger->close(new ResourceResponseContext(200, ['reserved' => true]), $innerId);
         $logger->close(new ResourceResponseContext(201, ['id' => 1]), $outerId);
 
-        $events = Events::fromSemanticLog($logger->flush()->toArray());
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
 
         $this->assertSame(
             ['app://self/orders', 'app://self/inventory/1'],
-            array_map(static fn (Event $event): string => $event->uri, $events->all()),
+            array_map(static fn (Event $event): string => $event->uri, iterator_to_array($events)),
         );
     }
 
-    public function testMalformedEntriesAreIgnored(): void
+    public function testNonResourceOperationsAreIgnored(): void
     {
-        $events = Events::fromSemanticLog([
-            'open' => [
-                'not-an-entry',
-                ['context' => ['uri' => 'app://self/users', 'method' => 'POST']],
-                [
-                    'context' => ['uri' => new stdClass(), 'method' => 'POST'],
-                    'close' => ['context' => ['body' => null]],
-                ],
-                [
-                    'context' => ['uri' => 'app://self/users', 'method' => 'POST', 'query' => 'invalid'],
-                    'close' => ['context' => ['body' => ['ok' => true]]],
-                    'open' => 'not-children',
-                ],
-            ],
-        ]);
+        $semanticLog = new LogJson(
+            schemaUrl: 'https://example.com/semantic-log.schema.json',
+            open: [new OpenCloseEntry(
+                id: 'operation_1',
+                type: 'operation',
+                schemaUrl: 'https://example.com/operation.schema.json',
+                context: ['name' => 'not-a-resource-request'],
+            )],
+            close: [new EventEntry(
+                id: 'operation_response_1',
+                type: 'operation_response',
+                schemaUrl: 'https://example.com/operation-response.schema.json',
+                context: ['body' => ['ok' => true]],
+                openId: 'operation_1',
+            )],
+        );
 
-        $this->assertCount(1, $events);
-        $event = $events->all()[0];
-        $this->assertSame('app://self/users', $event->uri);
-        $this->assertSame([], $event->params);
-        $this->assertSame(['ok' => true], $event->result);
+        $events = (new SemanticLogExtractor())->extract($semanticLog);
+
+        $this->assertCount(0, $events);
     }
 
     public function testMissingTimestampFallsBackToExtractionTime(): void
@@ -108,10 +150,10 @@ final class EventsFromSemanticLogTest extends TestCase
         $logger->close(new ResourceResponseContext(201, ['id' => 1]), $openId);
         $before = new DateTimeImmutable('-1 second');
 
-        $events = Events::fromSemanticLog($logger->flush()->toArray());
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
         $after = new DateTimeImmutable('+1 second');
 
-        $timestamp = $events->all()[0]->timestamp;
+        $timestamp = iterator_to_array($events)[0]->timestamp;
         $this->assertGreaterThanOrEqual($before, $timestamp);
         $this->assertLessThanOrEqual($after, $timestamp);
     }

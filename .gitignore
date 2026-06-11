@@ -3,5 +3,4 @@
 /.phpcs-cache
 /build/
 /.phpunit.result.cache
-/.phpstan.result-cache
 /.psalm/cache/
