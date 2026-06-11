@@ -18,12 +18,9 @@ $forUser = new CallbackFilterIterator(
     static fn (Event $event): bool => ($event->params['id'] ?? null) === 'koriym',
 );
 
-$readAndWrite = new CallbackFilterIterator(
-    $forUser,
-    static fn (Event $event): bool => $event->method === 'POST' || $event->method === 'GET',
-);
+$replayEvents = [];
+foreach ($forUser as $event) {
+    $replayEvents[] = eventToArray($event);
+}
 
-printJson(array_map(
-    static fn (Event $event): array => eventToArray($event),
-    iterator_to_array($readAndWrite, false),
-));
+printJson($replayEvents);

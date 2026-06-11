@@ -171,7 +171,7 @@ php examples/replay.php
 
 - `examples/extract.php` extracts state-changing events from a Semantic Logger `LogJson`.
 - `examples/store.php` appends extracted events to `InMemoryEventStore`.
-- `examples/replay.php` enables development-time reads and stacks iterator filters.
+- `examples/replay.php` enables development-time reads and filters events by parameter before replay.
 - `examples/semantic-log.json` is a public Semantic Logger tree fixture for inspection.
 
 ## AI agent guidance
