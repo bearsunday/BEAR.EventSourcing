@@ -8,7 +8,6 @@ use BEAR\EventSourcing\Event;
 use BEAR\EventSourcing\EventsInterface;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\EventSourcing\SemanticLogExtractor;
-use Koriym\SemanticLogger\AbstractContext;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLogger;
 
@@ -19,42 +18,8 @@ use const JSON_THROW_ON_ERROR;
 use const JSON_UNESCAPED_SLASHES;
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
-
-const REQUEST_SCHEMA_URL = 'https://bearsunday.github.io/schemas/semantic-logger/resource-request.json';
-const RESPONSE_SCHEMA_URL = 'https://bearsunday.github.io/schemas/semantic-logger/resource-response.json';
-
-final class ResourceRequestContext extends AbstractContext
-{
-    /** @psalm-suppress InvalidClassConstantType */
-    public const TYPE = 'resource_request';
-
-    /** @psalm-suppress InvalidClassConstantType */
-    public const SCHEMA_URL = REQUEST_SCHEMA_URL;
-
-    /** @param array<string, mixed> $query */
-    public function __construct(
-        public string $uri,
-        public string $method,
-        public array $query = [],
-        public string $timestamp = '',
-    ) {
-    }
-}
-
-final class ResourceResponseContext extends AbstractContext
-{
-    /** @psalm-suppress InvalidClassConstantType */
-    public const TYPE = 'resource_response';
-
-    /** @psalm-suppress InvalidClassConstantType */
-    public const SCHEMA_URL = RESPONSE_SCHEMA_URL;
-
-    public function __construct(
-        public int $code,
-        public mixed $body,
-    ) {
-    }
-}
+require_once __DIR__ . '/ResourceRequestContext.php';
+require_once __DIR__ . '/ResourceResponseContext.php';
 
 function exampleSemanticLog(): LogJson
 {
