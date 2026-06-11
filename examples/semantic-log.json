@@ -1,0 +1,132 @@
+{
+  "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
+  "open": [
+    {
+      "id": "resource_request_1",
+      "type": "resource_request",
+      "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+      "context": {
+        "uri": "app://self/users",
+        "method": "POST",
+        "query": {
+          "id": "koriym",
+          "name": "Akihito"
+        },
+        "timestamp": "2026-06-10T12:34:56.123456+00:00"
+      },
+      "close": {
+        "id": "resource_response_1",
+        "type": "resource_response",
+        "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+        "context": {
+          "code": 201,
+          "body": {
+            "id": "koriym",
+            "status": "created"
+          }
+        }
+      }
+    },
+    {
+      "id": "resource_request_2",
+      "type": "resource_request",
+      "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+      "context": {
+        "uri": "app://self/users/koriym",
+        "method": "GET",
+        "query": {
+          "id": "koriym"
+        },
+        "timestamp": "2026-06-10T12:35:00.000000+00:00"
+      },
+      "close": {
+        "id": "resource_response_2",
+        "type": "resource_response",
+        "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+        "context": {
+          "code": 200,
+          "body": {
+            "id": "koriym",
+            "name": "Akihito"
+          }
+        }
+      }
+    },
+    {
+      "id": "resource_request_3",
+      "type": "resource_request",
+      "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+      "context": {
+        "uri": "app://self/orders",
+        "method": "POST",
+        "query": {
+          "order_id": "O-1000"
+        },
+        "timestamp": "2026-06-10T12:36:00.000000+00:00"
+      },
+      "open": [
+        {
+          "id": "resource_request_4",
+          "type": "resource_request",
+          "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+          "context": {
+            "uri": "app://self/inventory/SKU-1",
+            "method": "PUT",
+            "query": {
+              "sku": "SKU-1",
+              "quantity": 1
+            },
+            "timestamp": "2026-06-10T12:36:01.000000+00:00"
+          },
+          "close": {
+            "id": "resource_response_3",
+            "type": "resource_response",
+            "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+            "context": {
+              "code": 200,
+              "body": {
+                "reserved": true
+              }
+            }
+          }
+        }
+      ],
+      "close": {
+        "id": "resource_response_4",
+        "type": "resource_response",
+        "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+        "context": {
+          "code": 201,
+          "body": {
+            "order_id": "O-1000",
+            "status": "accepted"
+          }
+        }
+      }
+    },
+    {
+      "id": "resource_request_5",
+      "type": "resource_request",
+      "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+      "context": {
+        "uri": "app://self/users/koriym",
+        "method": "DELETE",
+        "query": {
+          "id": "koriym"
+        },
+        "timestamp": "2026-06-10T12:37:00.000000+00:00"
+      },
+      "close": {
+        "id": "resource_response_5",
+        "type": "resource_response",
+        "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+        "context": {
+          "code": 409,
+          "body": {
+            "error": "user has active orders"
+          }
+        }
+      }
+    }
+  ]
+}

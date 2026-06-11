@@ -158,3 +158,27 @@ $store->appendAll($events);
 
 `EventStoreInterface` is intentionally small. It is a persistence port for already-extracted events, not a runtime hook.
 `MediaQueryEventStore` keeps JSON and timestamp database mapping inside the adapter, not on `Event`.
+
+## Examples
+
+Runnable examples are included:
+
+```bash
+php examples/extract.php
+php examples/store.php
+php examples/replay.php
+```
+
+- `examples/extract.php` extracts state-changing events from a Semantic Logger `LogJson`.
+- `examples/store.php` appends extracted events to `InMemoryEventStore`.
+- `examples/replay.php` enables development-time reads and stacks iterator filters.
+- `examples/semantic-log.json` is a public Semantic Logger tree fixture for inspection.
+
+## AI agent guidance
+
+For AI-assisted integration, see:
+
+- `docs/agent-usage.md`
+- `skills/event-sourcing/SKILL.md`
+
+The guidance keeps the same boundary as the library: Semantic Logger is the observation source, and EventStore is an explicit application choice.
