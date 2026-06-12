@@ -11,7 +11,6 @@ namespace BEAR\EventSourcing;
  * @psalm-type RecordedMethodList = list<RecordedMethod>
  * @psalm-type EventParams = array<string, mixed>
  * @psalm-type EventList = list<Event>
- * @psalm-type ViewRef = array{view_ref: non-empty-string}
  * @psalm-type EventStoreRow = array{
  *   uri: string,
  *   method: string,
