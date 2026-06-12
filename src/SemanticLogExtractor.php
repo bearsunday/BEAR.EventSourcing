@@ -79,7 +79,7 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
             method: $method,
             timestamp: self::timestamp($request) ?? new DateTimeImmutable(),
             params: self::params($request),
-            result: $response['body'] ?? null,
+            result: self::result($response),
         );
     }
 
@@ -124,6 +124,17 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
         $code = $context['code'] ?? null;
 
         return ! is_int($code) || $code < 400;
+    }
+
+    /** @param SemanticContext $context */
+    private static function result(array $context): mixed
+    {
+        $viewRef = self::stringValue($context, 'view_ref');
+        if ($viewRef !== null && $viewRef !== '') {
+            return ['view_ref' => $viewRef];
+        }
+
+        return $context['body'] ?? null;
     }
 
     /** @param SemanticContext $context */
