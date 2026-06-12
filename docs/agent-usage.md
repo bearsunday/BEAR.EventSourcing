@@ -33,6 +33,21 @@ $injector = new Injector(new ResourceObservationModule(
 
 The default `NullViewStore` does not render or save views. If a debug workflow needs payload access, provide `ViewStoreInterface`; the Semantic Log should contain `view_ref`, not an inline body.
 
+For local development and AI debugging, prefer `DevResourceObservationModule`:
+
+```php
+use BEAR\EventSourcing\Resource\DevResourceObservationModule;
+use BEAR\Resource\Module\ResourceClientModule;
+use Ray\Di\Injector;
+
+$injector = new Injector(new DevResourceObservationModule(
+    viewDir: __DIR__ . '/var/es/views',
+    module: new ResourceClientModule(),
+));
+```
+
+It clears `viewDir` at injector creation, stores rendered views through `FileViewStore`, and records reads with `RecordedMethods::WITH_READS`.
+
 ## Development reads
 
 `GET` is ignored by default. Include reads only for development-time tracing:

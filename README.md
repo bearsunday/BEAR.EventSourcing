@@ -27,6 +27,8 @@ The package provides:
 - `MediaQueryEventStoreModule`: EventStore binding for an existing Ray.MediaQuery setup
 - `Resource\ResourceObservationModule`: optional BEAR.Resource Invoker observation bridge
 - `Resource\ViewStoreInterface`: optional view reference store used by the observation bridge
+- `Resource\FileViewStore`: opt-in development view store that writes views to files
+- `Resource\DevResourceObservationModule`: development module that clears the view directory at bootstrap and records reads
 
 Persistence and framework integration are explicit application choices, not automatic runtime behavior.
 
@@ -91,6 +93,25 @@ $injector = new Injector(new ResourceObservationModule(
 ```
 
 By default the bridge installs `NullViewStore`, so no view is rendered or saved. Applications that need payload inspection can provide their own `ViewStoreInterface` and store the view in files, SQL, object storage, or test fixtures.
+
+For local AI/debug work, use the development module. It clears the view directory when the injector is created, stores rendered views as files, and records `GET` as well as write methods:
+
+```php
+use BEAR\EventSourcing\Resource\DevResourceObservationModule;
+use BEAR\Resource\Module\ResourceClientModule;
+use Ray\Di\Injector;
+
+$injector = new Injector(new DevResourceObservationModule(
+    viewDir: __DIR__ . '/var/es/views',
+    module: new ResourceClientModule(),
+));
+```
+
+The log keeps only the reference:
+
+```json
+{"code": 200, "view_ref": "file:///path/to/var/es/views/000001.json"}
+```
 
 The extractor accepts Semantic Logger `LogJson` and reads its public `open` tree. Each recorded operation has a context with:
 
