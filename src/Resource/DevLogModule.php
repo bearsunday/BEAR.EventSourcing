@@ -5,43 +5,33 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\Resource;
 
 use BEAR\EventSourcing\RecordedMethods;
-use BEAR\Resource\InvokerInterface;
-use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Ray\Di\AbstractModule;
-use Ray\Di\Scope;
 
 final class DevLogModule extends AbstractModule
 {
-    private const INVOKER = 'bear_event_sourcing_invoker';
+    private readonly RecordedMethods $methods;
 
     public function __construct(
         private readonly string $viewDir,
-        private readonly RecordedMethods|null $methods = null,
+        RecordedMethods|null $methods = null,
         private readonly SemanticLoggerInterface|null $logger = null,
-        AbstractModule|null $module = null,
+        private readonly AbstractModule|null $module = null,
     ) {
-        parent::__construct($module);
+        // Clear at module construction, not at configure(), to avoid side effects during DI graph merges.
+        FileViewStore::clearDirectory($viewDir);
+
+        $this->methods = $methods ?? new RecordedMethods(RecordedMethods::WITH_READS);
+        parent::__construct(null);
     }
 
     protected function configure(): void
     {
-        FileViewStore::clearDirectory($this->viewDir);
-
-        $this->bind(RecordedMethods::class)->toInstance(
-            $this->methods ?? new RecordedMethods(RecordedMethods::WITH_READS),
-        );
-        $this->bind(ViewStoreInterface::class)->toInstance(new FileViewStore($this->viewDir));
-
-        if ($this->logger !== null) {
-            $this->bind(SemanticLoggerInterface::class)->toInstance($this->logger);
-        } else {
-            $this->bind(SemanticLoggerInterface::class)->to(SemanticLogger::class)->in(Scope::SINGLETON);
-        }
-
-        $this->rename(InvokerInterface::class, self::INVOKER);
-        $this->bind(InvokerInterface::class)
-            ->toConstructor(SemanticLogInvoker::class, ['invoker' => self::INVOKER])
-            ->in(Scope::SINGLETON);
+        $this->install(new ResourceObservationModule(
+            methods: $this->methods,
+            viewStore: new FileViewStore($this->viewDir),
+            logger: $this->logger,
+            module: $this->module,
+        ));
     }
 }
