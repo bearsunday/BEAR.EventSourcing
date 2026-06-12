@@ -1,20 +1,37 @@
 # AI agent usage
 
-Use this package as an explicit extraction and replay library.
+Use this package as an explicit observation, extraction, and replay library.
 
 ```text
-Semantic Logger LogJson -> SemanticLogExtractor -> EventsInterface -> optional EventStoreInterface
+BEAR.Resource Invoker -> Semantic Logger LogJson -> SemanticLogExtractor -> EventsInterface -> optional EventStoreInterface
 ```
 
 ## Agent workflow
 
 1. Start from a `Koriym\SemanticLogger\LogJson` produced by `SemanticLogger::flush()`.
-2. Inject or instantiate `SemanticLogExtractorInterface`.
-3. Call `$extractor->extract($logJson)`.
-4. Iterate `EventsInterface` with `foreach` or standard SPL iterators.
-5. Store events only when the application explicitly provides an `EventStoreInterface`.
+2. If BEAR.Resource calls need to be observed, install `ResourceObservationModule` as an Invoker decorator.
+3. Inject or instantiate `SemanticLogExtractorInterface`.
+4. Call `$extractor->extract($logJson)`.
+5. Iterate `EventsInterface` with `foreach` or standard SPL iterators.
+6. Store events only when the application explicitly provides an `EventStoreInterface`.
 
 Do not add a BEAR.Resource logger decorator or runtime auto-persistence. Semantic Logger remains the observation source; EventStore remains an optional destination.
+
+## BEAR.Resource observation
+
+Use `ResourceObservationModule` when the application wants Semantic Logger open/close entries from BEAR.Resource execution:
+
+```php
+use BEAR\EventSourcing\Resource\ResourceObservationModule;
+use BEAR\Resource\Module\ResourceClientModule;
+use Ray\Di\Injector;
+
+$injector = new Injector(new ResourceObservationModule(
+    module: new ResourceClientModule(),
+));
+```
+
+The default `NullViewStore` does not render or save views. If a debug workflow needs payload access, provide `ViewStoreInterface`; the Semantic Log should contain `view_ref`, not an inline body.
 
 ## Development reads
 

@@ -1,6 +1,6 @@
 ---
 name: event-sourcing
-description: Work with BEAR.EventSourcing integrations, examples, or reviews. Use this skill whenever editing this repository's event extraction flow, extracting events from Koriym Semantic Logger LogJson, iterating EventsInterface, filtering/replaying events, wiring EventStoreInterface, reviewing EventStore module boundaries, or deciding how an AI agent should use this package.
+description: Work with BEAR.EventSourcing integrations, examples, or reviews. Use this skill whenever editing this repository's event observation or extraction flow, extracting events from Koriym Semantic Logger LogJson, iterating EventsInterface, filtering/replaying events, wiring EventStoreInterface, reviewing EventStore or BEAR.Resource observation module boundaries, or deciding how an AI agent should use this package.
 ---
 
 # BEAR.EventSourcing
@@ -8,7 +8,7 @@ description: Work with BEAR.EventSourcing integrations, examples, or reviews. Us
 Use Semantic Logger as the observation source and EventStore as an optional destination.
 
 ```text
-Koriym\SemanticLogger\LogJson -> SemanticLogExtractorInterface -> EventsInterface -> optional EventStoreInterface
+BEAR.Resource Invoker -> Koriym\SemanticLogger\LogJson -> SemanticLogExtractorInterface -> EventsInterface -> optional EventStoreInterface
 ```
 
 ## Workflow
@@ -17,7 +17,8 @@ Koriym\SemanticLogger\LogJson -> SemanticLogExtractorInterface -> EventsInterfac
 2. Use `SemanticLogExtractorInterface::extract(LogJson $semanticLog)` to create events.
 3. Iterate events with `foreach`, `EventsInterface::getIterator()`, or SPL iterators.
 4. Use `RecordedMethods::WITH_READS` only for development-time GET tracing.
-5. Persist with `EventStoreInterface` only when the application explicitly chooses storage.
+5. Use `ResourceObservationModule` only when BEAR.Resource execution should emit Semantic Logger open/close entries.
+6. Persist with `EventStoreInterface` only when the application explicitly chooses storage.
 
 ## Boundaries
 
@@ -25,6 +26,7 @@ Do:
 
 - Keep `Event`, `EventsInterface`, and `Events` minimal.
 - Use `CallbackFilterIterator` or other iterators for method, URI, parameter, and timestamp selection.
+- Use `ViewStoreInterface` when a resource view must be saved; keep only `view_ref` in Semantic Log.
 - Keep Ray.MediaQuery and database installation in the application.
 - Use `InMemoryEventStore` for examples and tests.
 
@@ -32,6 +34,7 @@ Do not:
 
 - Add a BEAR.Resource logger decorator.
 - Persist automatically during runtime observation.
+- Inline large response bodies in BEAR.Resource observation logs.
 - Make MCP, CLI, or skills part of the core runtime contract.
 - Hide `AuraSqlModule` or `MediaQuerySqlModule` inside EventSourcing modules.
 

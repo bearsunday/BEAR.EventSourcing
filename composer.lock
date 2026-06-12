@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6b517944b942a92f07d1bc2784254759",
+    "content-hash": "14df3901f2452985245533dd95ea3d3b",
     "packages": [
         {
             "name": "aura/sql",
@@ -130,6 +130,88 @@
                 "source": "https://github.com/auraphp/Aura.SqlQuery/tree/3.0.0"
             },
             "time": "2023-04-25T13:21:16+00:00"
+        },
+        {
+            "name": "bear/resource",
+            "version": "1.32.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/bearsunday/BEAR.Resource.git",
+                "reference": "8a407db8fb54b4a99dadeed1d2c686b66af579b3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/bearsunday/BEAR.Resource/zipball/8a407db8fb54b4a99dadeed1d2c686b66af579b3",
+                "reference": "8a407db8fb54b4a99dadeed1d2c686b66af579b3",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "ext-fileinfo": "*",
+                "ext-filter": "*",
+                "justinrainbow/json-schema": "^5.3 || ^6.0",
+                "koriym/file-upload": "^1.0",
+                "koriym/hal": "^1.1",
+                "koriym/http-constants": "^1.1",
+                "php": "^8.2",
+                "phpdocumentor/reflection-docblock": "^6.0",
+                "psr/log": "^1.1 || ^2.0 || ^3.0",
+                "ray/aop": "^2.18.0",
+                "ray/di": "^2.18.0",
+                "ray/input-query": "^1.1",
+                "rize/uri-template": "^0.4"
+            },
+            "require-dev": {
+                "bamarni/composer-bin-plugin": "^1.4",
+                "bear/devtools": "^1.0",
+                "koriym/json-schema-faker": "^0.3.1",
+                "phpunit/phpunit": "^11.0",
+                "ray/compiler": "^1.12"
+            },
+            "type": "library",
+            "extra": {
+                "bamarni-bin": {
+                    "bin-links": true,
+                    "forward-command": true
+                }
+            },
+            "autoload": {
+                "files": [
+                    "src-files/uri_template.php"
+                ],
+                "psr-4": {
+                    "BEAR\\Resource\\": [
+                        "src/",
+                        "src/JsonSchema",
+                        "src-deprecated"
+                    ],
+                    "Ray\\WebContextParam\\": "src-web-context"
+                },
+                "exclude-from-classmap": [
+                    "/src-deprecated/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Akihito Koriyama",
+                    "email": "akihito.koriyama@gmail.com"
+                }
+            ],
+            "description": "Hypermedia framework for object as a service",
+            "keywords": [
+                "Object as a service",
+                "hypermedia",
+                "rest"
+            ],
+            "support": {
+                "issues": "https://github.com/bearsunday/BEAR.Resource/issues",
+                "source": "https://github.com/bearsunday/BEAR.Resource/tree/1.32.0"
+            },
+            "time": "2026-05-12T14:03:17+00:00"
         },
         {
             "name": "doctrine/deprecations",
@@ -297,6 +379,141 @@
                 "source": "https://github.com/koriym/Koriym.CsvEntities/tree/1.0.2"
             },
             "time": "2024-06-07T00:57:28+00:00"
+        },
+        {
+            "name": "koriym/file-upload",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koriym/Koriym.FileUpload.git",
+                "reference": "a26c70fcfcfe82ec672f5f3c7814bf88bbc8f4dc"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koriym/Koriym.FileUpload/zipball/a26c70fcfcfe82ec672f5f3c7814bf88bbc8f4dc",
+                "reference": "a26c70fcfcfe82ec672f5f3c7814bf88bbc8f4dc",
+                "shasum": ""
+            },
+            "require": {
+                "ext-fileinfo": "*",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "bamarni/composer-bin-plugin": "^1.8",
+                "phpunit/phpunit": "^11.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Koriym\\FileUpload\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Akihito Koriyama",
+                    "email": "akihito.koriyama@gmail.com"
+                }
+            ],
+            "description": "Type-safe file upload handling with immutable value objects",
+            "support": {
+                "issues": "https://github.com/koriym/Koriym.FileUpload/issues",
+                "source": "https://github.com/koriym/Koriym.FileUpload/tree/1.0.0"
+            },
+            "time": "2025-11-07T00:35:36+00:00"
+        },
+        {
+            "name": "koriym/hal",
+            "version": "1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koriym/hal.git",
+                "reference": "1799d7d65d84c45edfb960a0dbb77119d8bf67a7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koriym/hal/zipball/1799d7d65d84c45edfb960a0dbb77119d8bf67a7",
+                "reference": "1799d7d65d84c45edfb960a0dbb77119d8bf67a7",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2",
+                "psr/link": "^1.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^11"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Nocarrier\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ben Longden",
+                    "email": "ben@nocarrier.co.uk",
+                    "homepage": "http://nocarrier.co.uk"
+                }
+            ],
+            "description": "application/hal builder / formatter for PHP 8.2+",
+            "homepage": "https://github.com/koriym/hal",
+            "keywords": [
+                "hal",
+                "hypermedia",
+                "json",
+                "rest",
+                "xml"
+            ],
+            "support": {
+                "source": "https://github.com/koriym/hal/tree/1.1.0"
+            },
+            "time": "2025-11-11T09:14:37+00:00"
+        },
+        {
+            "name": "koriym/http-constants",
+            "version": "1.2.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koriym/Koriym.HttpConstants.git",
+                "reference": "8602c3b89b51c2cbfd686e3bf63d28aa1bc1a924"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koriym/Koriym.HttpConstants/zipball/8602c3b89b51c2cbfd686e3bf63d28aa1bc1a924",
+                "reference": "8602c3b89b51c2cbfd686e3bf63d28aa1bc1a924",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.1.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Koriym\\HttpConstants\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Constants for the HTTP protocol",
+            "keywords": [
+                "consntats",
+                "http"
+            ],
+            "support": {
+                "issues": "https://github.com/koriym/Koriym.HttpConstants/issues",
+                "source": "https://github.com/koriym/Koriym.HttpConstants/tree/1.2.1"
+            },
+            "time": "2021-10-12T11:00:54+00:00"
         },
         {
             "name": "koriym/null-object",
@@ -803,6 +1020,59 @@
                 "source": "https://github.com/phpstan/phpdoc-parser/tree/2.3.2"
             },
             "time": "2026-01-25T14:56:51+00:00"
+        },
+        {
+            "name": "psr/link",
+            "version": "1.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/link.git",
+                "reference": "846c25f58a1f02b93a00f2404e3626b6bf9b7807"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/link/zipball/846c25f58a1f02b93a00f2404e3626b6bf9b7807",
+                "reference": "846c25f58a1f02b93a00f2404e3626b6bf9b7807",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.0.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Link\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "http://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interfaces for HTTP links",
+            "homepage": "https://github.com/php-fig/link",
+            "keywords": [
+                "http",
+                "http-link",
+                "link",
+                "psr",
+                "psr-13",
+                "rest"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/link/tree/1.1.1"
+            },
+            "time": "2021-03-11T22:59:13+00:00"
         },
         {
             "name": "psr/log",

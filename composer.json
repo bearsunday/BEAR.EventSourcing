@@ -22,6 +22,7 @@
     },
     "require": {
         "php": "^8.2",
+        "bear/resource": "^1.32",
         "koriym/semantic-logger": "^0.8",
         "ray/di": "^2.19",
         "ray/media-query": "^1.1"
