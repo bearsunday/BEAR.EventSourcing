@@ -6,6 +6,8 @@ namespace BEAR\EventSourcing\Examples;
 
 use Koriym\SemanticLogger\AbstractContext;
 
+// Example-only context: uses 'query' to match the fixture JSON keys in semantic-log.json.
+// The production equivalent in src/Resource/ResourceRequestContext.php uses 'params' (BEAR.Resource convention).
 final class ResourceRequestContext extends AbstractContext
 {
     /** @psalm-suppress InvalidClassConstantType */

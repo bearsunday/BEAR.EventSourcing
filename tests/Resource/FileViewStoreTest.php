@@ -97,6 +97,20 @@ final class FileViewStoreTest extends TestCase
         }
     }
 
+    public function testRejectsDotSegments(): void
+    {
+        $this->expectException(ViewStoreException::class);
+
+        FileViewStore::clearDirectory(sys_get_temp_dir() . '/..');
+    }
+
+    public function testRejectsPathResolvingToRoot(): void
+    {
+        $this->expectException(ViewStoreException::class);
+
+        FileViewStore::clearDirectory('//');
+    }
+
     private static function newViewDir(): string
     {
         $dir = sys_get_temp_dir() . '/' . uniqid('bear-es-views-', true);

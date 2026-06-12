@@ -7,6 +7,7 @@ namespace BEAR\EventSourcing\Tests\Resource;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\EventSourcing\Resource\NullViewStore;
 use BEAR\EventSourcing\Resource\SemanticLogInvoker;
+use BEAR\EventSourcing\Resource\ViewStoreException;
 use BEAR\Resource\Method;
 use BEAR\Resource\Request;
 use Koriym\SemanticLogger\Exception\NoLogSessionException;
@@ -87,6 +88,29 @@ final class SemanticLogInvokerTest extends TestCase
             ['code' => 200, 'view_ref' => 'file://var/es/views/000001.json'],
             self::closeContext($entry),
         );
+    }
+
+    public function testViewStoreFailureDoesNotBreakRequest(): void
+    {
+        $logger = new SemanticLogger();
+        $ro = new FakeResourceObject('app://self/user/1', ['id' => 1], 201);
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $logger,
+            new ThrowingViewStore(),
+        );
+
+        $result = $invoker->invoke(self::request('app://self/user/1', Method::POST));
+
+        $this->assertSame($ro, $result);
+        $entry = $logger->flush()->toArray()['open'][0];
+        $context = self::closeContext($entry);
+        $exceptionContext = $context['exception'] ?? null;
+        $this->assertIsArray($exceptionContext);
+        /** @var array{class: string, message: string} $exceptionContext */
+        $this->assertSame(201, $context['code']);
+        $this->assertSame(ViewStoreException::class, $exceptionContext['class']);
+        $this->assertSame('The view store failed.', $exceptionContext['message']);
     }
 
     public function testClosesAndRethrowsOnException(): void

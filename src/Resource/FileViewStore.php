@@ -11,11 +11,13 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
 
+use function explode;
 use function file_put_contents;
 use function is_dir;
 use function is_file;
 use function is_link;
 use function mkdir;
+use function realpath;
 use function rmdir;
 use function sprintf;
 use function str_starts_with;
@@ -80,8 +82,18 @@ final class FileViewStore implements ViewStoreInterface
             throw new ViewStoreException(sprintf('View store directory must be absolute: %s', $dir));
         }
 
+        foreach (explode(DIRECTORY_SEPARATOR, $dir) as $segment) {
+            if ($segment === '.' || $segment === '..') {
+                throw new ViewStoreException(sprintf('View store directory must not contain dot segments: %s', $dir));
+            }
+        }
+
         if (is_link($dir)) {
             throw new ViewStoreException(sprintf('View store directory must not be a symlink: %s', $dir));
+        }
+
+        if (realpath($dir) === DIRECTORY_SEPARATOR) {
+            throw new ViewStoreException('Unsafe view store directory.');
         }
     }
 

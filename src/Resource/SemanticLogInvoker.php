@@ -43,23 +43,45 @@ final class SemanticLogInvoker implements InvokerInterface
 
         try {
             $ro = $this->invoker->invoke($request);
-            $viewRef = ($this->viewStore)($request, $ro);
-            $this->logger->close(new ResourceResponseContext($ro->code, $viewRef), $openId);
-
-            return $ro;
         } catch (Throwable $e) {
             $this->logger->close(
-                new ResourceResponseContext(
-                    code: 500,
-                    exception: [
-                        'class' => $e::class,
-                        'message' => $e->getMessage(),
-                    ],
-                ),
+                new ResourceResponseContext(code: self::httpCode($e), exception: self::exceptionContext($e)),
                 $openId,
             );
 
             throw $e;
         }
+
+        $this->logger->close($this->responseContext($request, $ro), $openId);
+
+        return $ro;
+    }
+
+    private function responseContext(AbstractRequest $request, ResourceObject $ro): ResourceResponseContext
+    {
+        try {
+            $viewRef = ($this->viewStore)($request, $ro);
+        } catch (Throwable $e) {
+            // Observation must not break a completed request: keep the real code and record the failure.
+            return new ResourceResponseContext(code: $ro->code, exception: self::exceptionContext($e));
+        }
+
+        return new ResourceResponseContext($ro->code, $viewRef);
+    }
+
+    private static function httpCode(Throwable $e): int
+    {
+        $code = $e->getCode();
+
+        return is_int($code) && $code >= 400 && $code < 600 ? $code : 500;
+    }
+
+    /** @return array{class: class-string, message: string} */
+    private static function exceptionContext(Throwable $e): array
+    {
+        return [
+            'class' => $e::class,
+            'message' => $e->getMessage(),
+        ];
     }
 }
