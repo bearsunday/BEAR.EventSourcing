@@ -179,6 +179,6 @@ php examples/replay.php
 For AI-assisted integration, see:
 
 - `docs/agent-usage.md`
-- `skills/event-sourcing/SKILL.md`
+- `docs/ai-agents/event-sourcing/SKILL.md`
 
 The guidance keeps the same boundary as the library: Semantic Logger is the observation source, and EventStore is an explicit application choice.
