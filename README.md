@@ -28,7 +28,7 @@ The package provides:
 - `Resource\ResourceObservationModule`: optional BEAR.Resource Invoker observation bridge
 - `Resource\ViewStoreInterface`: optional view reference store used by the observation bridge
 - `Resource\FileViewStore`: opt-in development view store that writes views to files
-- `Resource\DevResourceObservationModule`: development module that clears the view directory at bootstrap and records reads
+- `Resource\DevLogModule`: development module that clears the view directory at bootstrap and records reads
 
 Persistence and framework integration are explicit application choices, not automatic runtime behavior.
 
@@ -97,11 +97,11 @@ By default the bridge installs `NullViewStore`, so no view is rendered or saved.
 For local AI/debug work, use the development module. It clears the view directory when the injector is created, stores rendered views as files, and records `GET` as well as write methods:
 
 ```php
-use BEAR\EventSourcing\Resource\DevResourceObservationModule;
+use BEAR\EventSourcing\Resource\DevLogModule;
 use BEAR\Resource\Module\ResourceClientModule;
 use Ray\Di\Injector;
 
-$injector = new Injector(new DevResourceObservationModule(
+$injector = new Injector(new DevLogModule(
     viewDir: __DIR__ . '/var/es/views',
     module: new ResourceClientModule(),
 ));

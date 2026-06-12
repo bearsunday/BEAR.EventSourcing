@@ -11,7 +11,7 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
-final class DevResourceObservationModule extends AbstractModule
+final class DevLogModule extends AbstractModule
 {
     private const INVOKER = 'bear_event_sourcing_invoker';
 
