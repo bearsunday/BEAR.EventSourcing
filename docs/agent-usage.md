@@ -61,4 +61,4 @@ php examples/store.php
 php examples/replay.php
 ```
 
-Read `examples/semantic-log.json` as a public-tree fixture that mirrors the generated example log.
+Read `examples/semantic-log.json` as a public-tree fixture that mirrors the generated example log. For Claude Code, use `.claude/skills/event-sourcing/SKILL.md` as the project-local skill.

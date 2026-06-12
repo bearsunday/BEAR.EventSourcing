@@ -1,6 +1,6 @@
 ---
 name: event-sourcing
-description: Work with BEAR.EventSourcing integrations, examples, or reviews. Use when extracting events from Koriym Semantic Logger LogJson, iterating EventsInterface, filtering/replaying events, wiring EventStoreInterface, or deciding how an AI agent should use this package.
+description: Work with BEAR.EventSourcing integrations, examples, or reviews. Use this skill whenever editing this repository's event extraction flow, extracting events from Koriym Semantic Logger LogJson, iterating EventsInterface, filtering/replaying events, wiring EventStoreInterface, reviewing EventStore module boundaries, or deciding how an AI agent should use this package.
 ---
 
 # BEAR.EventSourcing
