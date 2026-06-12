@@ -1,28 +1,36 @@
 # BEAR.EventSourcing (WIP)
 
-Event Sourcing for BEAR.Sunday — extracting state-change facts from semantic observations.
+Event Sourcing for BEAR.Sunday — recording completed state-changing resource responses as immutable events.
 
 ## Philosophy
 
-BEAR.Sunday does not provide Event Sourcing as a feature. By following REST and semantic observation constraints, event recording can be added without making resources aware of the event store.
+BEAR.Sunday does not provide Event Sourcing as a feature. By following REST and BEAR.Resource logging constraints, event recording can be added without making resources aware of the event store.
 
 > "A framework is a constraint, not a solution."
 
 ## Concept
 
-Semantic Logger is the observation layer. BEAR.EventSourcing extracts state-change facts from those observations and stores them as immutable events.
+The current implementation decorates BEAR.Resource's `LoggerInterface`, observes completed resource responses, and appends state-change events directly to the configured `EventStoreInterface`.
 
-The current implementation decorates BEAR.Resource's `LoggerInterface`, observing completed resource responses without making resources aware of the event store.
+Semantic Logger is optional. The `vendor-slogger/` bridge can convert BEAR.Resource logger calls into Koriym SemanticLogger contexts, and `Events::fromSemanticLog()` can extract events from a flushed semantic log. That path is an import/extraction bridge, not the runtime source of truth for `EventSourcingLogger`.
 
 ```
-Semantic observation -> Event -> EventStore
+BEAR.Resource LoggerInterface -> EventSourcingLogger -> EventStore
+```
+
+Optional bridge:
+
+```
+BEAR.Resource LoggerInterface -> Semantic Logger -> Events::fromSemanticLog()
 ```
 
 | Layer | Role | Persistence |
 |-------|------|-------------|
-| Semantic Logger | Records meaningful observations | Configurable |
+| BEAR.Resource LoggerInterface | Completed resource response hook | Existing app logger |
+| EventSourcingLogger | Converts successful write responses into events | None |
 | Event | Immutable state-change fact | Permanent |
 | EventStore | Appends and queries recorded events | Replaceable |
+| Semantic Logger bridge | Optional semantic-log import/export path | Configurable |
 
 ## Installation
 
@@ -143,7 +151,7 @@ Replay assumes idempotent handlers.
 
 ## Recording
 
-`EventSourcingLogger` records successful state-changing resource requests as semantic observations.
+`EventSourcingLogger` records successful state-changing resource requests as events.
 
 Recorded methods:
 
@@ -151,7 +159,7 @@ Recorded methods:
 - `put` -> `PUT`
 - `delete` -> `DELETE`
 
-`get` and `patch` are not recorded.
+`get` and `patch` are not recorded by `EventSourcingLogger`.
 
 ```php
 final class User extends ResourceObject
@@ -287,11 +295,18 @@ $this->bind(EventStoreInterface::class)->to(InMemoryEventStore::class);
 
 ## Vision
 
-Event Sourcing extracts one aspect of semantic observation: **state changed**.
+Event Sourcing extracts one aspect of completed resource responses: **state changed**.
 
-Replay needs facts. Analysis may need richer context. Semantic Logger supplies that context; Event Sourcing keeps only the fact stream needed for replay.
-
+Replay needs facts. Analysis may need richer context. The optional Semantic Logger bridge can supply that context; Event Sourcing keeps only the fact stream needed for replay.
 
 ## Semantic Logger bridge
 
-This branch also includes a `vendor-slogger/` path package that adapts `BEAR\Resource\LoggerInterface` events into Koriym SemanticLogger contexts. `Events::fromSemanticLog()` can extract state-change events from that semantic log while keeping the current EventSourcing store implementation.
+The `vendor-slogger/` path package adapts `BEAR\Resource\LoggerInterface` calls into Koriym SemanticLogger request/response contexts. `Events::fromSemanticLog()` can convert a flushed semantic log into an `Events` collection:
+
+```php
+$events = Events::fromSemanticLog($semanticLogger->flush()->toArray());
+```
+
+This bridge reads semantic logs; it does not make `EventSourcingLogger` observe Semantic Logger, and it does not append to `EventStoreInterface` by itself.
+
+The bridge recognizes `POST`, `PUT`, `PATCH`, and `DELETE` entries present in the semantic log. The root `EventSourcingLogger` records only `POST`, `PUT`, and `DELETE`.
