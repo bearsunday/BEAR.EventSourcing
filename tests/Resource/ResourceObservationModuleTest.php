@@ -6,7 +6,7 @@ namespace BEAR\EventSourcing\Tests\Resource;
 
 use BEAR\EventSourcing\Resource\ResourceObservationModule;
 use BEAR\EventSourcing\Resource\SemanticLogInvoker;
-use BEAR\EventSourcing\Resource\DevResourceObservationModule;
+use BEAR\EventSourcing\Resource\DevLogModule;
 use BEAR\EventSourcing\Resource\FileViewStore;
 use BEAR\EventSourcing\Resource\ViewStoreInterface;
 use BEAR\EventSourcing\RecordedMethods;
@@ -39,7 +39,7 @@ final class ResourceObservationModuleTest extends TestCase
         mkdir($dir);
         file_put_contents($dir . '/old.json', '{}');
 
-        $injector = new Injector(new DevResourceObservationModule(
+        $injector = new Injector(new DevLogModule(
             viewDir: $dir,
             module: new ResourceClientModule(),
         ));

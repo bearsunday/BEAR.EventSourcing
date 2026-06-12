@@ -27,7 +27,7 @@ Do:
 - Keep `Event`, `EventsInterface`, and `Events` minimal.
 - Use `CallbackFilterIterator` or other iterators for method, URI, parameter, and timestamp selection.
 - Use `ViewStoreInterface` when a resource view must be saved; keep only `view_ref` in Semantic Log.
-- Use `DevResourceObservationModule` for local AI/debug runs that should clear a view directory and store `FileViewStore` refs.
+- Use `DevLogModule` for local AI/debug runs that should clear a view directory and store `FileViewStore` refs.
 - Keep Ray.MediaQuery and database installation in the application.
 - Use `InMemoryEventStore` for examples and tests.
 
