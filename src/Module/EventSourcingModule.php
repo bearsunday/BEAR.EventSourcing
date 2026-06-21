@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
-namespace BEAR\EventSourcing;
+namespace BEAR\EventSourcing\Module;
 
+use BEAR\EventSourcing\RecordedMethods;
+use BEAR\EventSourcing\SemanticLogExtractor;
+use BEAR\EventSourcing\SemanticLogExtractorInterface;
 use Ray\Di\AbstractModule;
 
 final class EventSourcingModule extends AbstractModule

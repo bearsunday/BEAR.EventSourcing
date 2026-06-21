@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Tests\Fixture;
 
-use BEAR\EventSourcing\EventSourcingModule;
-use BEAR\EventSourcing\MediaQueryEventStoreModule;
+use BEAR\EventSourcing\Module\EventSourcingModule;
+use BEAR\EventSourcing\Module\MediaQueryEventStoreModule;
 use Ray\AuraSqlModule\AuraSqlModule;
 use Ray\Di\AbstractModule;
 use Ray\MediaQuery\MediaQuerySqlModule;

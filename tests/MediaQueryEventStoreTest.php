@@ -7,7 +7,7 @@ namespace BEAR\EventSourcing\Tests;
 use BEAR\EventSourcing\Event;
 use BEAR\EventSourcing\Events;
 use BEAR\EventSourcing\EventStoreInterface;
-use BEAR\EventSourcing\MediaQueryEventStore;
+use BEAR\EventSourcing\Store\MediaQueryEventStore;
 use BEAR\EventSourcing\Tests\Fixture\MediaQueryEventStoreAppModule;
 use DateTimeImmutable;
 use PDO;

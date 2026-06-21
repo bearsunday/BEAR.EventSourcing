@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Tests;
 
-use BEAR\EventSourcing\EventSourcingModule;
+use BEAR\EventSourcing\Module\EventSourcingModule;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\SemanticLogExtractorInterface;

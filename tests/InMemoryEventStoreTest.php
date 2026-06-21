@@ -6,7 +6,7 @@ namespace BEAR\EventSourcing\Tests;
 
 use BEAR\EventSourcing\Event;
 use BEAR\EventSourcing\Events;
-use BEAR\EventSourcing\InMemoryEventStore;
+use BEAR\EventSourcing\Store\InMemoryEventStore;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
