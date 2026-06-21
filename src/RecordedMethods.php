@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing;
 
+use BEAR\EventSourcing\Exception\InvalidRecordedMethod;
+
 use function in_array;
 use function is_string;
 use function sprintf;

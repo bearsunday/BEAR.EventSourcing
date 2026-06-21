@@ -2,9 +2,15 @@
 
 declare(strict_types=1);
 
-namespace BEAR\EventSourcing;
+namespace BEAR\EventSourcing\Store;
 
+use BEAR\EventSourcing\Event;
+use BEAR\EventSourcing\Events;
+use BEAR\EventSourcing\Exception\EventStoreException;
+use BEAR\EventSourcing\EventStoreInterface;
+use BEAR\EventSourcing\EventsInterface;
 use BEAR\EventSourcing\Query\EventStoreQueryInterface;
+use BEAR\EventSourcing\Types;
 use DateTimeImmutable;
 use JsonException;
 use Throwable;

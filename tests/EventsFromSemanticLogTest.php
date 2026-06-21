@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\Tests;
 
 use BEAR\EventSourcing\Event;
-use BEAR\EventSourcing\InvalidRecordedMethod;
+use BEAR\EventSourcing\Exception\InvalidRecordedMethod;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\SemanticLogExtractorInterface;

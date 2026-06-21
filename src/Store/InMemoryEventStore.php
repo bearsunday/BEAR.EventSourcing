@@ -2,7 +2,13 @@
 
 declare(strict_types=1);
 
-namespace BEAR\EventSourcing;
+namespace BEAR\EventSourcing\Store;
+
+use BEAR\EventSourcing\Event;
+use BEAR\EventSourcing\Events;
+use BEAR\EventSourcing\EventsInterface;
+use BEAR\EventSourcing\EventStoreInterface;
+use BEAR\EventSourcing\Types;
 
 /** @psalm-import-type EventList from Types */
 final class InMemoryEventStore implements EventStoreInterface
