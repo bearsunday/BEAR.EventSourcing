@@ -7,7 +7,6 @@ namespace BEAR\EventSourcing\Tests;
 use BEAR\EventSourcing\Event;
 use BEAR\EventSourcing\InvalidRecordedMethod;
 use BEAR\EventSourcing\RecordedMethods;
-use BEAR\EventSourcing\Resource\ResourceResponseContext as ViewResponseContext;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\SemanticLogExtractorInterface;
 use DateTimeImmutable;
@@ -88,18 +87,6 @@ final class EventsFromSemanticLogTest extends TestCase
         $this->assertSame('GET', $event->method);
         $this->assertSame('app://self/users/1', $event->uri);
         $this->assertSame(['id' => 1], $event->result);
-    }
-
-    public function testExtractsViewReferenceAsResult(): void
-    {
-        $logger = new SemanticLogger();
-        $openId = $logger->open(new ResourceRequestContext('app://self/users/1', 'POST'));
-        $logger->close(new ViewResponseContext(200, 'file://var/es/views/000001.json'), $openId);
-
-        $events = (new SemanticLogExtractor())->extract($logger->flush());
-
-        $event = iterator_to_array($events)[0];
-        $this->assertSame(['view_ref' => 'file://var/es/views/000001.json'], $event->result);
     }
 
     public function testRejectsUnsupportedRecordedMethod(): void

@@ -6,7 +6,7 @@ Event sourcing primitives extracted from Semantic Logger observations.
 
 This project starts from one constraint: **Semantic Logger is the observation source**.
 
-The core package reads Semantic Logger observations and derives immutable event facts from them. BEAR.Resource integration is an optional Invoker bridge that writes observations to Semantic Logger; it does not decorate `BEAR\Resource\LoggerInterface`, and it does not persist events during resource execution.
+The package does not observe BEAR.Resource directly, and it does not decorate `BEAR\Resource\LoggerInterface` to write to an event store during resource execution. It reads Semantic Logger observations and derives immutable event facts from them.
 
 ```text
 Semantic Logger observations -> Events -> optional EventStore
@@ -25,10 +25,6 @@ The package provides:
 - `MediaQueryEventStore`: Ray.MediaQuery SQL EventStore implementation
 - `EventSourcingModule`: optional Ray.Di bindings for extraction and store selection
 - `MediaQueryEventStoreModule`: EventStore binding for an existing Ray.MediaQuery setup
-- `Resource\ResourceObservationModule`: optional BEAR.Resource Invoker observation bridge
-- `Resource\ViewStoreInterface`: optional view reference store used by the observation bridge
-- `Resource\FileViewStore`: opt-in development view store that writes views to files
-- `Resource\DevLogModule`: development module that clears the view directory at bootstrap and records reads
 
 Persistence and framework integration are explicit application choices, not automatic runtime behavior.
 
@@ -80,53 +76,14 @@ final class AppModule extends AbstractModule
 }
 ```
 
-Observe BEAR.Resource execution by decorating `InvokerInterface`, not `LoggerInterface`. The module wraps an existing BEAR.Resource module and emits Semantic Logger open/close entries:
-
-```php
-use BEAR\EventSourcing\Resource\ResourceObservationModule;
-use BEAR\Resource\Module\ResourceClientModule;
-use Ray\Di\Injector;
-
-$injector = new Injector(new ResourceObservationModule(
-    module: new ResourceClientModule(),
-));
-```
-
-By default the bridge installs `NullViewStore`, so no view is rendered or saved. Applications that need payload inspection can provide their own `ViewStoreInterface` and store the view in files, SQL, object storage, or test fixtures.
-
-For local AI/debug work, use the development module. It clears the view directory when the injector is created, stores rendered views as files, and records `GET` as well as write methods:
-
-```php
-use BEAR\EventSourcing\Resource\DevLogModule;
-use BEAR\Resource\Module\ResourceClientModule;
-use Ray\Di\Injector;
-
-$injector = new Injector(new DevLogModule(
-    viewDir: __DIR__ . '/var/es/views',
-    module: new ResourceClientModule(),
-));
-```
-
-The log keeps only the reference:
-
-```json
-{"code": 200, "view_ref": "file:///path/to/var/es/views/000001.json"}
-```
-
 The extractor accepts Semantic Logger `LogJson` and reads its public `open` tree. Each recorded operation has a context with:
 
 - `uri`: resource-like identifier
 - `method`: HTTP-style method
-- `params` or `query`: operation input
+- `query` or `params`: operation input
 - `timestamp`: optional ISO-8601 timestamp
 
-For BEAR.Resource observation, the matching close context records `code` and, when configured, `view_ref`. `ViewStoreInterface` decides whether a rendered view is stored and returns only its reference:
-
-```json
-{"code": 200, "view_ref": "file://var/es/views/000001.json"}
-```
-
-`close.context.body` is still accepted for existing Semantic Logger fixtures, but new BEAR.Resource observation should prefer `view_ref`. If `close.context.code` exists and is `400` or greater, the operation is treated as unsuccessful and ignored.
+The matching `close.context.body` becomes the event result. If `close.context.code` exists and is `400` or greater, the operation is treated as unsuccessful and ignored.
 
 Filter events with PHP's standard iterators. Iterator filters can be stacked without adding methods to `Events`:
 
@@ -201,27 +158,3 @@ $store->appendAll($events);
 
 `EventStoreInterface` is intentionally small. It is a persistence port for already-extracted events, not a runtime hook.
 `MediaQueryEventStore` keeps JSON and timestamp database mapping inside the adapter, not on `Event`.
-
-## Examples
-
-Runnable examples are included:
-
-```bash
-php examples/extract.php
-php examples/store.php
-php examples/replay.php
-```
-
-- `examples/extract.php` extracts state-changing events from a Semantic Logger `LogJson`.
-- `examples/store.php` appends extracted events to `InMemoryEventStore`.
-- `examples/replay.php` enables development-time reads and filters events by parameter before replay.
-- `examples/semantic-log.json` is a public Semantic Logger tree fixture for inspection.
-
-## AI agent guidance
-
-For AI-assisted integration, see:
-
-- `docs/agent-usage.md`
-- `.claude/skills/event-sourcing/SKILL.md`
-
-The guidance keeps the same boundary as the library: Semantic Logger is the observation source, and EventStore is an explicit application choice.
