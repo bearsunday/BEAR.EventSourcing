@@ -8,7 +8,7 @@
             "context": {
                 "uri": "app://self/users",
                 "method": "POST",
-                "query": {
+                "params": {
                     "id": "koriym",
                     "name": "Akihito"
                 },
@@ -34,7 +34,7 @@
             "context": {
                 "uri": "app://self/users/koriym",
                 "method": "GET",
-                "query": {
+                "params": {
                     "id": "koriym"
                 },
                 "timestamp": "2026-06-10T12:35:00.000000+00:00"
@@ -59,7 +59,7 @@
             "context": {
                 "uri": "app://self/orders",
                 "method": "POST",
-                "query": {
+                "params": {
                     "order_id": "O-1000"
                 },
                 "timestamp": "2026-06-10T12:36:00.000000+00:00"
@@ -72,7 +72,7 @@
                     "context": {
                         "uri": "app://self/inventory/SKU-1",
                         "method": "PUT",
-                        "query": {
+                        "params": {
                             "sku": "SKU-1",
                             "quantity": 1
                         },
@@ -112,7 +112,7 @@
             "context": {
                 "uri": "app://self/users/koriym",
                 "method": "DELETE",
-                "query": {
+                "params": {
                     "id": "koriym"
                 },
                 "timestamp": "2026-06-10T12:37:00.000000+00:00"

@@ -28,7 +28,7 @@ function exampleSemanticLog(): LogJson
     $userCreate = $logger->open(new ResourceRequestContext(
         uri: 'app://self/users',
         method: 'POST',
-        query: ['id' => 'koriym', 'name' => 'Akihito'],
+        params: ['id' => 'koriym', 'name' => 'Akihito'],
         timestamp: '2026-06-10T12:34:56.123456+00:00',
     ));
     $logger->close(new ResourceResponseContext(201, ['id' => 'koriym', 'name' => 'Akihito']), $userCreate);
@@ -36,7 +36,7 @@ function exampleSemanticLog(): LogJson
     $userRead = $logger->open(new ResourceRequestContext(
         uri: 'app://self/users/koriym',
         method: 'GET',
-        query: ['id' => 'koriym'],
+        params: ['id' => 'koriym'],
         timestamp: '2026-06-10T12:35:00.000000+00:00',
     ));
     $logger->close(new ResourceResponseContext(200, ['id' => 'koriym', 'name' => 'Akihito']), $userRead);
@@ -44,13 +44,13 @@ function exampleSemanticLog(): LogJson
     $orderCreate = $logger->open(new ResourceRequestContext(
         uri: 'app://self/orders',
         method: 'POST',
-        query: ['order_id' => 'O-1000'],
+        params: ['order_id' => 'O-1000'],
         timestamp: '2026-06-10T12:36:00.000000+00:00',
     ));
     $inventoryReserve = $logger->open(new ResourceRequestContext(
         uri: 'app://self/inventory/SKU-1',
         method: 'PUT',
-        query: ['sku' => 'SKU-1', 'quantity' => 1],
+        params: ['sku' => 'SKU-1', 'quantity' => 1],
         timestamp: '2026-06-10T12:36:01.000000+00:00',
     ));
     $logger->close(new ResourceResponseContext(200, ['sku' => 'SKU-1', 'reserved' => 1]), $inventoryReserve);
@@ -59,7 +59,7 @@ function exampleSemanticLog(): LogJson
     $failedDelete = $logger->open(new ResourceRequestContext(
         uri: 'app://self/users/koriym',
         method: 'DELETE',
-        query: ['id' => 'koriym'],
+        params: ['id' => 'koriym'],
         timestamp: '2026-06-10T12:37:00.000000+00:00',
     ));
     $logger->close(new ResourceResponseContext(409, ['message' => 'User has open orders']), $failedDelete);

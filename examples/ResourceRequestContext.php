@@ -6,8 +6,6 @@ namespace BEAR\EventSourcing\Examples;
 
 use Koriym\SemanticLogger\AbstractContext;
 
-// Example-only context: uses 'query' to match the fixture JSON keys in semantic-log.json.
-// The production equivalent in src/Resource/ResourceRequestContext.php uses 'params' (BEAR.Resource convention).
 final class ResourceRequestContext extends AbstractContext
 {
     /** @psalm-suppress InvalidClassConstantType */
@@ -16,12 +14,12 @@ final class ResourceRequestContext extends AbstractContext
     /** @psalm-suppress InvalidClassConstantType */
     public const SCHEMA_URL = 'https://bearsunday.github.io/schemas/semantic-logger/resource-request.json';
 
-    /** @param array<string, mixed> $query */
+    /** @param array<string, mixed> $params */
     public function __construct(
-        public string $uri,
-        public string $method,
-        public array $query = [],
-        public string $timestamp = '',
+        public readonly string $uri,
+        public readonly string $method,
+        public readonly array $params = [],
+        public readonly string $timestamp = '',
     ) {
     }
 }
