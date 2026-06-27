@@ -26,8 +26,8 @@ Do:
 
 - Keep `Event`, `EventsInterface`, and `Events` minimal.
 - Use `CallbackFilterIterator` or other iterators for method, URI, parameter, and timestamp selection.
-- Use `ViewStoreInterface` when a resource view must be saved; keep only `view_ref` in Semantic Log.
-- Use `DevLogModule` for local AI/debug runs that should clear a view directory and store `FileViewStore` refs.
+- Use `BodyStoreInterface` when a response body must be stored out of line; keep only `body_ref` in the Semantic Log.
+- Use `DevLogModule` for local AI/debug runs that should clear a body directory and store `FileBodyStore` refs.
 - Keep Ray.MediaQuery and database installation in the application.
 - Use `InMemoryEventStore` for examples and tests.
 
@@ -36,7 +36,7 @@ Do not:
 - Add a BEAR.Resource logger decorator.
 - Persist automatically during runtime observation.
 - Inline large response bodies in BEAR.Resource observation logs.
-- Promote `view_ref` (or any infrastructure storage reference) into `Event::result`. `Event::result` reflects `close.context.body`; `view_ref` stays in the Semantic Log for inspection only.
+- Promote a `*_ref` storage pointer (e.g. `body_ref`) into `Event::result`. `Event::result` reflects `close.context.body`; keys ending in `_ref` are storage pointers that stay in the Semantic Log for inspection only, never extracted into the event.
 - Make MCP, CLI, or skills part of the core runtime contract.
 - Hide `AuraSqlModule` or `MediaQuerySqlModule` inside EventSourcing modules.
 
@@ -54,8 +54,8 @@ Typical split — `DevModule`: `DevLogModule` + `EventSourcingModule()` (observe
 
 `DevLogModule` produces two artifacts for inspection:
 
-- **View files** under `viewDir`, numbered in invocation order (`000001.json`, `000002.json`, …), each holding the rendered view `(string) $ro`. The directory is cleared at injector creation.
-- **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. It is a nested open/close **tree** (`LogJson`): child operations sit under their parent's `open`, each node has a request `context` (`uri`/`method`/`params`/`timestamp`) and a `close` whose `context` carries `code` and a `view_ref` to the matching view file. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk. See `examples/semantic-log.json` for the tree shape.
+- **Body files** under `bodyDir`, numbered in invocation order (`000001.json`, `000002.json`, …), each holding the rendered body `(string) $ro`. The directory is cleared at injector creation.
+- **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. It is a nested open/close **tree** (`LogJson`): child operations sit under their parent's `open`, each node has a request `context` (`uri`/`method`/`params`/`timestamp`) and a `close` whose `context` carries `code` and a `body_ref` to the matching body file. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk. See `examples/semantic-log.json` for the tree shape.
 
 ## Examples
 

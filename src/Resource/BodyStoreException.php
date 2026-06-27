@@ -6,6 +6,6 @@ namespace BEAR\EventSourcing\Resource;
 
 use RuntimeException;
 
-final class ViewStoreException extends RuntimeException
+final class BodyStoreException extends RuntimeException
 {
 }

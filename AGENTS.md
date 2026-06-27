@@ -38,13 +38,13 @@ Core components:
 - `EventStoreInterface`, in-memory implementation, and Ray.MediaQuery SQL implementation
 - `EventSourcingModule` and `MediaQueryEventStoreModule` for optional ES bindings
 - Optional BEAR.Resource observation bridge using `InvokerInterface`
-- Development `FileViewStore` / `DevLogModule` for local view refs
+- Development `FileBodyStore` / `DevLogModule` for local body refs
 
 Keep out of this package:
 
 - BEAR.Resource logger decorator
 - Runtime auto-persistence
-- Inline BEAR.Resource view/body persistence policy; use `ViewStoreInterface` and `view_ref`
+- Inline BEAR.Resource response-body persistence policy; use `BodyStoreInterface` and `body_ref`
 - Application-specific BEAR module wiring
 - Hidden installation of application-owned MediaQuery or database modules from ES modules
 - Application-specific domain code

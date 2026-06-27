@@ -52,7 +52,7 @@ final class ExamplesTest extends TestCase
         $this->assertStringContainsString('"method": "PUT"', $output);
         $this->assertStringNotContainsString('"method": "GET"', $output);
         $this->assertStringContainsString('"uri": "app://self/inventory/SKU-1"', $output);
-        // result is taken from close.context.body, not from a view_ref; "status": "accepted"
+        // result is taken from close.context.body, not from a body_ref; "status": "accepted"
         // only appears in the orders response body, so it proves the body became the event result.
         $this->assertStringContainsString('"status": "accepted"', $output);
     }

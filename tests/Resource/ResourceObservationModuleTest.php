@@ -7,8 +7,8 @@ namespace BEAR\EventSourcing\Tests\Resource;
 use BEAR\EventSourcing\Resource\ResourceObservationModule;
 use BEAR\EventSourcing\Resource\SemanticLogInvoker;
 use BEAR\EventSourcing\Resource\DevLogModule;
-use BEAR\EventSourcing\Resource\FileViewStore;
-use BEAR\EventSourcing\Resource\ViewStoreInterface;
+use BEAR\EventSourcing\Resource\FileBodyStore;
+use BEAR\EventSourcing\Resource\BodyStoreInterface;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Module\ResourceClientModule;
@@ -33,23 +33,23 @@ final class ResourceObservationModuleTest extends TestCase
         $this->assertInstanceOf(SemanticLogInvoker::class, $invoker);
     }
 
-    public function testDevModuleClearsDirectoryAndUsesFileViewStoreWithReads(): void
+    public function testDevModuleClearsDirectoryAndUsesFileBodyStoreWithReads(): void
     {
-        $dir = sys_get_temp_dir() . '/' . uniqid('bear-es-dev-views-', true);
+        $dir = sys_get_temp_dir() . '/' . uniqid('bear-es-dev-bodies-', true);
         mkdir($dir);
         file_put_contents($dir . '/old.json', '{}');
 
         $injector = new Injector(new DevLogModule(
-            viewDir: $dir,
+            bodyDir: $dir,
             module: new ResourceClientModule(),
         ));
 
         $this->assertFalse(file_exists($dir . '/old.json'));
         $this->assertInstanceOf(SemanticLogInvoker::class, $injector->getInstance(InvokerInterface::class));
-        $this->assertInstanceOf(FileViewStore::class, $injector->getInstance(ViewStoreInterface::class));
+        $this->assertInstanceOf(FileBodyStore::class, $injector->getInstance(BodyStoreInterface::class));
         $this->assertSame('GET', $injector->getInstance(RecordedMethods::class)->normalize('GET'));
 
-        FileViewStore::clearDirectory($dir);
+        FileBodyStore::clearDirectory($dir);
         rmdir($dir);
     }
 }

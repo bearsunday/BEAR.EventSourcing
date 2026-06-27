@@ -17,7 +17,7 @@ final class ResourceObservationModule extends AbstractModule
 
     public function __construct(
         private readonly RecordedMethods|null $methods = null,
-        private readonly ViewStoreInterface|null $viewStore = null,
+        private readonly BodyStoreInterface|null $bodyStore = null,
         private readonly SemanticLoggerInterface|null $logger = null,
         AbstractModule|null $module = null,
     ) {
@@ -30,10 +30,10 @@ final class ResourceObservationModule extends AbstractModule
             $this->bind(RecordedMethods::class)->toInstance($this->methods);
         }
 
-        if ($this->viewStore !== null) {
-            $this->bind(ViewStoreInterface::class)->toInstance($this->viewStore);
+        if ($this->bodyStore !== null) {
+            $this->bind(BodyStoreInterface::class)->toInstance($this->bodyStore);
         } else {
-            $this->bind(ViewStoreInterface::class)->to(NullViewStore::class)->in(Scope::SINGLETON);
+            $this->bind(BodyStoreInterface::class)->to(NullBodyStore::class)->in(Scope::SINGLETON);
         }
 
         if ($this->logger !== null) {

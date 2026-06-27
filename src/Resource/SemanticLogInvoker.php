@@ -21,7 +21,7 @@ final class SemanticLogInvoker implements InvokerInterface
     public function __construct(
         private readonly InvokerInterface $invoker,
         private readonly SemanticLoggerInterface $logger,
-        private readonly ViewStoreInterface $viewStore,
+        private readonly BodyStoreInterface $bodyStore,
         RecordedMethods|null $recordedMethods = null,
     ) {
         $this->recordedMethods = $recordedMethods ?? new RecordedMethods();
@@ -60,13 +60,13 @@ final class SemanticLogInvoker implements InvokerInterface
     private function responseContext(AbstractRequest $request, ResourceObject $ro): ResourceResponseContext
     {
         try {
-            $viewRef = ($this->viewStore)($request, $ro);
+            $bodyRef = ($this->bodyStore)($request, $ro);
         } catch (Throwable $e) {
             // Observation must not break a completed request: keep the real code and record the failure.
             return new ResourceResponseContext(code: $ro->code, exception: self::exceptionContext($e));
         }
 
-        return new ResourceResponseContext($ro->code, $viewRef);
+        return new ResourceResponseContext($ro->code, $bodyRef);
     }
 
     private static function httpCode(Throwable $e): int

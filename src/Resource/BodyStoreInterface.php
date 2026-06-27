@@ -7,10 +7,10 @@ namespace BEAR\EventSourcing\Resource;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
 
-interface ViewStoreInterface
+interface BodyStoreInterface
 {
     /**
-     * Store a resource view and return its reference.
+     * Store a response body and return its reference.
      *
      * @return non-empty-string|null
      */

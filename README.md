@@ -168,9 +168,9 @@ $injector = new Injector(new ResourceObservationModule(
 ));
 ```
 
-By default the bridge installs `NullViewStore`, so no view is rendered or saved. Applications that need payload inspection can provide their own `ViewStoreInterface` and store the view in files, SQL, object storage, or test fixtures.
+By default the bridge installs `NullBodyStore`, so no body is stored. Applications that need payload inspection can provide their own `BodyStoreInterface` and store the body in files, SQL, object storage, or test fixtures.
 
-For local AI/debug work, use `DevLogModule`. It clears the view directory when the injector is created, stores rendered views as files through `FileViewStore`, and records `GET` as well as write methods:
+For local AI/debug work, use `DevLogModule`. It clears the body directory when the injector is created, stores rendered bodies as files through `FileBodyStore`, and records `GET` as well as write methods:
 
 ```php
 use BEAR\EventSourcing\Resource\DevLogModule;
@@ -178,28 +178,28 @@ use BEAR\Resource\Module\ResourceClientModule;
 use Ray\Di\Injector;
 
 $injector = new Injector(new DevLogModule(
-    viewDir: __DIR__ . '/var/es/views',
+    bodyDir: __DIR__ . '/var/es/bodies',
     module: new ResourceClientModule(),
 ));
 ```
 
-A `ViewStoreInterface` records a `view_ref` in the close context:
+A `BodyStoreInterface` records a `body_ref` in the close context:
 
 ```json
-{"code": 200, "view_ref": "file:///path/to/var/es/views/000001.json"}
+{"code": 200, "body_ref": "file:///path/to/var/es/bodies/000001.json"}
 ```
 
-`view_ref` is a reference to a stored rendered view. It stays in the Semantic Log for inspection and is **not** extracted into `Event::$result` — the event's `result` comes from `close.context.body`. A bridge log that records only `view_ref` therefore yields an event with a `null` result; the payload lives in the externalized view, not in the event. The same domain operation produces the same event regardless of which `ViewStoreInterface` the bridge uses.
+`body_ref` is a reference to a stored rendered body. It stays in the Semantic Log for inspection and is **not** extracted into `Event::$result` — the event's `result` comes from `close.context.body`. A bridge log that records only `body_ref` therefore yields an event with a `null` result; the payload lives in the externalized body, not in the event. The same domain operation produces the same event regardless of which `BodyStoreInterface` the bridge uses.
 
 ### What dev observation produces
 
 With `DevLogModule` active you read two artifacts:
 
-**View files** under `viewDir`, one per recorded operation, numbered in invocation order. The directory is cleared when the injector is created, so it always reflects the latest run:
+**Body files** under `bodyDir`, one per recorded operation, numbered in invocation order. The directory is cleared when the injector is created, so it always reflects the latest run:
 
 ```text
-var/es/views/000001.json   # rendered view of the first recorded operation, i.e. (string) $ro
-var/es/views/000002.json
+var/es/bodies/000001.json   # rendered body of the first recorded operation, i.e. (string) $ro
+var/es/bodies/000002.json
 ```
 
 **The Semantic Logger log**, held in memory until you call `$logger->flush()`. It is a nested open/close tree: child operations sit under their parent's `open`, and each node carries a request `context` plus a `close` with a response `context`. A `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` looks like:
@@ -233,7 +233,7 @@ var/es/views/000002.json
                         "id": "resource_response_2",
                         "type": "resource_response",
                         "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
-                        "context": {"code": 200, "view_ref": "file:///path/to/var/es/views/000001.json"}
+                        "context": {"code": 200, "body_ref": "file:///path/to/var/es/bodies/000001.json"}
                     }
                 }
             ],
@@ -241,14 +241,14 @@ var/es/views/000002.json
                 "id": "resource_response_1",
                 "type": "resource_response",
                 "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
-                "context": {"code": 201, "view_ref": "file:///path/to/var/es/views/000002.json"}
+                "context": {"code": 201, "body_ref": "file:///path/to/var/es/bodies/000002.json"}
             }
         }
     ]
 }
 ```
 
-The inner `PUT` closes first, so its view is `000001.json`; the outer `POST` closes next as `000002.json`. `GET` is recorded too (`RecordedMethods::WITH_READS`), so reads are traceable during development. The log is never written to disk by this package — flush it and inspect or extract from the returned `LogJson`. `examples/semantic-log.json` shows the same tree shape with body-style results.
+The inner `PUT` closes first, so its body file is `000001.json`; the outer `POST` closes next as `000002.json`. `GET` is recorded too (`RecordedMethods::WITH_READS`), so reads are traceable during development. The log is never written to disk by this package — flush it and inspect or extract from the returned `LogJson`. `examples/semantic-log.json` shows the same tree shape with body-style results.
 
 ## Boundaries
 

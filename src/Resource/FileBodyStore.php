@@ -27,7 +27,7 @@ use function unlink;
 use const DIRECTORY_SEPARATOR;
 use const LOCK_EX;
 
-final class FileViewStore implements ViewStoreInterface
+final class FileBodyStore implements BodyStoreInterface
 {
     private int $sequence = 0;
 
@@ -42,7 +42,7 @@ final class FileViewStore implements ViewStoreInterface
         $file = $this->dir . DIRECTORY_SEPARATOR . sprintf('%06d.json', ++$this->sequence);
         $bytes = file_put_contents($file, (string) $ro, LOCK_EX);
         if ($bytes === false) {
-            throw new ViewStoreException(sprintf('Failed to write view file: %s', $file));
+            throw new BodyStoreException(sprintf('Failed to write body file: %s', $file));
         }
 
         return 'file://' . $file;
@@ -62,11 +62,11 @@ final class FileViewStore implements ViewStoreInterface
         }
 
         if (is_file($dir) || is_link($dir)) {
-            throw new ViewStoreException(sprintf('View store path is not a directory: %s', $dir));
+            throw new BodyStoreException(sprintf('Body store path is not a directory: %s', $dir));
         }
 
         if (! mkdir($dir, 0775, true) && ! is_dir($dir)) {
-            throw new ViewStoreException(sprintf('Failed to create view store directory: %s', $dir));
+            throw new BodyStoreException(sprintf('Failed to create body store directory: %s', $dir));
         }
     }
 
@@ -74,25 +74,25 @@ final class FileViewStore implements ViewStoreInterface
     {
         $trimmed = trim($dir);
         if ($trimmed === '' || $trimmed === DIRECTORY_SEPARATOR) {
-            throw new ViewStoreException('Unsafe view store directory.');
+            throw new BodyStoreException('Unsafe body store directory.');
         }
 
         if (! str_starts_with($dir, DIRECTORY_SEPARATOR)) {
-            throw new ViewStoreException(sprintf('View store directory must be absolute: %s', $dir));
+            throw new BodyStoreException(sprintf('Body store directory must be absolute: %s', $dir));
         }
 
         foreach (explode(DIRECTORY_SEPARATOR, $dir) as $segment) {
             if ($segment === '.' || $segment === '..') {
-                throw new ViewStoreException(sprintf('View store directory must not contain dot segments: %s', $dir));
+                throw new BodyStoreException(sprintf('Body store directory must not contain dot segments: %s', $dir));
             }
         }
 
         if (is_link($dir)) {
-            throw new ViewStoreException(sprintf('View store directory must not be a symlink: %s', $dir));
+            throw new BodyStoreException(sprintf('Body store directory must not be a symlink: %s', $dir));
         }
 
         if (realpath($dir) === DIRECTORY_SEPARATOR) {
-            throw new ViewStoreException('Unsafe view store directory.');
+            throw new BodyStoreException('Unsafe body store directory.');
         }
     }
 
@@ -109,14 +109,14 @@ final class FileViewStore implements ViewStoreInterface
             $path = $file->getPathname();
             if ($file->isLink() || $file->isFile()) {
                 if (! unlink($path)) {
-                    throw new ViewStoreException(sprintf('Failed to remove view store file: %s', $path));
+                    throw new BodyStoreException(sprintf('Failed to remove body store file: %s', $path));
                 }
 
                 continue;
             }
 
             if ($file->isDir() && ! rmdir($path)) {
-                throw new ViewStoreException(sprintf('Failed to remove view store directory: %s', $path));
+                throw new BodyStoreException(sprintf('Failed to remove body store directory: %s', $path));
             }
         }
     }

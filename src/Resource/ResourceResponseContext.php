@@ -16,12 +16,12 @@ final class ResourceResponseContext extends AbstractContext implements JsonSeria
     public const SCHEMA_URL = 'https://bearsunday.github.io/schemas/semantic-logger/resource-response.json';
 
     /**
-     * @param non-empty-string|null                          $viewRef
+     * @param non-empty-string|null                          $bodyRef
      * @param array{class: class-string, message: string}|null $exception
      */
     public function __construct(
         public readonly int $code,
-        public readonly string|null $viewRef = null,
+        public readonly string|null $bodyRef = null,
         public readonly array|null $exception = null,
     ) {
     }
@@ -30,8 +30,8 @@ final class ResourceResponseContext extends AbstractContext implements JsonSeria
     public function jsonSerialize(): array
     {
         $context = ['code' => $this->code];
-        if ($this->viewRef !== null) {
-            $context['view_ref'] = $this->viewRef;
+        if ($this->bodyRef !== null) {
+            $context['body_ref'] = $this->bodyRef;
         }
 
         if ($this->exception !== null) {

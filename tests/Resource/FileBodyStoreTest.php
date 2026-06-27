@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Tests\Resource;
 
-use BEAR\EventSourcing\Resource\FileViewStore;
-use BEAR\EventSourcing\Resource\ViewStoreException;
+use BEAR\EventSourcing\Resource\FileBodyStore;
+use BEAR\EventSourcing\Resource\BodyStoreException;
 use BEAR\Resource\Method;
 use BEAR\Resource\Request;
 use PHPUnit\Framework\TestCase;
@@ -19,12 +19,12 @@ use function rmdir;
 use function sys_get_temp_dir;
 use function uniqid;
 
-final class FileViewStoreTest extends TestCase
+final class FileBodyStoreTest extends TestCase
 {
-    public function testStoresRenderedViewAndReturnsFileRef(): void
+    public function testStoresRenderedBodyAndReturnsFileRef(): void
     {
-        $dir = self::newViewDir();
-        $store = new FileViewStore($dir);
+        $dir = self::newBodyDir();
+        $store = new FileBodyStore($dir);
         $ro = new FakeResourceObject(body: ['id' => 1]);
         $request = new Request(
             new CallbackInvoker(static fn (): FakeResourceObject => $ro),
@@ -32,19 +32,19 @@ final class FileViewStoreTest extends TestCase
             Method::GET,
         );
 
-        $viewRef = $store($request, $ro);
+        $bodyRef = $store($request, $ro);
 
-        $this->assertSame('file://' . $dir . '/000001.json', $viewRef);
+        $this->assertSame('file://' . $dir . '/000001.json', $bodyRef);
         $this->assertSame('{"id":1}', file_get_contents($dir . '/000001.json'));
 
-        FileViewStore::clearDirectory($dir);
+        FileBodyStore::clearDirectory($dir);
         rmdir($dir);
     }
 
     public function testStoresSequentialFiles(): void
     {
-        $dir = self::newViewDir();
-        $store = new FileViewStore($dir);
+        $dir = self::newBodyDir();
+        $store = new FileBodyStore($dir);
         $ro = new FakeResourceObject(body: ['id' => 1]);
         $request = new Request(
             new CallbackInvoker(static fn (): FakeResourceObject => $ro),
@@ -55,18 +55,18 @@ final class FileViewStoreTest extends TestCase
         $this->assertSame('file://' . $dir . '/000001.json', $store($request, $ro));
         $this->assertSame('file://' . $dir . '/000002.json', $store($request, $ro));
 
-        FileViewStore::clearDirectory($dir);
+        FileBodyStore::clearDirectory($dir);
         rmdir($dir);
     }
 
     public function testClearDirectoryRemovesPreviousRunFiles(): void
     {
-        $dir = self::newViewDir();
+        $dir = self::newBodyDir();
         mkdir($dir . '/nested');
         file_put_contents($dir . '/old.json', '{}');
         file_put_contents($dir . '/nested/old.json', '{}');
 
-        FileViewStore::clearDirectory($dir);
+        FileBodyStore::clearDirectory($dir);
 
         $this->assertTrue(is_dir($dir));
         $this->assertFalse(file_exists($dir . '/old.json'));
@@ -77,43 +77,43 @@ final class FileViewStoreTest extends TestCase
 
     public function testRejectsUnsafeDirectory(): void
     {
-        $this->expectException(ViewStoreException::class);
+        $this->expectException(BodyStoreException::class);
 
-        FileViewStore::clearDirectory('');
+        FileBodyStore::clearDirectory('');
     }
 
     public function testRejectsFilePath(): void
     {
-        $dir = self::newViewDir();
+        $dir = self::newBodyDir();
         $file = $dir . '/not-directory';
         file_put_contents($file, '');
 
         try {
-            $this->expectException(ViewStoreException::class);
-            FileViewStore::clearDirectory($file);
+            $this->expectException(BodyStoreException::class);
+            FileBodyStore::clearDirectory($file);
         } finally {
-            FileViewStore::clearDirectory($dir);
+            FileBodyStore::clearDirectory($dir);
             rmdir($dir);
         }
     }
 
     public function testRejectsDotSegments(): void
     {
-        $this->expectException(ViewStoreException::class);
+        $this->expectException(BodyStoreException::class);
 
-        FileViewStore::clearDirectory(sys_get_temp_dir() . '/..');
+        FileBodyStore::clearDirectory(sys_get_temp_dir() . '/..');
     }
 
     public function testRejectsPathResolvingToRoot(): void
     {
-        $this->expectException(ViewStoreException::class);
+        $this->expectException(BodyStoreException::class);
 
-        FileViewStore::clearDirectory('//');
+        FileBodyStore::clearDirectory('//');
     }
 
-    private static function newViewDir(): string
+    private static function newBodyDir(): string
     {
-        $dir = sys_get_temp_dir() . '/' . uniqid('bear-es-views-', true);
+        $dir = sys_get_temp_dir() . '/' . uniqid('bear-es-bodies-', true);
         mkdir($dir);
 
         return $dir;

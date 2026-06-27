@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\Tests\Resource;
 
 use BEAR\EventSourcing\RecordedMethods;
-use BEAR\EventSourcing\Resource\NullViewStore;
+use BEAR\EventSourcing\Resource\NullBodyStore;
 use BEAR\EventSourcing\Resource\SemanticLogInvoker;
-use BEAR\EventSourcing\Resource\ViewStoreException;
+use BEAR\EventSourcing\Resource\BodyStoreException;
 use BEAR\Resource\Method;
 use BEAR\Resource\Request;
 use Koriym\SemanticLogger\Exception\NoLogSessionException;
@@ -24,7 +24,7 @@ final class SemanticLogInvokerTest extends TestCase
         $invoker = new SemanticLogInvoker(
             new CallbackInvoker(static fn (): FakeResourceObject => $ro),
             $logger,
-            new NullViewStore(),
+            new NullBodyStore(),
         );
 
         $invoker->invoke(self::request('app://self/user/1', Method::POST, ['id' => 1]));
@@ -43,7 +43,7 @@ final class SemanticLogInvokerTest extends TestCase
         $invoker = new SemanticLogInvoker(
             new CallbackInvoker(static fn (): FakeResourceObject => $ro),
             $logger,
-            new NullViewStore(),
+            new NullBodyStore(),
         );
 
         $invoker->invoke(self::request('app://self/user/1', Method::GET));
@@ -59,7 +59,7 @@ final class SemanticLogInvokerTest extends TestCase
         $invoker = new SemanticLogInvoker(
             new CallbackInvoker(static fn (): FakeResourceObject => $ro),
             $logger,
-            new NullViewStore(),
+            new NullBodyStore(),
             new RecordedMethods(RecordedMethods::WITH_READS),
         );
 
@@ -69,10 +69,10 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertSame('GET', $entry['context']['method']);
     }
 
-    public function testAddsViewRefWhenViewStoreReturnsReference(): void
+    public function testAddsBodyRefWhenBodyStoreReturnsReference(): void
     {
         $logger = new SemanticLogger();
-        $store = new RecordingViewStore('file://var/es/views/000001.json');
+        $store = new RecordingBodyStore('file://var/es/bodies/000001.json');
         $ro = new FakeResourceObject('app://self/user/1', ['id' => 1]);
         $invoker = new SemanticLogInvoker(
             new CallbackInvoker(static fn (): FakeResourceObject => $ro),
@@ -85,19 +85,19 @@ final class SemanticLogInvokerTest extends TestCase
         $entry = $logger->flush()->toArray()['open'][0];
         $this->assertSame(1, $store->calls);
         $this->assertSame(
-            ['code' => 200, 'view_ref' => 'file://var/es/views/000001.json'],
+            ['code' => 200, 'body_ref' => 'file://var/es/bodies/000001.json'],
             self::closeContext($entry),
         );
     }
 
-    public function testViewStoreFailureDoesNotBreakRequest(): void
+    public function testBodyStoreFailureDoesNotBreakRequest(): void
     {
         $logger = new SemanticLogger();
         $ro = new FakeResourceObject('app://self/user/1', ['id' => 1], 201);
         $invoker = new SemanticLogInvoker(
             new CallbackInvoker(static fn (): FakeResourceObject => $ro),
             $logger,
-            new ThrowingViewStore(),
+            new ThrowingBodyStore(),
         );
 
         $result = $invoker->invoke(self::request('app://self/user/1', Method::POST));
@@ -109,8 +109,8 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertIsArray($exceptionContext);
         /** @var array{class: string, message: string} $exceptionContext */
         $this->assertSame(201, $context['code']);
-        $this->assertSame(ViewStoreException::class, $exceptionContext['class']);
-        $this->assertSame('The view store failed.', $exceptionContext['message']);
+        $this->assertSame(BodyStoreException::class, $exceptionContext['class']);
+        $this->assertSame('The body store failed.', $exceptionContext['message']);
     }
 
     public function testClosesAndRethrowsOnException(): void
@@ -122,7 +122,7 @@ final class SemanticLogInvokerTest extends TestCase
                 throw $exception;
             }),
             $logger,
-            new NullViewStore(),
+            new NullBodyStore(),
         );
 
         try {
@@ -149,7 +149,7 @@ final class SemanticLogInvokerTest extends TestCase
         $inner = new SemanticLogInvoker(
             new CallbackInvoker(static fn (): FakeResourceObject => $innerRo),
             $logger,
-            new NullViewStore(),
+            new NullBodyStore(),
         );
         $outerRo = new FakeResourceObject('app://self/outer', ['id' => 1]);
         $outer = new SemanticLogInvoker(
@@ -159,7 +159,7 @@ final class SemanticLogInvokerTest extends TestCase
                 return $outerRo;
             }),
             $logger,
-            new NullViewStore(),
+            new NullBodyStore(),
         );
 
         $outer->invoke(self::request('app://self/outer', Method::POST));
