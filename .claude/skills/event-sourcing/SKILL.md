@@ -13,7 +13,7 @@ BEAR.Resource Invoker -> Koriym\SemanticLogger\LogJson -> SemanticLogExtractorIn
 
 ## Workflow
 
-1. Read `README.md` for the public API and `docs/agent-usage.md` for agent-specific guidance.
+1. Read `README.md` for the public API and worked code examples, and `AGENTS.md` for project direction and dependency policy.
 2. Use `SemanticLogExtractorInterface::extract(LogJson $semanticLog)` to create events.
 3. Iterate events with `foreach`, `EventsInterface::getIterator()`, or SPL iterators.
 4. Use `RecordedMethods::WITH_READS` only for development-time GET tracing.
