@@ -202,17 +202,53 @@ var/es/views/000001.json   # rendered view of the first recorded operation, i.e.
 var/es/views/000002.json
 ```
 
-**The Semantic Logger log**, held in memory until you call `$logger->flush()`. Each recorded operation is an open/close pair; the meaningful fields are the two contexts:
+**The Semantic Logger log**, held in memory until you call `$logger->flush()`. It is a nested open/close tree: child operations sit under their parent's `open`, and each node carries a request `context` plus a `close` with a response `context`. A `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` looks like:
 
-```jsonc
-// open context (request)
-{"uri": "app://self/users", "method": "POST", "params": {"id": "koriym"}, "timestamp": "2026-06-10T12:34:56.123456+00:00"}
-
-// close context (response)
-{"code": 201, "view_ref": "file:///path/to/var/es/views/000001.json"}
+```json
+{
+    "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
+    "open": [
+        {
+            "id": "resource_request_1",
+            "type": "resource_request",
+            "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+            "context": {
+                "uri": "app://self/orders",
+                "method": "POST",
+                "params": {"order_id": "O-1000"},
+                "timestamp": "2026-06-10T12:36:00.000000+00:00"
+            },
+            "open": [
+                {
+                    "id": "resource_request_2",
+                    "type": "resource_request",
+                    "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+                    "context": {
+                        "uri": "app://self/inventory/SKU-1",
+                        "method": "PUT",
+                        "params": {"sku": "SKU-1"},
+                        "timestamp": "2026-06-10T12:36:01.000000+00:00"
+                    },
+                    "close": {
+                        "id": "resource_response_2",
+                        "type": "resource_response",
+                        "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+                        "context": {"code": 200, "view_ref": "file:///path/to/var/es/views/000001.json"}
+                    }
+                }
+            ],
+            "close": {
+                "id": "resource_response_1",
+                "type": "resource_response",
+                "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+                "context": {"code": 201, "view_ref": "file:///path/to/var/es/views/000002.json"}
+            }
+        }
+    ]
+}
 ```
 
-`GET` is recorded too (`RecordedMethods::WITH_READS`), so reads are traceable during development. The log is never written to disk by this package — flush it and inspect or extract from the returned `LogJson`. See `examples/semantic-log.json` for the full open/close tree shape.
+The inner `PUT` closes first, so its view is `000001.json`; the outer `POST` closes next as `000002.json`. `GET` is recorded too (`RecordedMethods::WITH_READS`), so reads are traceable during development. The log is never written to disk by this package — flush it and inspect or extract from the returned `LogJson`. `examples/semantic-log.json` shows the same tree shape with body-style results.
 
 ## Boundaries
 

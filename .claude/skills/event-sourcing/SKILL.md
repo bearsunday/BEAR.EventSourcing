@@ -55,7 +55,7 @@ Typical split — `DevModule`: `DevLogModule` + `EventSourcingModule()` (observe
 `DevLogModule` produces two artifacts for inspection:
 
 - **View files** under `viewDir`, numbered in invocation order (`000001.json`, `000002.json`, …), each holding the rendered view `(string) $ro`. The directory is cleared at injector creation.
-- **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. Open context carries `uri`/`method`/`params`/`timestamp`; close context carries `code` and a `view_ref` pointing at the matching view file. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk.
+- **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. It is a nested open/close **tree** (`LogJson`): child operations sit under their parent's `open`, each node has a request `context` (`uri`/`method`/`params`/`timestamp`) and a `close` whose `context` carries `code` and a `view_ref` to the matching view file. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk. See `examples/semantic-log.json` for the tree shape.
 
 ## Examples
 
