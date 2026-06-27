@@ -1,16 +1,8 @@
 # BEAR.EventSourcing
 
-Immutable event facts extracted from Semantic Logger observations.
+Make your application's state changes a **replayable source of truth** — fold the events back to reconstruct state at any point in time.
 
-## Intent
-
-This project starts from one constraint: **Semantic Logger is the observation source**.
-
-The package reads Semantic Logger observations and derives immutable event facts from them. It does not decorate `BEAR\Resource\LoggerInterface`, and it does not persist events during resource execution. Persistence and framework integration are explicit application choices, never automatic runtime behavior.
-
-```text
-Semantic Logger observations -> Events -> optional EventStore
-```
+Every event is a resource operation: a `method` on a `uri`, like `POST app://self/users`. That resource shape keeps replay straightforward, and it lets the same event stream double as an audit history of what happened, when, and to which resource.
 
 ## Installation
 
@@ -50,6 +42,14 @@ final class AppModule extends AbstractModule
         ));
     }
 }
+```
+
+## How it works
+
+Semantic Logger is the observation source. The package reads a flushed Semantic Logger log and derives immutable events from its public open/close tree — it adds no event-dispatch code to your domain and persists nothing on its own.
+
+```text
+Semantic Logger observations -> Events -> optional EventStore
 ```
 
 ## What is an event
