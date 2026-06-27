@@ -4,7 +4,7 @@
 
 This repository implements event sourcing by extracting immutable event facts from Semantic Logger observations.
 
-Semantic Logger is the observation source. Do not directly observe BEAR.Resource runtime behavior, and do not decorate `BEAR\Resource\LoggerInterface` to persist events during request execution.
+Semantic Logger is the observation source. BEAR.Resource runtime observation, when needed, must be an optional `InvokerInterface` bridge that writes Semantic Logger open/close entries. Do not decorate `BEAR\Resource\LoggerInterface` to persist events during request execution.
 
 Preferred flow:
 
@@ -37,11 +37,14 @@ Core components:
 - Semantic Logger log fixtures and extractor tests
 - `EventStoreInterface`, in-memory implementation, and Ray.MediaQuery SQL implementation
 - `EventSourcingModule` and `MediaQueryEventStoreModule` for optional ES bindings
+- Optional BEAR.Resource observation bridge using `InvokerInterface`
+- Development `FileBodyStore` / `DevLogModule` for local body refs
 
 Keep out of this package:
 
 - BEAR.Resource logger decorator
 - Runtime auto-persistence
+- Inline BEAR.Resource response-body persistence policy; use `BodyStoreInterface` and `body_ref`
 - Application-specific BEAR module wiring
 - Hidden installation of application-owned MediaQuery or database modules from ES modules
 - Application-specific domain code

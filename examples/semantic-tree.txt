@@ -1,0 +1,6 @@
+request="POST app://self/orders?order_id=O-1000"
+├── request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"
+│   ├── media_query name=inventory_reserve sku=SKU-1
+│   │   └── rows_ref=file://var/es/rows/000001.json
+│   └── code=200 body_ref=file://var/es/bodies/000001.json
+└── code=201 body_ref=file://var/es/bodies/000002.json

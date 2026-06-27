@@ -7,6 +7,7 @@ namespace BEAR\EventSourcing\Tests;
 use BEAR\EventSourcing\Event;
 use BEAR\EventSourcing\Exception\InvalidRecordedMethod;
 use BEAR\EventSourcing\RecordedMethods;
+use BEAR\EventSourcing\Resource\ResourceResponseContext as BodyResponseContext;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\SemanticLogExtractorInterface;
 use DateTimeImmutable;
@@ -87,6 +88,20 @@ final class EventsFromSemanticLogTest extends TestCase
         $this->assertSame('GET', $event->method);
         $this->assertSame('app://self/users/1', $event->uri);
         $this->assertSame(['id' => 1], $event->result);
+    }
+
+    public function testBodyReferenceIsNotExtractedIntoResult(): void
+    {
+        $logger = new SemanticLogger();
+        $openId = $logger->open(new ResourceRequestContext('app://self/users/1', 'POST'));
+        $logger->close(new BodyResponseContext(200, 'file://var/es/bodies/000001.json'), $openId);
+
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
+
+        // body_ref stays in the Semantic Log for inspection; it must not leak into the domain event.
+        $event = iterator_to_array($events)[0];
+        $this->assertSame('app://self/users/1', $event->uri);
+        $this->assertNull($event->result);
     }
 
     public function testRejectsUnsupportedRecordedMethod(): void
