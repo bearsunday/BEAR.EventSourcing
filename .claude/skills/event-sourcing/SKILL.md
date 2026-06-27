@@ -55,7 +55,18 @@ Typical split — `DevModule`: `DevLogModule` + `EventSourcingModule()` (observe
 `DevLogModule` produces two artifacts for inspection:
 
 - **Body files** under `bodyDir`, numbered in invocation order (`000001.json`, `000002.json`, …), each holding the rendered body `(string) $ro`. The directory is cleared at injector creation.
-- **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. It is a nested open/close **tree** (`LogJson`): child operations sit under their parent's `open`, each node has a request `context` (`uri`/`method`/`params`/`timestamp`) and a `close` whose `context` carries `code` and a `body_ref` to the matching body file. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk. See `examples/semantic-log.json` for the tree shape.
+- **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. It is a nested open/close **tree** (`LogJson`): child operations sit under their parent's `open`, each node has a request `context` (`uri`/`method`/`params`/`timestamp`) and a `close` whose `context` carries `code` and a `body_ref` to the matching body file. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk.
+
+Read the log as a tree with `stree` (bundled with `koriym/semantic-logger`) — far fewer tokens than raw JSON, so prefer it for both human and AI inspection:
+
+```text
+resource_request uri=app://self/orders method=POST params=[order_id] timestamp=...
+├── resource_request uri=app://self/inventory/SKU-1 method=PUT params=[sku] timestamp=...
+│   └── code=200 body_ref=file://.../000001.json
+└── code=201 body_ref=file://.../000002.json
+```
+
+Run `vendor/bin/stree <log.json>` (`--full` to expand context keys) or use `Koriym\SemanticLogger\Stree\TreeRenderer`. `examples/semantic-log.json` is the raw `LogJson` for the envelope shape.
 
 ## Examples
 

@@ -202,53 +202,18 @@ var/es/bodies/000001.json   # rendered body of the first recorded operation, i.e
 var/es/bodies/000002.json
 ```
 
-**The Semantic Logger log**, held in memory until you call `$logger->flush()`. It is a nested open/close tree: child operations sit under their parent's `open`, and each node carries a request `context` plus a `close` with a response `context`. A `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` looks like:
+**The Semantic Logger log**, a nested open/close tree held in memory until you call `$logger->flush()`. Render it with `stree` (bundled with `koriym/semantic-logger`) — a readable tree that is far smaller than the raw JSON, for both humans and AI. A `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` renders as:
 
-```json
-{
-    "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
-        {
-            "id": "resource_request_1",
-            "type": "resource_request",
-            "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
-            "context": {
-                "uri": "app://self/orders",
-                "method": "POST",
-                "params": {"order_id": "O-1000"},
-                "timestamp": "2026-06-10T12:36:00.000000+00:00"
-            },
-            "open": [
-                {
-                    "id": "resource_request_2",
-                    "type": "resource_request",
-                    "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
-                    "context": {
-                        "uri": "app://self/inventory/SKU-1",
-                        "method": "PUT",
-                        "params": {"sku": "SKU-1"},
-                        "timestamp": "2026-06-10T12:36:01.000000+00:00"
-                    },
-                    "close": {
-                        "id": "resource_response_2",
-                        "type": "resource_response",
-                        "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
-                        "context": {"code": 200, "body_ref": "file:///path/to/var/es/bodies/000001.json"}
-                    }
-                }
-            ],
-            "close": {
-                "id": "resource_response_1",
-                "type": "resource_response",
-                "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
-                "context": {"code": 201, "body_ref": "file:///path/to/var/es/bodies/000002.json"}
-            }
-        }
-    ]
-}
+```text
+resource_request uri=app://self/orders method=POST params=[order_id] timestamp=2026-06-10T12:36:00.000000+00:00
+├── resource_request uri=app://self/inventory/SKU-1 method=PUT params=[sku] timestamp=2026-06-10T12:36:01.000000+00:00
+│   └── code=200 body_ref=file:///path/to/var/es/bodies/000001.json
+└── code=201 body_ref=file:///path/to/var/es/bodies/000002.json
 ```
 
-The inner `PUT` closes first, so its body file is `000001.json`; the outer `POST` closes next as `000002.json`. `GET` is recorded too (`RecordedMethods::WITH_READS`), so reads are traceable during development. The log is never written to disk by this package — flush it and inspect or extract from the returned `LogJson`. `examples/semantic-log.json` shows the same tree shape with body-style results.
+Each line is a resource operation — the request (`method` on a `uri`) with its response shown as a `└──` child (`code` + `body_ref`); child operations nest under their parent. The resource shape keeps the tree normalized: intent in, result out. The inner `PUT` closes first, so its body file is `000001.json`. `GET` is recorded too (`RecordedMethods::WITH_READS`).
+
+Produce it by writing the flushed log to a file and running `vendor/bin/stree dev-log.json` (`--full` expands every context key), or render programmatically with `Koriym\SemanticLogger\Stree\TreeRenderer`. This package never writes the log to disk itself. For the raw `LogJson` (with `id`/`type`/`schemaUrl` envelopes), see `examples/semantic-log.json`.
 
 ## Boundaries
 
