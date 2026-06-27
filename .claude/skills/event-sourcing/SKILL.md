@@ -66,7 +66,7 @@ resource_request uri=app://self/orders method=POST params=[order_id] timestamp=.
 └── code=201 body_ref=file://.../000002.json
 ```
 
-Run `vendor/bin/stree <log.json>` (`--full` to expand context keys) or use `Koriym\SemanticLogger\Stree\TreeRenderer`. `examples/semantic-log.json` is the raw `LogJson` for the envelope shape.
+Run `vendor/bin/stree <log.json>` (`--full` to expand context keys) or use `Koriym\SemanticLogger\Stree\TreeRenderer`. `examples/semantic-log.json` is the raw `LogJson`; `examples/semantic-log.tree` is its `stree` rendering (committed as a worked example).
 
 ## Examples
 

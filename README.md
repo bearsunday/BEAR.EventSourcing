@@ -213,7 +213,7 @@ resource_request uri=app://self/orders method=POST params=[order_id] timestamp=2
 
 Each line is a resource operation — the request (`method` on a `uri`) with its response shown as a `└──` child (`code` + `body_ref`); child operations nest under their parent. The resource shape keeps the tree normalized: intent in, result out. The inner `PUT` closes first, so its body file is `000001.json`. `GET` is recorded too (`RecordedMethods::WITH_READS`).
 
-Produce it by writing the flushed log to a file and running `vendor/bin/stree dev-log.json` (`--full` expands every context key), or render programmatically with `Koriym\SemanticLogger\Stree\TreeRenderer`. This package never writes the log to disk itself. For the raw `LogJson` (with `id`/`type`/`schemaUrl` envelopes), see `examples/semantic-log.json`.
+Produce it by writing the flushed log to a file and running `vendor/bin/stree dev-log.json` (`--full` expands every context key), or render programmatically with `Koriym\SemanticLogger\Stree\TreeRenderer`. This package never writes the log to disk itself. See `examples/semantic-log.json` for the raw `LogJson` (with `id`/`type`/`schemaUrl` envelopes) and `examples/semantic-log.tree` for its `stree` rendering — the same log in ~770 bytes instead of ~5 KB of JSON.
 
 ## Boundaries
 
