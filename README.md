@@ -120,13 +120,15 @@ The extractor accepts Semantic Logger `LogJson` and reads its public `open` tree
 - `params` or `query`: operation input
 - `timestamp`: optional ISO-8601 timestamp
 
-For BEAR.Resource observation, the matching close context records `code` and, when configured, `view_ref`. `ViewStoreInterface` decides whether a rendered view is stored and returns only its reference:
+The matching `close.context.body` becomes the event result. If `close.context.code` exists and is `400` or greater, the operation is treated as unsuccessful and ignored.
+
+For BEAR.Resource observation, the close context records `code` and, when a `ViewStoreInterface` is configured, `view_ref`. `view_ref` is a reference to a stored rendered view that stays in the Semantic Log for inspection; it is **not** extracted into `Event::$result`. The domain event keeps only the facts it observed (`uri`, `method`, `params`, `timestamp`), and its `result` reflects `close.context.body` when present:
 
 ```json
 {"code": 200, "view_ref": "file://var/es/views/000001.json"}
 ```
 
-`close.context.body` is still accepted for existing Semantic Logger fixtures, but new BEAR.Resource observation should prefer `view_ref`. If `close.context.code` exists and is `400` or greater, the operation is treated as unsuccessful and ignored.
+This keeps the event free of infrastructure storage references: the same domain operation produces the same event regardless of which `ViewStoreInterface` the observation bridge uses.
 
 Filter events with PHP's standard iterators. Iterator filters can be stacked without adding methods to `Events`:
 

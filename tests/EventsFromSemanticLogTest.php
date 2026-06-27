@@ -90,7 +90,7 @@ final class EventsFromSemanticLogTest extends TestCase
         $this->assertSame(['id' => 1], $event->result);
     }
 
-    public function testExtractsViewReferenceAsResult(): void
+    public function testViewReferenceIsNotExtractedIntoResult(): void
     {
         $logger = new SemanticLogger();
         $openId = $logger->open(new ResourceRequestContext('app://self/users/1', 'POST'));
@@ -98,8 +98,10 @@ final class EventsFromSemanticLogTest extends TestCase
 
         $events = (new SemanticLogExtractor())->extract($logger->flush());
 
+        // view_ref stays in the Semantic Log for inspection; it must not leak into the domain event.
         $event = iterator_to_array($events)[0];
-        $this->assertSame(['view_ref' => 'file://var/es/views/000001.json'], $event->result);
+        $this->assertSame('app://self/users/1', $event->uri);
+        $this->assertNull($event->result);
     }
 
     public function testRejectsUnsupportedRecordedMethod(): void

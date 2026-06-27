@@ -34,12 +34,11 @@ final class FileViewStore implements ViewStoreInterface
     public function __construct(
         private readonly string $dir,
     ) {
+        self::ensureDirectory($dir);
     }
 
     public function __invoke(AbstractRequest $request, ResourceObject $ro): string|null
     {
-        self::ensureDirectory($this->dir);
-
         $file = $this->dir . DIRECTORY_SEPARATOR . sprintf('%06d.json', ++$this->sequence);
         $bytes = file_put_contents($file, (string) $ro, LOCK_EX);
         if ($bytes === false) {
