@@ -36,6 +36,7 @@ Do not:
 - Add a BEAR.Resource logger decorator.
 - Persist automatically during runtime observation.
 - Inline large response bodies in BEAR.Resource observation logs.
+- Promote `view_ref` (or any infrastructure storage reference) into `Event::result`. `Event::result` reflects `close.context.body`; `view_ref` stays in the Semantic Log for inspection only.
 - Make MCP, CLI, or skills part of the core runtime contract.
 - Hide `AuraSqlModule` or `MediaQuerySqlModule` inside EventSourcing modules.
 
