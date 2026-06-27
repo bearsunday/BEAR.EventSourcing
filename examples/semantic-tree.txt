@@ -1,10 +1,10 @@
-resource_request uri=app://self/users method=POST params=[id, name] timestamp=2026-06-10T12:34:56.123456+00:00
+request="POST app://self/users?id=koriym&name=Akihito"
 └── code=201 body=[id, name]
-resource_request uri=app://self/users/koriym method=GET params=[id] timestamp=2026-06-10T12:35:00.000000+00:00
+request="GET app://self/users/koriym?id=koriym"
 └── code=200 body=[id, name]
-resource_request uri=app://self/orders method=POST params=[order_id] timestamp=2026-06-10T12:36:00.000000+00:00
-├── resource_request uri=app://self/inventory/SKU-1 method=PUT params=[sku, quantity] timestamp=2026-06-10T12:36:01.000000+00:00
+request="POST app://self/orders?order_id=O-1000"
+├── request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"
 │   └── code=200 body=[sku, reserved]
 └── code=201 body=[order_id, status]
-resource_request uri=app://self/users/koriym method=DELETE params=[id] timestamp=2026-06-10T12:37:00.000000+00:00
+request="DELETE app://self/users/koriym?id=koriym"
 └── code=409 body=[message]

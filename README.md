@@ -202,18 +202,18 @@ var/es/bodies/000001.json   # rendered body of the first recorded operation, i.e
 var/es/bodies/000002.json
 ```
 
-**The Semantic Logger log**, a nested open/close tree held in memory until you call `$logger->flush()`. Render it with `stree` (bundled with `koriym/semantic-logger`) — a readable tree that is far smaller than the raw JSON, for both humans and AI. A `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` renders as:
+**The Semantic Logger log**, a nested open/close tree held in memory until you call `$logger->flush()`. Render it as a readable tree — far smaller than the raw JSON, for both humans and AI. `Resource\Stree\ResourceNodeFormatter` renders each node as one resource operation, so a `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` reads as intent in, result out:
 
 ```text
-resource_request uri=app://self/orders method=POST params=[order_id] timestamp=2026-06-10T12:36:00.000000+00:00
-├── resource_request uri=app://self/inventory/SKU-1 method=PUT params=[sku] timestamp=2026-06-10T12:36:01.000000+00:00
-│   └── code=200 body_ref=file:///path/to/var/es/bodies/000001.json
-└── code=201 body_ref=file:///path/to/var/es/bodies/000002.json
+request="POST app://self/orders?order_id=O-1000"
+├── request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"
+│   └── code=200 body=[sku, reserved]
+└── code=201 body=[order_id, status]
 ```
 
-Each line is a resource operation — the request (`method` on a `uri`) with its response shown as a `└──` child (`code` + `body_ref`); child operations nest under their parent. The resource shape keeps the tree normalized: intent in, result out. The inner `PUT` closes first, so its body file is `000001.json`. `GET` is recorded too (`RecordedMethods::WITH_READS`).
+The request line is the intent (`method` on a `uri` with its params as a query string); the `└──` close line is the result (`code` plus `body`, or `body_ref` for a bridge log). Child operations nest under their parent. The resource shape keeps the tree normalized, and no timestamp noise leaks in.
 
-Produce it by writing the flushed log to a file and running `vendor/bin/stree dev-log.json` (`--full` expands every context key), or render programmatically with `Koriym\SemanticLogger\Stree\TreeRenderer`. This package never writes the log to disk itself. See `examples/semantic-log.json` for the raw `LogJson` (with `id`/`type`/`schemaUrl` envelopes) and `examples/semantic-tree.txt` for its `stree` rendering — the same log in ~770 bytes instead of ~5 KB of JSON.
+Render it with `TreeRenderer` and a `FormatterRegistry` that registers `ResourceNodeFormatter` for the `resource_request` type — `examples/tree.php` is a runnable end-to-end script, and `examples/semantic-tree.txt` is its output (the same log in ~470 bytes instead of ~5 KB of JSON). The bundled `vendor/bin/stree dev-log.json` works too, but renders the generic form (type label plus a raw `timestamp`) since the CLI does not load custom formatters. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson`.
 
 ## Boundaries
 

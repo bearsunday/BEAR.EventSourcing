@@ -75,6 +75,17 @@ final class ExamplesTest extends TestCase
         $this->assertSame(3, substr_count($output, '"method":'));
     }
 
+    public function testTreeExampleRendersCleanResourceTree(): void
+    {
+        $output = self::runExample('tree.php');
+
+        // ResourceNodeFormatter renders the open line as one resource operation;
+        // the close line and tree shape come from stree. No timestamp noise.
+        $this->assertStringContainsString('request="POST app://self/users?id=koriym&name=Akihito"', $output);
+        $this->assertStringContainsString('└── code=201 body=[id, name]', $output);
+        $this->assertStringNotContainsString('timestamp=', $output);
+    }
+
     private static function runExample(string $script): string
     {
         $output = [];

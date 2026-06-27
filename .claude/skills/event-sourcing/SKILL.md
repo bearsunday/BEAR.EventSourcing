@@ -57,16 +57,16 @@ Typical split — `DevModule`: `DevLogModule` + `EventSourcingModule()` (observe
 - **Body files** under `bodyDir`, numbered in invocation order (`000001.json`, `000002.json`, …), each holding the rendered body `(string) $ro`. The directory is cleared at injector creation.
 - **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. It is a nested open/close **tree** (`LogJson`): child operations sit under their parent's `open`, each node has a request `context` (`uri`/`method`/`params`/`timestamp`) and a `close` whose `context` carries `code` and a `body_ref` to the matching body file. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk.
 
-Read the log as a tree with `stree` (bundled with `koriym/semantic-logger`) — far fewer tokens than raw JSON, so prefer it for both human and AI inspection:
+Read the log as a tree — far fewer tokens than raw JSON, so prefer it for both human and AI inspection. `Resource\Stree\ResourceNodeFormatter` renders each node as one resource operation (intent in, result out):
 
 ```text
-resource_request uri=app://self/orders method=POST params=[order_id] timestamp=...
-├── resource_request uri=app://self/inventory/SKU-1 method=PUT params=[sku] timestamp=...
-│   └── code=200 body_ref=file://.../000001.json
-└── code=201 body_ref=file://.../000002.json
+request="POST app://self/orders?order_id=O-1000"
+├── request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"
+│   └── code=200 body=[sku, reserved]
+└── code=201 body=[order_id, status]
 ```
 
-Run `vendor/bin/stree <log.json>` (`--full` to expand context keys) or use `Koriym\SemanticLogger\Stree\TreeRenderer`. `examples/semantic-log.json` is the raw `LogJson`; `examples/semantic-tree.txt` is its `stree` rendering (committed as a worked example).
+Render with `Koriym\SemanticLogger\Stree\TreeRenderer` + a `FormatterRegistry` that registers `ResourceNodeFormatter` for `resource_request`; `examples/tree.php` is the runnable script and `examples/semantic-tree.txt` its output. The bundled `vendor/bin/stree <log.json>` works but shows the generic form (type label + raw `timestamp`) because the CLI loads no custom formatters. `examples/semantic-log.json` is the raw `LogJson`.
 
 ## Examples
 
@@ -76,9 +76,10 @@ Use the bundled examples before inventing new integration code:
 php examples/extract.php
 php examples/store.php
 php examples/replay.php
+php examples/tree.php
 ```
 
-`examples/semantic-log.json` is a public Semantic Logger tree fixture for inspection. The runnable examples build a `LogJson` through `SemanticLogger::flush()` and then extract events.
+`examples/semantic-log.json` is a public Semantic Logger tree fixture for inspection. The runnable examples build a `LogJson` through `SemanticLogger::flush()`, then extract events (`extract`/`store`/`replay`) or render the log as a resource tree (`tree`).
 
 ## Validation
 
