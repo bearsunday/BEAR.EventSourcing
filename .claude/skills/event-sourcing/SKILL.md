@@ -67,17 +67,8 @@ request="POST app://self/orders?order_id=O-1000"
 └── code=201 body_ref=file://var/es/bodies/000002.json
 ```
 
-Every node follows one rule: intent inline, heavy detail behind a `*_ref` pointer (`body_ref` for a resource body, `rows_ref` for a query result), so an AI can follow it for the full detail. Non-resource nodes (e.g. a media query) render in stree's generic form but nest clearly. Render with `Koriym\SemanticLogger\Stree\TreeRenderer` + a `FormatterRegistry` that registers `ResourceNodeFormatter` for `resource_request`; `examples/tree.php` builds a `DevLogModule`-style log and renders it, with `examples/semantic-tree.txt` as its output. The bundled `vendor/bin/stree <log.json>` works but shows the generic form (type label + raw `timestamp`) because the CLI loads no custom formatters.
+Every node follows one rule: intent inline, heavy detail behind a `*_ref` pointer, so an AI can follow it for the full detail. This bridge emits `resource_request` nodes with `body_ref`; in a real app other observers (e.g. Ray.MediaQuery) add non-resource nodes such as a media query — these render in stree's generic form but nest clearly and follow the same rule (e.g. `rows_ref`). Render with `Koriym\SemanticLogger\Stree\TreeRenderer` + a `FormatterRegistry` that registers `ResourceNodeFormatter` for `resource_request`; `examples/tree.php` builds a `DevLogModule`-style log and renders it, with `examples/semantic-tree.txt` as its output. The bundled `vendor/bin/stree <log.json>` works but shows the generic form (type label + raw `timestamp`) because the CLI loads no custom formatters.
 
 ## Examples
 
-Use the bundled examples before inventing new integration code:
-
-```bash
-php examples/extract.php
-php examples/store.php
-php examples/replay.php
-php examples/tree.php
-```
-
-`examples/semantic-log.json` is a public Semantic Logger tree fixture for inspection. The runnable examples build a `LogJson` through `SemanticLogger::flush()`, then extract events (`extract`/`store`/`replay`) or render the log as a resource tree (`tree`).
+Reach for the bundled examples before inventing new integration code: `extract.php`, `store.php`, `replay.php` cover extraction, storage, and replay; `tree.php` renders the log as a resource tree. They share the `examples/semantic-log.json` fixture, built through `SemanticLogger::flush()`.
