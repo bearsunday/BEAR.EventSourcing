@@ -1,10 +1,4 @@
-request="POST app://self/users?id=koriym&name=Akihito"
-└── code=201 body=[id, name]
-request="GET app://self/users/koriym?id=koriym"
-└── code=200 body=[id, name]
 request="POST app://self/orders?order_id=O-1000"
 ├── request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"
-│   └── code=200 body=[sku, reserved]
-└── code=201 body=[order_id, status]
-request="DELETE app://self/users/koriym?id=koriym"
-└── code=409 body=[message]
+│   └── code=200 body_ref=file://var/es/bodies/000001.json
+└── code=201 body_ref=file://var/es/bodies/000002.json

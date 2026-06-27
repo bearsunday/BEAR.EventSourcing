@@ -207,13 +207,13 @@ var/es/bodies/000002.json
 ```text
 request="POST app://self/orders?order_id=O-1000"
 ├── request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"
-│   └── code=200 body=[sku, reserved]
-└── code=201 body=[order_id, status]
+│   └── code=200 body_ref=file://var/es/bodies/000001.json
+└── code=201 body_ref=file://var/es/bodies/000002.json
 ```
 
-The request line is the intent (`method` on a `uri` with its params as a query string); the `└──` close line is the result (`code` plus `body`, or `body_ref` for a bridge log). Child operations nest under their parent. The resource shape keeps the tree normalized, and no timestamp noise leaks in.
+The request line is the intent (`method` on a `uri` with its params as a query string); the `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent. The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `body_ref` to its body file for the full rendered detail.
 
-Render it with `TreeRenderer` and a `FormatterRegistry` that registers `ResourceNodeFormatter` for the `resource_request` type — `examples/tree.php` is a runnable end-to-end script, and `examples/semantic-tree.txt` is its output (the same log in ~470 bytes instead of ~5 KB of JSON). The bundled `vendor/bin/stree dev-log.json` works too, but renders the generic form (type label plus a raw `timestamp`) since the CLI does not load custom formatters. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson`.
+Render it with `TreeRenderer` and a `FormatterRegistry` that registers `ResourceNodeFormatter` for the `resource_request` type — `examples/tree.php` builds a `DevLogModule`-style log (`body_ref` pointers) and renders it, and `examples/semantic-tree.txt` is its output. The bundled `vendor/bin/stree dev-log.json` works too, but renders the generic form (type label plus a raw `timestamp`) since the CLI does not load custom formatters. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson` of the extraction examples.
 
 ## Boundaries
 

@@ -80,9 +80,10 @@ final class ExamplesTest extends TestCase
         $output = self::runExample('tree.php');
 
         // ResourceNodeFormatter renders the open line as one resource operation;
-        // the close line and tree shape come from stree. No timestamp noise.
-        $this->assertStringContainsString('request="POST app://self/users?id=koriym&name=Akihito"', $output);
-        $this->assertStringContainsString('└── code=201 body=[id, name]', $output);
+        // the close line keeps the body_ref pointer for drilling into detail.
+        // No timestamp noise.
+        $this->assertStringContainsString('request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"', $output);
+        $this->assertStringContainsString('└── code=201 body_ref=file://var/es/bodies/000002.json', $output);
         $this->assertStringNotContainsString('timestamp=', $output);
     }
 
