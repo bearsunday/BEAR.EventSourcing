@@ -31,7 +31,7 @@ function exampleSemanticLog(): LogJson
         query: ['id' => 'koriym', 'name' => 'Akihito'],
         timestamp: '2026-06-10T12:34:56.123456+00:00',
     ));
-    $logger->close(new ResourceResponseContext(201, 'file://var/es/views/user-created.json'), $userCreate);
+    $logger->close(new ResourceResponseContext(201, ['id' => 'koriym', 'name' => 'Akihito']), $userCreate);
 
     $userRead = $logger->open(new ResourceRequestContext(
         uri: 'app://self/users/koriym',
@@ -39,7 +39,7 @@ function exampleSemanticLog(): LogJson
         query: ['id' => 'koriym'],
         timestamp: '2026-06-10T12:35:00.000000+00:00',
     ));
-    $logger->close(new ResourceResponseContext(200, 'file://var/es/views/user-koriym.json'), $userRead);
+    $logger->close(new ResourceResponseContext(200, ['id' => 'koriym', 'name' => 'Akihito']), $userRead);
 
     $orderCreate = $logger->open(new ResourceRequestContext(
         uri: 'app://self/orders',
@@ -53,8 +53,8 @@ function exampleSemanticLog(): LogJson
         query: ['sku' => 'SKU-1', 'quantity' => 1],
         timestamp: '2026-06-10T12:36:01.000000+00:00',
     ));
-    $logger->close(new ResourceResponseContext(200, 'file://var/es/views/inventory-reserved.json'), $inventoryReserve);
-    $logger->close(new ResourceResponseContext(201, 'file://var/es/views/order-accepted.json'), $orderCreate);
+    $logger->close(new ResourceResponseContext(200, ['sku' => 'SKU-1', 'reserved' => 1]), $inventoryReserve);
+    $logger->close(new ResourceResponseContext(201, ['order_id' => 'O-1000', 'status' => 'accepted']), $orderCreate);
 
     $failedDelete = $logger->open(new ResourceRequestContext(
         uri: 'app://self/users/koriym',
@@ -62,7 +62,7 @@ function exampleSemanticLog(): LogJson
         query: ['id' => 'koriym'],
         timestamp: '2026-06-10T12:37:00.000000+00:00',
     ));
-    $logger->close(new ResourceResponseContext(409, 'file://var/es/views/user-delete-conflict.json'), $failedDelete);
+    $logger->close(new ResourceResponseContext(409, ['message' => 'User has open orders']), $failedDelete);
 
     return $logger->flush();
 }

@@ -122,13 +122,13 @@ The extractor accepts Semantic Logger `LogJson` and reads its public `open` tree
 
 The matching `close.context.body` becomes the event result. If `close.context.code` exists and is `400` or greater, the operation is treated as unsuccessful and ignored.
 
-For BEAR.Resource observation, the close context records `code` and, when a `ViewStoreInterface` is configured, `view_ref`. `view_ref` is a reference to a stored rendered view that stays in the Semantic Log for inspection; it is **not** extracted into `Event::$result`. The domain event keeps only the facts it observed (`uri`, `method`, `params`, `timestamp`), and its `result` reflects `close.context.body` when present:
+For BEAR.Resource observation, the close context records `code` and, when a `ViewStoreInterface` is configured, a `view_ref`:
 
 ```json
 {"code": 200, "view_ref": "file://var/es/views/000001.json"}
 ```
 
-This keeps the event free of infrastructure storage references: the same domain operation produces the same event regardless of which `ViewStoreInterface` the observation bridge uses.
+`view_ref` is a reference to a stored rendered view. It stays in the Semantic Log for inspection and is **not** extracted into `Event::$result` — the domain event keeps only the facts it observed (`uri`, `method`, `params`, `timestamp`), with `result` taken from `close.context.body` when present. A bridge log that records only `view_ref` therefore yields an event with a `null` result; the payload lives in the externalized view, not in the event. This keeps the same domain operation producing the same event regardless of which `ViewStoreInterface` the bridge uses.
 
 Filter events with PHP's standard iterators. Iterator filters can be stacked without adding methods to `Events`:
 

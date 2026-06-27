@@ -20,7 +20,10 @@
                 "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
                 "context": {
                     "code": 201,
-                    "view_ref": "file://var/es/views/user-created.json"
+                    "body": {
+                        "id": "koriym",
+                        "name": "Akihito"
+                    }
                 }
             }
         },
@@ -42,7 +45,10 @@
                 "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
                 "context": {
                     "code": 200,
-                    "view_ref": "file://var/es/views/user-koriym.json"
+                    "body": {
+                        "id": "koriym",
+                        "name": "Akihito"
+                    }
                 }
             }
         },
@@ -78,7 +84,10 @@
                         "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
                         "context": {
                             "code": 200,
-                            "view_ref": "file://var/es/views/inventory-reserved.json"
+                            "body": {
+                                "sku": "SKU-1",
+                                "reserved": 1
+                            }
                         }
                     }
                 }
@@ -89,7 +98,10 @@
                 "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
                 "context": {
                     "code": 201,
-                    "view_ref": "file://var/es/views/order-accepted.json"
+                    "body": {
+                        "order_id": "O-1000",
+                        "status": "accepted"
+                    }
                 }
             }
         },
@@ -111,7 +123,9 @@
                 "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
                 "context": {
                     "code": 409,
-                    "view_ref": "file://var/es/views/user-delete-conflict.json"
+                    "body": {
+                        "message": "User has open orders"
+                    }
                 }
             }
         }
