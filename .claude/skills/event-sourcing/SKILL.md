@@ -82,14 +82,3 @@ php examples/tree.php
 ```
 
 `examples/semantic-log.json` is a public Semantic Logger tree fixture for inspection. The runnable examples build a `LogJson` through `SemanticLogger::flush()`, then extract events (`extract`/`store`/`replay`) or render the log as a resource tree (`tree`).
-
-## Validation
-
-For library changes, run:
-
-```bash
-composer tests
-composer psalm
-composer require-checker
-composer validate --strict
-```
