@@ -37,7 +37,6 @@ Do not:
 - Persist automatically during runtime observation.
 - Inline large response bodies in BEAR.Resource observation logs.
 - Promote a `*_ref` storage pointer (e.g. `body_ref`) into `Event::result`. `Event::result` reflects `close.context.body`; keys ending in `_ref` are storage pointers that stay in the Semantic Log for inspection only, never extracted into the event.
-- Make MCP, CLI, or skills part of the core runtime contract.
 - Hide `AuraSqlModule` or `MediaQuerySqlModule` inside EventSourcing modules.
 
 ## Module placement (BEAR.Sunday contexts)
