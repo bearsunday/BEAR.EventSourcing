@@ -191,6 +191,29 @@ A `ViewStoreInterface` records a `view_ref` in the close context:
 
 `view_ref` is a reference to a stored rendered view. It stays in the Semantic Log for inspection and is **not** extracted into `Event::$result` — the event's `result` comes from `close.context.body`. A bridge log that records only `view_ref` therefore yields an event with a `null` result; the payload lives in the externalized view, not in the event. The same domain operation produces the same event regardless of which `ViewStoreInterface` the bridge uses.
 
+### What dev observation produces
+
+With `DevLogModule` active you read two artifacts:
+
+**View files** under `viewDir`, one per recorded operation, numbered in invocation order. The directory is cleared when the injector is created, so it always reflects the latest run:
+
+```text
+var/es/views/000001.json   # rendered view of the first recorded operation, i.e. (string) $ro
+var/es/views/000002.json
+```
+
+**The Semantic Logger log**, held in memory until you call `$logger->flush()`. Each recorded operation is an open/close pair; the meaningful fields are the two contexts:
+
+```jsonc
+// open context (request)
+{"uri": "app://self/users", "method": "POST", "params": {"id": "koriym"}, "timestamp": "2026-06-10T12:34:56.123456+00:00"}
+
+// close context (response)
+{"code": 201, "view_ref": "file:///path/to/var/es/views/000001.json"}
+```
+
+`GET` is recorded too (`RecordedMethods::WITH_READS`), so reads are traceable during development. The log is never written to disk by this package — flush it and inspect or extract from the returned `LogJson`. See `examples/semantic-log.json` for the full open/close tree shape.
+
 ## Boundaries
 
 - Semantic Logger is the observation source; EventStore is an optional destination.

@@ -40,6 +40,23 @@ Do not:
 - Make MCP, CLI, or skills part of the core runtime contract.
 - Hide `AuraSqlModule` or `MediaQuerySqlModule` inside EventSourcing modules.
 
+## Module placement (BEAR.Sunday contexts)
+
+Three independent layers map onto context modules. Keep `EventSourcingModule` out of `AppModule` so contexts that never touch event sourcing stay clean; install it only where it is used.
+
+- **Observe**: `DevLogModule` (dev) or `ResourceObservationModule` (prod). Both need the BEAR.Resource module passed as `module:` so the bridge can `rename(InvokerInterface)`.
+- **Extract**: `EventSourcingModule` binds `SemanticLogExtractorInterface`.
+- **Persist**: pass a store (e.g. `MediaQueryEventStoreModule`) to `EventSourcingModule(store: ...)` only when replay/persistence is needed.
+
+Typical split — `DevModule`: `DevLogModule` + `EventSourcingModule()` (observe, no store). `ProdModule`: `ResourceObservationModule` + `EventSourcingModule(store: new MediaQueryEventStoreModule())` (observe + persist).
+
+## Development observation output
+
+`DevLogModule` produces two artifacts for inspection:
+
+- **View files** under `viewDir`, numbered in invocation order (`000001.json`, `000002.json`, …), each holding the rendered view `(string) $ro`. The directory is cleared at injector creation.
+- **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. Open context carries `uri`/`method`/`params`/`timestamp`; close context carries `code` and a `view_ref` pointing at the matching view file. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk.
+
 ## Examples
 
 Use the bundled examples before inventing new integration code:
