@@ -85,6 +85,12 @@ final class ExamplesTest extends TestCase
         $this->assertStringContainsString('request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"', $output);
         $this->assertStringContainsString('└── code=201 body_ref=file://var/es/bodies/000002.json', $output);
         $this->assertStringNotContainsString('timestamp=', $output);
+
+        // An embedded non-resource node (a media query) renders in stree's generic
+        // form, yet the tree structure stays clear and its rows sit behind the same
+        // `*_ref` pointer as a resource body.
+        $this->assertStringContainsString('media_query name=inventory_reserve sku=SKU-1', $output);
+        $this->assertStringContainsString('rows_ref=file://var/es/rows/000001.json', $output);
     }
 
     private static function runExample(string $script): string

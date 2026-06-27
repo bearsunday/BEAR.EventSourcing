@@ -207,11 +207,13 @@ var/es/bodies/000002.json
 ```text
 request="POST app://self/orders?order_id=O-1000"
 ├── request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"
+│   ├── media_query name=inventory_reserve sku=SKU-1
+│   │   └── rows_ref=file://var/es/rows/000001.json
 │   └── code=200 body_ref=file://var/es/bodies/000001.json
 └── code=201 body_ref=file://var/es/bodies/000002.json
 ```
 
-The request line is the intent (`method` on a `uri` with its params as a query string); the `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent. The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `body_ref` to its body file for the full rendered detail.
+The request line is the intent (`method` on a `uri` with its params as a query string); the `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent — a resource calling a resource, and a resource embedding a non-resource operation such as a media query, which renders in stree's generic form but stays structurally clear. Every node follows one rule: the intent is inline, the heavy detail sits behind a `*_ref` pointer (`body_ref`, `rows_ref`). The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `*_ref` to its file for the full detail.
 
 Render it with `TreeRenderer` and a `FormatterRegistry` that registers `ResourceNodeFormatter` for the `resource_request` type — `examples/tree.php` builds a `DevLogModule`-style log (`body_ref` pointers) and renders it, and `examples/semantic-tree.txt` is its output. The bundled `vendor/bin/stree dev-log.json` works too, but renders the generic form (type label plus a raw `timestamp`) since the CLI does not load custom formatters. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson` of the extraction examples.
 

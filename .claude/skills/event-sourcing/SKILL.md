@@ -62,11 +62,13 @@ Read the log as a tree — far fewer tokens than raw JSON, so prefer it for both
 ```text
 request="POST app://self/orders?order_id=O-1000"
 ├── request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"
+│   ├── media_query name=inventory_reserve sku=SKU-1
+│   │   └── rows_ref=file://var/es/rows/000001.json
 │   └── code=200 body_ref=file://var/es/bodies/000001.json
 └── code=201 body_ref=file://var/es/bodies/000002.json
 ```
 
-The close line keeps the `body_ref` pointer so an AI can follow it to the body file for the full detail. Render with `Koriym\SemanticLogger\Stree\TreeRenderer` + a `FormatterRegistry` that registers `ResourceNodeFormatter` for `resource_request`; `examples/tree.php` builds a `DevLogModule`-style log and renders it, with `examples/semantic-tree.txt` as its output. The bundled `vendor/bin/stree <log.json>` works but shows the generic form (type label + raw `timestamp`) because the CLI loads no custom formatters.
+Every node follows one rule: intent inline, heavy detail behind a `*_ref` pointer (`body_ref` for a resource body, `rows_ref` for a query result), so an AI can follow it for the full detail. Non-resource nodes (e.g. a media query) render in stree's generic form but nest clearly. Render with `Koriym\SemanticLogger\Stree\TreeRenderer` + a `FormatterRegistry` that registers `ResourceNodeFormatter` for `resource_request`; `examples/tree.php` builds a `DevLogModule`-style log and renders it, with `examples/semantic-tree.txt` as its output. The bundled `vendor/bin/stree <log.json>` works but shows the generic form (type label + raw `timestamp`) because the CLI loads no custom formatters.
 
 ## Examples
 
