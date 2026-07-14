@@ -61,7 +61,7 @@ An `Event` is a successful, state-changing, resource-like operation observed in 
 | `uri` | request `uri` |
 | `method` | request `method` (upper-cased) |
 | `params` | request `params`, falling back to `query` |
-| `timestamp` | request `timestamp`, falling back to extraction time |
+| `timestamp` | request `timestamp`, falling back to extraction time when missing or unparsable |
 | `result` | `close.context.body` when present |
 
 Recorded methods by default — `GET` is observation data, not a state change, so it is ignored:
@@ -73,7 +73,7 @@ Recorded methods by default — `GET` is observation data, not a state change, s
 
 Include `GET` explicitly for development-time read tracing by injecting `new RecordedMethods(RecordedMethods::WITH_READS)`.
 
-If `close.context.code` exists and is `400` or greater, the operation is treated as unsuccessful and ignored.
+A response `code` of `400` or greater marks a failed operation, which is ignored; a numeric-string code such as `"404"` is read the same way. A missing code is treated as success (no failure signal). A code that is present but cannot be read as a status — a non-numeric string, a float, a boolean — is treated as a failure too, so only confirmed successes become events.
 
 ## Filtering and replay
 
@@ -153,6 +153,19 @@ $store->appendAll($events);
 ```
 
 Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store. `MediaQueryEventStore` keeps JSON and timestamp database mapping inside the adapter, not on `Event`.
+
+A few operational notes:
+
+- **Already using Ray.MediaQuery?** `#[SqlDir]` binds to a single directory, so installing a second `MediaQuerySqlModule` for the package path conflicts with your own. Copy `sql/event_store/*.sql` into your application's `sqlDir` (and point `interfaceDir` at a directory that also contains `EventStoreQueryInterface`) instead of adding a separate module.
+- **`appendAll` is not atomic.** It appends events one row at a time with no surrounding transaction, so a mid-way failure leaves earlier rows written. The database is application-owned, so wrap a batch in your own transaction when you need all-or-nothing — this is also markedly faster, since one commit replaces one fsync per event:
+
+  ```php
+  $pdo->beginTransaction();
+  $store->appendAll($events);
+  $pdo->commit();
+  ```
+
+- **`params` must be a string-keyed map.** `append()` rejects an `Event` whose `params` has non-string keys with an `EventStoreException`, failing fast rather than storing a row that a later `all()` cannot restore.
 
 ## BEAR.Resource observation bridge (optional)
 
