@@ -8,10 +8,11 @@ use DateTimeImmutable;
 use Koriym\SemanticLogger\LogJson;
 use Throwable;
 
-use function ctype_digit;
 use function is_array;
 use function is_int;
 use function is_string;
+use function strlen;
+use function strspn;
 
 /**
  * @psalm-import-type EventList from Types
@@ -131,7 +132,9 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
             return $code < 400;
         }
 
-        if (is_string($code) && ctype_digit($code)) {
+        // A numeric-string code (e.g. "404"), checked with core functions so the
+        // package needs no ext-ctype. Digits only: "-1" or "5xx" stay uninterpretable.
+        if (is_string($code) && $code !== '' && strspn($code, '0123456789') === strlen($code)) {
             return (int) $code < 400;
         }
 
