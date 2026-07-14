@@ -37,13 +37,43 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
 
     public function append(Event $event): void
     {
-        $this->query->append(
-            uri: $event->uri,
-            method: $event->method,
-            paramsJson: self::encode($event->params),
-            resultJson: self::encode($event->result),
-            timestamp: $event->timestamp->format(self::TIMESTAMP_FORMAT),
-        );
+        self::assertStringKeys($event->params);
+
+        // Encode outside the try so a JSON failure keeps its own message; only the
+        // database call is remapped to the EventStore exception contract.
+        $paramsJson = self::encode($event->params);
+        $resultJson = self::encode($event->result);
+        $timestamp = $event->timestamp->format(self::TIMESTAMP_FORMAT);
+
+        try {
+            $this->query->append(
+                uri: $event->uri,
+                method: $event->method,
+                paramsJson: $paramsJson,
+                resultJson: $resultJson,
+                timestamp: $timestamp,
+            );
+        } catch (Throwable $e) {
+            throw new EventStoreException('Failed to append event.', 0, $e);
+        }
+    }
+
+    /**
+     * Reject non-string param keys before they are stored. Event::$params is typed
+     * as a string-keyed map, but nothing enforces that at runtime; catching it here
+     * fails fast on append instead of poisoning a later all() for the whole store.
+     *
+     * @param EventParams $params
+     *
+     * @psalm-suppress DocblockTypeContradiction Guarding a runtime violation of the docblock type.
+     */
+    private static function assertStringKeys(array $params): void
+    {
+        foreach ($params as $key => $_value) {
+            if (! is_string($key)) {
+                throw new EventStoreException('Event params must be keyed by string.');
+            }
+        }
     }
 
     public function appendAll(EventsInterface $events): void
