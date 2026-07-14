@@ -37,7 +37,8 @@ final class SemanticLogInvokerTest extends TestCase
         $invoker->invoke(self::request('app://self/user/1', Method::POST, ['id' => 1]));
 
         $entry = $logger->flush()->toArray()['open'][0];
-        $this->assertSame('app://self/user/1?id=1', $entry['context']['uri']);
+        // The uri stays canonical (path only); the query lives in params, not the uri.
+        $this->assertSame('app://self/user/1', $entry['context']['uri']);
         $this->assertSame('POST', $entry['context']['method']);
         $this->assertSame(['id' => 1], $entry['context']['params']);
         $this->assertSame(['code' => 201], self::closeContext($entry));

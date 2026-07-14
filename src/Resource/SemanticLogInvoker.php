@@ -35,7 +35,7 @@ final class SemanticLogInvoker implements InvokerInterface
         }
 
         $openId = $this->logger->open(new ResourceRequestContext(
-            uri: $request->toUri(),
+            uri: self::stripQuery($request->toUri()),
             method: $method,
             params: $request->query,
             timestamp: (new DateTimeImmutable())->format(self::TIMESTAMP_FORMAT),
@@ -84,6 +84,18 @@ final class SemanticLogInvoker implements InvokerInterface
         }
 
         return new ResourceResponseContext($ro->code, $bodyRef);
+    }
+
+    /**
+     * Keep the resource uri canonical (path only). The query already lives in
+     * `params`, so recording it in the uri too would duplicate it into the event
+     * uri and make the stree formatter render the query string twice.
+     */
+    private static function stripQuery(string $uri): string
+    {
+        $queryStart = strpos($uri, '?');
+
+        return $queryStart === false ? $uri : substr($uri, 0, $queryStart);
     }
 
     private static function httpCode(Throwable $e): int
