@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Koriym\SemanticLogger\LogJson;
 use Throwable;
 
+use function ctype_digit;
 use function is_array;
 use function is_int;
 use function is_string;
@@ -122,8 +123,21 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
     private static function isSuccessful(array $context): bool
     {
         $code = $context['code'] ?? null;
+        if ($code === null) {
+            return true; // No code means no failure signal.
+        }
 
-        return ! is_int($code) || $code < 400;
+        if (is_int($code)) {
+            return $code < 400;
+        }
+
+        if (is_string($code) && ctype_digit($code)) {
+            return (int) $code < 400;
+        }
+
+        // An uninterpretable code (bool, float, non-numeric string) is not minted
+        // into the source of truth: a state change we cannot confirm succeeded.
+        return false;
     }
 
     /** @param SemanticContext $context */

@@ -73,6 +73,48 @@ final class EventsFromSemanticLogTest extends TestCase
         $this->assertCount(0, $events);
     }
 
+    #[DataProvider('responseCodeProvider')]
+    public function testClassifiesResponseCodes(mixed $code, int $expectedCount): void
+    {
+        $semanticLog = new LogJson(
+            schemaUrl: 'https://example.com/semantic-log.schema.json',
+            open: [new OpenCloseEntry(
+                id: 'resource_request_1',
+                type: 'resource_request',
+                schemaUrl: 'https://example.com/resource-request.schema.json',
+                context: ['uri' => 'app://self/users', 'method' => 'POST'],
+            )],
+            close: [new EventEntry(
+                id: 'resource_response_1',
+                type: 'resource_response',
+                schemaUrl: 'https://example.com/resource-response.schema.json',
+                context: ['code' => $code, 'body' => ['id' => 1]],
+                openId: 'resource_request_1',
+            )],
+        );
+
+        $events = (new SemanticLogExtractor())->extract($semanticLog);
+
+        $this->assertCount($expectedCount, $events);
+    }
+
+    /** @return array<string, array{0: mixed, 1: int}> */
+    public static function responseCodeProvider(): array
+    {
+        return [
+            'explicit null keeps the event' => [null, 1],
+            'int success' => [201, 1],
+            'int boundary 399' => [399, 1],
+            'int boundary 400' => [400, 0],
+            'int client error' => [409, 0],
+            'numeric string success' => ['200', 1],
+            'numeric string failure' => ['500', 0],
+            'float is uninterpretable' => [500.0, 0],
+            'bool is uninterpretable' => [true, 0],
+            'non-numeric string is uninterpretable' => ['error', 0],
+        ];
+    }
+
     public function testCanRecordGetForDevelopment(): void
     {
         $logger = new SemanticLogger();
