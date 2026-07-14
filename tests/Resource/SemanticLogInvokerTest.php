@@ -6,14 +6,21 @@ namespace BEAR\EventSourcing\Tests\Resource;
 
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\EventSourcing\Resource\NullBodyStore;
+use BEAR\EventSourcing\Resource\ResourceRequestContext;
 use BEAR\EventSourcing\Resource\SemanticLogInvoker;
 use BEAR\EventSourcing\Resource\BodyStoreException;
 use BEAR\Resource\Method;
 use BEAR\Resource\Request;
+use DomainException;
 use Koriym\SemanticLogger\Exception\NoLogSessionException;
 use Koriym\SemanticLogger\SemanticLogger;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+
+use function restore_error_handler;
+use function set_error_handler;
+
+use const E_USER_WARNING;
 
 final class SemanticLogInvokerTest extends TestCase
 {
@@ -140,6 +147,85 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertSame(500, $context['code']);
         $this->assertSame(RuntimeException::class, $exceptionContext['class']);
         $this->assertSame('boom', $exceptionContext['message']);
+    }
+
+    public function testCloseFailureOnSuccessPathDoesNotBreakRequest(): void
+    {
+        $logger = new SemanticLogger();
+        $ro = new FakeResourceObject('app://self/order', ['ok' => true], 201);
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static function () use ($logger, $ro): FakeResourceObject {
+                // A lower layer leaks an unclosed context: its own bug, but the request succeeded.
+                $logger->open(new ResourceRequestContext('app://self/leak', 'POST'));
+
+                return $ro;
+            }),
+            $logger,
+            new NullBodyStore(),
+        );
+
+        $warning = self::captureWarning(
+            static fn (): object => $invoker->invoke(self::request('app://self/order', Method::POST)),
+        );
+
+        $this->assertSame($ro, $warning['result']);
+        $this->assertStringContainsString('Semantic log close failed', $warning['message']);
+    }
+
+    public function testCloseFailureOnErrorPathPreservesDomainException(): void
+    {
+        $logger = new SemanticLogger();
+        $domain = new DomainException('the real business error');
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static function () use ($logger, $domain): never {
+                $logger->open(new ResourceRequestContext('app://self/leak', 'POST'));
+
+                throw $domain;
+            }),
+            $logger,
+            new NullBodyStore(),
+        );
+
+        $caught = null;
+        $message = null;
+        set_error_handler(static function (int $_severity, string $text) use (&$message): bool {
+            $message = $text;
+
+            return true;
+        }, E_USER_WARNING);
+        try {
+            $invoker->invoke(self::request('app://self/leak', Method::POST));
+            $this->fail('Exception was not thrown.');
+        } catch (DomainException $e) {
+            $caught = $e;
+        } finally {
+            restore_error_handler();
+        }
+
+        // The domain exception survives; it is not masked by the close-time LIFO error.
+        $this->assertSame($domain, $caught);
+        $this->assertNotNull($message);
+    }
+
+    /**
+     * @param callable(): object $invoke
+     * @return array{result: object|null, message: string}
+     */
+    private static function captureWarning(callable $invoke): array
+    {
+        $message = '';
+        set_error_handler(static function (int $_severity, string $text) use (&$message): bool {
+            $message = $text;
+
+            return true;
+        }, E_USER_WARNING);
+        try {
+            $result = $invoke();
+        } finally {
+            restore_error_handler();
+        }
+
+        return ['result' => $result, 'message' => $message];
     }
 
     public function testNestedInvocationsKeepSemanticLogTree(): void

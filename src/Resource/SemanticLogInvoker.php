@@ -44,7 +44,7 @@ final class SemanticLogInvoker implements InvokerInterface
         try {
             $ro = $this->invoker->invoke($request);
         } catch (Throwable $e) {
-            $this->logger->close(
+            $this->safeClose(
                 new ResourceResponseContext(code: self::httpCode($e), exception: self::exceptionContext($e)),
                 $openId,
             );
@@ -52,9 +52,26 @@ final class SemanticLogInvoker implements InvokerInterface
             throw $e;
         }
 
-        $this->logger->close($this->responseContext($request, $ro), $openId);
+        $this->safeClose($this->responseContext($request, $ro), $openId);
 
         return $ro;
+    }
+
+    /**
+     * Close the open observation without letting a logging failure escape.
+     *
+     * A lower layer that leaks an unclosed context would otherwise make close()
+     * throw (LIFO violation), which on the success path destroys a completed
+     * response and on the error path masks the real domain exception. Observation
+     * must never break the request, so a close failure is downgraded to a warning.
+     */
+    private function safeClose(ResourceResponseContext $context, string $openId): void
+    {
+        try {
+            $this->logger->close($context, $openId);
+        } catch (Throwable $e) {
+            trigger_error(sprintf('Semantic log close failed: %s', $e->getMessage()), E_USER_WARNING);
+        }
     }
 
     private function responseContext(AbstractRequest $request, ResourceObject $ro): ResourceResponseContext
