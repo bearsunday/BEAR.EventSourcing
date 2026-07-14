@@ -37,6 +37,7 @@ final class ResourceObservationModuleTest extends TestCase
     {
         $dir = sys_get_temp_dir() . '/' . uniqid('bear-es-dev-bodies-', true);
         mkdir($dir);
+        new FileBodyStore($dir); // a prior dev run adopts the directory (writes the ownership marker)
         file_put_contents($dir . '/old.json', '{}');
 
         $injector = new Injector(new DevLogModule(

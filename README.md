@@ -198,9 +198,11 @@ With `DevLogModule` active you read two artifacts:
 **Body files** under `bodyDir`, one per recorded operation, numbered in invocation order. The directory is cleared when the injector is created, so it always reflects the latest run:
 
 ```text
-var/es/bodies/000001.json   # rendered body of the first recorded operation, i.e. (string) $ro
+var/es/bodies/000001.json   # rendered body of the first recorded operation, i.e. $ro->toString()
 var/es/bodies/000002.json
 ```
+
+`bodyDir` must be a dedicated directory owned by the body store: it is cleared on each run, and to avoid deleting anything else it refuses to clear a directory it did not create or adopt while empty (an ownership marker guards this). Use one `bodyDir` per process; the sequence counter is per-store, so pointing concurrent processes at the same directory can overwrite each other's files. A failed render is recorded as an `exception` in the close context, not written as an empty body file.
 
 **The Semantic Logger log**, a nested open/close tree held in memory until you call `$logger->flush()`. Render it as a readable tree — far smaller than the raw JSON, for both humans and AI. `Resource\Stree\ResourceNodeFormatter` renders each node as one resource operation, so a `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` reads as intent in, result out:
 
