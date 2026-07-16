@@ -21,6 +21,15 @@ use function is_string;
  */
 final readonly class SemanticLogExtractor implements SemanticLogExtractorInterface
 {
+    /**
+     * The Semantic Logger entry type extracted as events.
+     *
+     * Extraction is type-gated: only entries observed as resource requests become
+     * events, so unrelated open/close pairs that happen to carry `method` and
+     * `uri` fields are never misread as state changes.
+     */
+    public const RESOURCE_REQUEST_TYPE = 'resource_request';
+
     private RecordedMethods $recordedMethods;
 
     public function __construct(RecordedMethods|null $recordedMethods = null)
@@ -62,6 +71,10 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
      */
     private function appendEvent(array $entry, array &$events): void
     {
+        if (($entry['type'] ?? null) !== self::RESOURCE_REQUEST_TYPE) {
+            return;
+        }
+
         $request = self::context($entry);
         $response = self::closeContext($entry);
         if ($request === null || $response === null || ! self::isSuccessful($response)) {
@@ -70,14 +83,15 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
 
         $method = $this->recordedMethod($request);
         $uri = self::stringValue($request, 'uri');
-        if ($method === null || $uri === null) {
+        $timestamp = self::timestamp($request);
+        if ($method === null || $uri === null || $timestamp === null) {
             return;
         }
 
         $events[] = new Event(
             uri: $uri,
             method: $method,
-            timestamp: self::timestamp($request) ?? new DateTimeImmutable(),
+            timestamp: $timestamp,
             params: self::params($request),
             result: $response['body'] ?? null,
         );
@@ -155,7 +169,14 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
         return $result;
     }
 
-    /** @param SemanticContext $context */
+    /**
+     * The observed request timestamp, or null when the observation lacks one.
+     *
+     * No fallback clock: an event without an observed timestamp is not extracted,
+     * so extracting the same log twice always yields the same events.
+     *
+     * @param SemanticContext $context
+     */
     private static function timestamp(array $context): DateTimeImmutable|null
     {
         $timestamp = self::stringValue($context, 'timestamp');

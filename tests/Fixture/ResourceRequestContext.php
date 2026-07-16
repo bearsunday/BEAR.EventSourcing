@@ -19,7 +19,7 @@ final class ResourceRequestContext extends AbstractContext
         public string $uri,
         public string $method,
         public array $query = [],
-        public string $timestamp = '',
+        public string $timestamp = '2026-06-10T12:34:56.123456+00:00',
     ) {
     }
 }
