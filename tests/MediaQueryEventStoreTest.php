@@ -9,9 +9,9 @@ use BEAR\EventSourcing\Events;
 use BEAR\EventSourcing\EventStoreInterface;
 use BEAR\EventSourcing\Store\MediaQueryEventStore;
 use BEAR\EventSourcing\Tests\Fixture\MediaQueryEventStoreAppModule;
+use Composer\InstalledVersions;
 use DateTimeImmutable;
 use PDO;
-use PHPUnit\Framework\Attributes\RequiresPhp;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
@@ -21,12 +21,23 @@ use function iterator_to_array;
 use function sys_get_temp_dir;
 use function tempnam;
 use function unlink;
+use function version_compare;
 
-#[RequiresPhp('< 8.5')]
+use const PHP_VERSION_ID;
+
 #[RequiresPhpExtension('pdo_sqlite')]
 final class MediaQueryEventStoreTest extends TestCase
 {
     private string|null $databaseFile = null;
+
+    protected function setUp(): void
+    {
+        // aura/sql < 6 declares PDO::connect() non-static, a fatal on PHP >= 8.4.
+        $auraSqlVersion = (string) InstalledVersions::getVersion('aura/sql');
+        if (PHP_VERSION_ID >= 80400 && version_compare($auraSqlVersion, '6.0.0', '<')) {
+            $this->markTestSkipped('aura/sql < 6 cannot load on PHP >= 8.4; update dependencies to run this test.');
+        }
+    }
 
     protected function tearDown(): void
     {
@@ -66,6 +77,36 @@ final class MediaQueryEventStoreTest extends TestCase
         $store = $this->store();
 
         $this->assertInstanceOf(EventStoreInterface::class, $store);
+    }
+
+    public function testAppendIsIdempotentPerEventId(): void
+    {
+        $store = $this->store();
+        $events = new Events([self::event('app://self/users', 'POST', ['name' => 'Ada'], ['id' => 1])]);
+
+        // A retried batch must not duplicate facts in the source of truth.
+        $store->appendAll($events);
+        $store->appendAll($events);
+
+        $this->assertCount(1, $store->all());
+    }
+
+    public function testTimestampIsStoredInUtcAndIdentityIsPreserved(): void
+    {
+        $store = $this->store();
+        $event = new Event(
+            uri: 'app://self/users',
+            method: 'POST',
+            timestamp: new DateTimeImmutable('2026-06-10T21:34:56.123456+09:00'),
+            params: ['name' => 'Ada'],
+        );
+
+        $store->append($event);
+
+        $restored = iterator_to_array($store->all())[0];
+        $this->assertSame($event->id, $restored->id);
+        $this->assertEquals($event->timestamp, $restored->timestamp);
+        $this->assertSame('+00:00', $restored->timestamp->format('P'));
     }
 
     /**

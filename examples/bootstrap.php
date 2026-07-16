@@ -74,10 +74,11 @@ function exampleEvents(bool $includeReads = false): EventsInterface
     return (new SemanticLogExtractor($methods))->extract(exampleSemanticLog());
 }
 
-/** @return array{uri: string, method: string, params: array<string, mixed>, result: mixed, timestamp: string} */
+/** @return array{id: string, uri: string, method: string, params: array<string, mixed>, result: mixed, timestamp: string} */
 function eventToArray(Event $event): array
 {
     return [
+        'id' => $event->id,
         'uri' => $event->uri,
         'method' => $event->method,
         'params' => $event->params,

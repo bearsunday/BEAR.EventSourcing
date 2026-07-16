@@ -1,4 +1,5 @@
 SELECT
+    event_id,
     uri,
     method,
     params_json,

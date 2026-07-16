@@ -1,5 +1,6 @@
 CREATE TABLE event_store (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id TEXT NOT NULL UNIQUE,
     uri TEXT NOT NULL,
     method TEXT NOT NULL,
     params_json TEXT NOT NULL,
