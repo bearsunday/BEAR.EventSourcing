@@ -27,6 +27,13 @@ use function unlink;
 use const DIRECTORY_SEPARATOR;
 use const LOCK_EX;
 
+/**
+ * Development-time body store: one numbered file per recorded operation.
+ *
+ * The sequence is process-local, so concurrent workers writing to the same
+ * directory overwrite each other's files. Use it for single-process dev/debug
+ * observation (DevLogModule); production body stores belong to the application.
+ */
 final class FileBodyStore implements BodyStoreInterface
 {
     private int $sequence = 0;

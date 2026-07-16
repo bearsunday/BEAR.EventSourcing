@@ -22,16 +22,21 @@
     },
     "require": {
         "php": "^8.2",
-        "bear/resource": "^1.32",
         "koriym/semantic-logger": "^0.8",
-        "ray/di": "^2.19",
-        "ray/media-query": "^1.1"
+        "ray/di": "^2.22"
     },
     "require-dev": {
+        "bear/resource": "^1.32",
         "maglnet/composer-require-checker": "^4.14",
         "phpunit/phpunit": "^11.5",
+        "ray/aura-sql-module": "^1.17",
+        "ray/media-query": "^1.1",
         "squizlabs/php_codesniffer": "^3.11",
         "vimeo/psalm": "^6.0"
+    },
+    "suggest": {
+        "bear/resource": "To observe BEAR.Resource execution with the InvokerInterface bridge (^1.32)",
+        "ray/media-query": "To back EventStoreInterface with SQL through MediaQueryEventStore (^1.1)"
     },
     "autoload": {
         "psr-4": {
@@ -47,7 +52,7 @@
         "test": "phpunit",
         "phpcs": "phpcs --standard=phpcs.xml",
         "psalm": "psalm --monochrome --show-info=false",
-        "require-checker": "composer-require-checker check composer.json",
+        "require-checker": "composer-require-checker check --config-file=./composer-require-checker.json composer.json",
         "tests": [
             "@phpcs",
             "@test",
@@ -55,9 +60,6 @@
         ]
     },
     "config": {
-        "sort-packages": true,
-        "platform": {
-            "php": "8.2.27"
-        }
+        "sort-packages": true
     }
 }
