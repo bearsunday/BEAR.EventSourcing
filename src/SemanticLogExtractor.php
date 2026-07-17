@@ -132,8 +132,8 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
             return $code < 400;
         }
 
-        // A numeric-string code (e.g. "404"), checked with core functions so the
-        // package needs no ext-ctype. Digits only: "-1" or "5xx" stay uninterpretable.
+        // Accept a digit-only string code (e.g. "404"); "-1" and "5xx" are not all
+        // digits, so they stay uninterpretable.
         if (is_string($code) && $code !== '' && strspn($code, '0123456789') === strlen($code)) {
             return (int) $code < 400;
         }

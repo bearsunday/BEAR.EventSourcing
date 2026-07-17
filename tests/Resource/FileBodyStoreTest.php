@@ -183,7 +183,6 @@ final class FileBodyStoreTest extends TestCase
             $store($request, $ro);
             $this->fail('Expected the render exception to propagate.');
         } catch (RuntimeException) {
-            // (string) $ro would have swallowed this and written an empty file behind a valid ref.
             $this->assertFalse(file_exists($dir . '/000001.json'), 'a failed render must not leave a file');
         } finally {
             FileBodyStore::clearDirectory($dir);
