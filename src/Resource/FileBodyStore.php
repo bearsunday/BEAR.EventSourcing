@@ -67,6 +67,10 @@ final class FileBodyStore implements BodyStoreInterface
         self::ensureDirectory($dir);
         self::assertOwned($dir);
         self::clearContents($dir);
+        // Remove the ownership marker only after everything else is gone, so a
+        // cleanup that fails partway leaves the directory still marked as owned
+        // and clearable on the next attempt.
+        self::removeMarker($dir);
     }
 
     private static function ensureDirectory(string $dir): void
@@ -123,6 +127,14 @@ final class FileBodyStore implements BodyStoreInterface
         }
     }
 
+    private static function removeMarker(string $dir): void
+    {
+        $marker = $dir . DIRECTORY_SEPARATOR . self::MARKER;
+        if (is_file($marker) && ! unlink($marker)) {
+            throw new BodyStoreException(sprintf('Failed to remove body store marker: %s', $marker));
+        }
+    }
+
     private static function assertSafeDirectory(string $dir): void
     {
         $trimmed = trim($dir);
@@ -151,6 +163,7 @@ final class FileBodyStore implements BodyStoreInterface
 
     private static function clearContents(string $dir): void
     {
+        $marker = $dir . DIRECTORY_SEPARATOR . self::MARKER;
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
             RecursiveIteratorIterator::CHILD_FIRST,
@@ -160,6 +173,10 @@ final class FileBodyStore implements BodyStoreInterface
         foreach ($iterator as $file) {
             /** @var SplFileInfo $file */
             $path = $file->getPathname();
+            if ($path === $marker) {
+                continue; // preserved until clearDirectory removes it last
+            }
+
             if ($file->isLink() || $file->isFile()) {
                 if (! unlink($path)) {
                     throw new BodyStoreException(sprintf('Failed to remove body store file: %s', $path));

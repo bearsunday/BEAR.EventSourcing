@@ -12,15 +12,21 @@ use BEAR\Resource\Request;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
+use function chmod;
 use function file_exists;
 use function file_get_contents;
 use function file_put_contents;
+use function getmyuid;
 use function is_dir;
 use function mkdir;
+use function restore_error_handler;
 use function rmdir;
+use function set_error_handler;
 use function sys_get_temp_dir;
 use function uniqid;
 use function unlink;
+
+use const E_WARNING;
 
 final class FileBodyStoreTest extends TestCase
 {
@@ -96,6 +102,35 @@ final class FileBodyStoreTest extends TestCase
         }
     }
 
+    public function testKeepsOwnershipMarkerWhenCleanupFailsPartway(): void
+    {
+        if (getmyuid() === 0) {
+            $this->markTestSkipped('Cannot simulate an unwritable directory as root.');
+        }
+
+        $dir = self::newBodyDir();
+        new FileBodyStore($dir); // adopts the directory (writes the ownership marker)
+        mkdir($dir . '/locked');
+        file_put_contents($dir . '/locked/file', '{}');
+        chmod($dir . '/locked', 0500); // read+execute only: unlink of its child fails
+
+        set_error_handler(static fn (): bool => true, E_WARNING); // swallow the expected unlink() warning
+        try {
+            FileBodyStore::clearDirectory($dir);
+            $this->fail('Expected cleanup to fail on the unwritable directory.');
+        } catch (BodyStoreException) {
+            // The marker must survive the partial failure so a retry can still own and clear the directory.
+        } finally {
+            restore_error_handler();
+        }
+
+        chmod($dir . '/locked', 0700);
+        FileBodyStore::clearDirectory($dir); // succeeds only if the marker survived (assertOwned passes)
+
+        $this->assertTrue(is_dir($dir));
+        rmdir($dir);
+    }
+
     public function testRejectsUnsafeDirectory(): void
     {
         $this->expectException(BodyStoreException::class);
@@ -156,23 +191,25 @@ final class FileBodyStoreTest extends TestCase
         }
     }
 
-    public function testObservationDoesNotFreezeTheResponseView(): void
+    public function testObservationRestoresTheResponseView(): void
     {
         $dir = self::newBodyDir();
         $store = new FileBodyStore($dir);
         $ro = new FakeResourceObject(body: ['name' => 'before']);
         $ro->setRenderer(new JsonRenderer());
+        $priorView = $ro->view;
         $request = new Request(
             new CallbackInvoker(static fn (): FakeResourceObject => $ro),
             $ro,
             Method::POST,
         );
 
-        $store($request, $ro);
-        $ro->body = ['name' => 'after'];
+        $bodyRef = $store($request, $ro);
 
-        // Observing the body must not cache the view; later stages still see the current body.
-        $this->assertStringContainsString('after', $ro->toString());
+        // Rendering the body for storage must not cache the view: it is restored to
+        // its prior value so later stages still render the current body.
+        $this->assertNotNull($bodyRef);
+        $this->assertSame($priorView, $ro->view);
 
         FileBodyStore::clearDirectory($dir);
         rmdir($dir);
