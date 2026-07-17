@@ -70,7 +70,12 @@ final class SemanticLogInvoker implements InvokerInterface
         try {
             $this->logger->close($context, $openId);
         } catch (Throwable $e) {
-            trigger_error(sprintf('Semantic log close failed: %s', $e->getMessage()), E_USER_WARNING);
+            try {
+                trigger_error(sprintf('Semantic log close failed: %s', $e->getMessage()), E_USER_WARNING);
+            } catch (Throwable) {
+                // A strict error handler (e.g. Symfony/Laravel) may turn the warning into
+                // an exception; swallow it too so observation never breaks the request.
+            }
         }
     }
 
