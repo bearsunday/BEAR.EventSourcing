@@ -58,6 +58,23 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
         }
     }
 
+    public function appendAll(EventsInterface $events): void
+    {
+        foreach ($events as $event) {
+            $this->append($event);
+        }
+    }
+
+    public function all(): EventsInterface
+    {
+        $events = [];
+        foreach ($this->query->list() as $row) {
+            $events[] = self::event($row);
+        }
+
+        return new Events($events);
+    }
+
     /**
      * Reject non-string param keys before they are stored. Event::$params is typed
      * as a string-keyed map, but nothing enforces that at runtime; catching it here
@@ -74,23 +91,6 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
                 throw new EventStoreException('Event params must be keyed by string.');
             }
         }
-    }
-
-    public function appendAll(EventsInterface $events): void
-    {
-        foreach ($events as $event) {
-            $this->append($event);
-        }
-    }
-
-    public function all(): EventsInterface
-    {
-        $events = [];
-        foreach ($this->query->list() as $row) {
-            $events[] = self::event($row);
-        }
-
-        return new Events($events);
     }
 
     private static function encode(mixed $value): string
