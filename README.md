@@ -73,7 +73,7 @@ Recorded methods by default — `GET` is observation data, not a state change, s
 
 Include `GET` explicitly for development-time read tracing by injecting `new RecordedMethods(RecordedMethods::WITH_READS)`.
 
-A response `code` of `400` or greater marks a failed operation, which is ignored; a numeric-string code such as `"404"` is read the same way. A missing code is treated as success (no failure signal). A code that is present but cannot be read as a status — a non-numeric string, a float, a boolean — is treated as a failure too, so only confirmed successes become events.
+A response `code` of `400` or greater marks a failed operation, which is ignored; a string of digits such as `"404"` is read the same way. A missing code is treated as success (no failure signal). A code that is present but cannot be read as a status — a non-digit string, a float, a boolean — is treated as a failure too, so only confirmed successes become events.
 
 ## Filtering and replay
 
@@ -156,7 +156,15 @@ Apply `sql/event_store/schema.sql` with your application's migration tool before
 
 A few operational notes:
 
-- **Already using Ray.MediaQuery?** `#[SqlDir]` binds to a single directory, so installing a second `MediaQuerySqlModule` for the package path conflicts with your own. Copy `sql/event_store/*.sql` into your application's `sqlDir` (and point `interfaceDir` at a directory that also contains `EventStoreQueryInterface`) instead of adding a separate module.
+- **Already using Ray.MediaQuery?** `#[SqlDir]` is a single binding, so a second `MediaQuerySqlModule` must not point at the package's SQL path — it would clobber your own. Instead, copy `sql/event_store/*.sql` into your application's `sqlDir` and add one more `MediaQuerySqlModule` with `interfaceDir` set to the package's `src/Query` and `sqlDir` set to your own directory. Both installs then bind the same `#[SqlDir]` value, so your queries and the event store coexist:
+
+  ```php
+  $this->install(new MediaQuerySqlModule(interfaceDir: $appQueryDir, sqlDir: $appSqlDir));
+  $this->install(new MediaQuerySqlModule(
+      interfaceDir: $packageDir . '/src/Query',
+      sqlDir: $appSqlDir, // event_store_*.sql copied here
+  ));
+  ```
 - **`appendAll` is not atomic.** It appends events one row at a time with no surrounding transaction, so a mid-way failure leaves earlier rows written. The database is application-owned, so wrap a batch in your own transaction when you need all-or-nothing — this is also markedly faster, since one commit replaces one fsync per event:
 
   ```php
