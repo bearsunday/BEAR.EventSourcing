@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "41a3ff8045127bb859603e0a1f3f4bbf",
+    "content-hash": "cc9fef9e03c92c7762f93decafe98fdc",
     "packages": [
         {
             "name": "justinrainbow/json-schema",
@@ -337,16 +337,16 @@
         },
         {
             "name": "ray/di",
-            "version": "2.22.0",
+            "version": "2.23.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ray-di/Ray.Di.git",
-                "reference": "e677900fd09e3efc9184b032a3166343623babee"
+                "reference": "a762a71bab7fe683e48ee696dd3620a14b586cd8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ray-di/Ray.Di/zipball/e677900fd09e3efc9184b032a3166343623babee",
-                "reference": "e677900fd09e3efc9184b032a3166343623babee",
+                "url": "https://api.github.com/repos/ray-di/Ray.Di/zipball/a762a71bab7fe683e48ee696dd3620a14b586cd8",
+                "reference": "a762a71bab7fe683e48ee696dd3620a14b586cd8",
                 "shasum": ""
             },
             "require": {
@@ -360,11 +360,9 @@
                 "phpunit/phpunit": "^11.0"
             },
             "suggest": {
-                "ray/compiler": "For compiling dependency injection container to improve performance"
+                "ray/compiler": "For compiling dependency injection container to improve performance",
+                "ray/object-visual-grapher": "For visualizing composed bindings and the object graph"
             },
-            "bin": [
-                "bin/bindings-html"
-            ],
             "type": "library",
             "extra": {
                 "bamarni-bin": {
@@ -377,8 +375,7 @@
                     "Ray\\Di\\": [
                         "src/di",
                         "src-deprecated/di"
-                    ],
-                    "Ray\\Bindings\\": "src-bindings/"
+                    ]
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -398,9 +395,9 @@
             ],
             "support": {
                 "issues": "https://github.com/ray-di/Ray.Di/issues",
-                "source": "https://github.com/ray-di/Ray.Di/tree/2.22.0"
+                "source": "https://github.com/ray-di/Ray.Di/tree/2.23.0"
             },
-            "time": "2026-07-16T14:04:52+00:00"
+            "time": "2026-08-10T20:12:22+00:00"
         }
     ],
     "packages-dev": [

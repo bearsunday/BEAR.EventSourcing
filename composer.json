@@ -23,7 +23,7 @@
     "require": {
         "php": "^8.2",
         "koriym/semantic-logger": "^0.8",
-        "ray/di": "^2.22"
+        "ray/di": "^2.19"
     },
     "require-dev": {
         "bear/resource": "^1.32",
