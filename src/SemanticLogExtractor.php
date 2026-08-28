@@ -11,6 +11,8 @@ use Throwable;
 use function is_array;
 use function is_int;
 use function is_string;
+use function strlen;
+use function strspn;
 
 /**
  * @psalm-import-type EventList from Types
@@ -122,8 +124,23 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
     private static function isSuccessful(array $context): bool
     {
         $code = $context['code'] ?? null;
+        if ($code === null) {
+            return true; // No code means no failure signal.
+        }
 
-        return ! is_int($code) || $code < 400;
+        if (is_int($code)) {
+            return $code < 400;
+        }
+
+        // Accept a digit-only string code (e.g. "404"); "-1" and "5xx" are not all
+        // digits, so they stay uninterpretable.
+        if (is_string($code) && $code !== '' && strspn($code, '0123456789') === strlen($code)) {
+            return (int) $code < 400;
+        }
+
+        // An uninterpretable code (bool, float, non-numeric string) is not minted
+        // into the source of truth: a state change we cannot confirm succeeded.
+        return false;
     }
 
     /** @param SemanticContext $context */
