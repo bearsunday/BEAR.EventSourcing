@@ -62,7 +62,7 @@ An `Event` is a successful, state-changing resource operation observed in a Sema
 | `uri` | request `uri` |
 | `method` | request `method` (upper-cased) |
 | `params` | request `params`, falling back to `query` |
-| `timestamp` | request `timestamp` — an entry without one is not extracted |
+| `timestamp` | request `timestamp` — absolute ISO-8601 with an explicit offset; an entry without one is not extracted |
 | `result` | `close.context.body` when present |
 
 Extraction is deterministic: it never invents facts. There is no fallback clock for a missing `timestamp`, and only entries of type `resource_request` qualify — another subsystem's open/close pair that happens to carry `method` and `uri` fields is never misread as a state change. Extracting the same log twice yields the same events.

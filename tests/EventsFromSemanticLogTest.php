@@ -234,16 +234,27 @@ final class EventsFromSemanticLogTest extends TestCase
         $this->assertCount(0, $events);
     }
 
-    public function testEntriesWithoutObservedTimestampAreNotExtracted(): void
+    #[DataProvider('nonCanonicalTimestampProvider')]
+    public function testEntriesWithoutCanonicalObservedTimestampAreNotExtracted(string $timestamp): void
     {
         $logger = new SemanticLogger();
-        $openId = $logger->open(new ResourceRequestContext('app://self/users', 'POST', timestamp: ''));
+        $openId = $logger->open(new ResourceRequestContext('app://self/users', 'POST', timestamp: $timestamp));
         $logger->close(new ResourceResponseContext(201, ['id' => 1]), $openId);
 
-        // No fallback clock: an event is only as real as its observation.
+        // No fallback clock and no lenient parsing: an event is only as real as its observation.
         $events = (new SemanticLogExtractor())->extract($logger->flush());
 
         $this->assertCount(0, $events);
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function nonCanonicalTimestampProvider(): array
+    {
+        return [
+            'missing' => [''],
+            'relative changes per extraction' => ['now'],
+            'offset-less depends on the environment' => ['2026-06-10T12:34:56.123456'],
+        ];
     }
 
     public function testExtractionIsDeterministic(): void

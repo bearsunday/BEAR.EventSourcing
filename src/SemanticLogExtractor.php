@@ -11,6 +11,7 @@ use Throwable;
 use function is_array;
 use function is_int;
 use function is_string;
+use function preg_match;
 use function strlen;
 use function strspn;
 
@@ -189,8 +190,11 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
     /**
      * The observed request timestamp, or null when the observation lacks one.
      *
-     * No fallback clock: an event without an observed timestamp is not extracted,
-     * so extracting the same log twice always yields the same events.
+     * No fallback clock, and no lenient parsing: only an absolute ISO-8601
+     * timestamp with an explicit offset qualifies. A relative value ("now")
+     * changes per extraction and an offset-less one per environment; either
+     * way the derived event id would differ between replays of the same log,
+     * silently duplicating facts.
      *
      * @param SemanticContext $context
      */
@@ -198,6 +202,10 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
     {
         $timestamp = self::stringValue($context, 'timestamp');
         if ($timestamp === null || $timestamp === '') {
+            return null;
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/', $timestamp) !== 1) {
             return null;
         }
 
