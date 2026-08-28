@@ -7,6 +7,7 @@ namespace BEAR\EventSourcing\Tests;
 use BEAR\EventSourcing\Event;
 use BEAR\EventSourcing\Events;
 use BEAR\EventSourcing\EventStoreInterface;
+use BEAR\EventSourcing\Exception\EventStoreException;
 use BEAR\EventSourcing\Store\MediaQueryEventStore;
 use BEAR\EventSourcing\Tests\Fixture\MediaQueryEventStoreAppModule;
 use Composer\InstalledVersions;
@@ -107,6 +108,32 @@ final class MediaQueryEventStoreTest extends TestCase
         $this->assertSame($event->id, $restored->id);
         $this->assertEquals($event->timestamp, $restored->timestamp);
         $this->assertSame('+00:00', $restored->timestamp->format('P'));
+    }
+
+    public function testAppendWrapsAQueryFailureInEventStoreException(): void
+    {
+        $store = $this->store();
+        (new PDO('sqlite:' . (string) $this->databaseFile))->exec('DROP TABLE event_store');
+
+        // A database-level failure is remapped to the EventStore contract, not leaked as a Ray.MediaQuery exception.
+        $this->expectException(EventStoreException::class);
+        $store->append(self::event('app://self/users', 'POST', ['id' => 1], null));
+    }
+
+    public function testAppendRejectsNonStringParamKeys(): void
+    {
+        $store = $this->store();
+
+        // Fail fast on append rather than letting a bad row poison a later all() for the whole store.
+        $this->expectException(EventStoreException::class);
+        /** @psalm-suppress InvalidArgument Intentionally violating the string-keyed contract at runtime. */
+        $store->append(new Event(
+            uri: 'app://self/users',
+            method: 'POST',
+            timestamp: new DateTimeImmutable('2026-06-10T12:34:56.123456+00:00'),
+            params: ['x', 'y'],
+            result: null,
+        ));
     }
 
     /**

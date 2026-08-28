@@ -20,6 +20,7 @@ final class MediaQueryEventStoreModule extends AbstractModule
 {
     protected function configure(): void
     {
+
         $this->bind(EventStoreInterface::class)->to(MediaQueryEventStore::class);
     }
 }

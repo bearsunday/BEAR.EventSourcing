@@ -35,7 +35,7 @@ final class SemanticLogInvoker implements InvokerInterface
         }
 
         $openId = $this->logger->open(new ResourceRequestContext(
-            uri: $request->toUri(),
+            uri: self::stripQuery($request->toUri()),
             method: $method,
             params: $request->query,
             timestamp: (new DateTimeImmutable())->format(self::TIMESTAMP_FORMAT),
@@ -44,7 +44,7 @@ final class SemanticLogInvoker implements InvokerInterface
         try {
             $ro = $this->invoker->invoke($request);
         } catch (Throwable $e) {
-            $this->logger->close(
+            $this->safeClose(
                 new ResourceResponseContext(code: self::httpCode($e), exception: self::exceptionContext($e)),
                 $openId,
             );
@@ -52,9 +52,31 @@ final class SemanticLogInvoker implements InvokerInterface
             throw $e;
         }
 
-        $this->logger->close($this->responseContext($request, $ro), $openId);
+        $this->safeClose($this->responseContext($request, $ro), $openId);
 
         return $ro;
+    }
+
+    /**
+     * Close the open observation without letting a logging failure escape.
+     *
+     * A lower layer that leaks an unclosed context would otherwise make close()
+     * throw (LIFO violation), which on the success path destroys a completed
+     * response and on the error path masks the real domain exception. Observation
+     * must never break the request, so a close failure is downgraded to a warning.
+     */
+    private function safeClose(ResourceResponseContext $context, string $openId): void
+    {
+        try {
+            $this->logger->close($context, $openId);
+        } catch (Throwable $e) {
+            try {
+                trigger_error(sprintf('Semantic log close failed: %s', $e->getMessage()), E_USER_WARNING);
+            } catch (Throwable) {
+                // A strict error handler (e.g. Symfony/Laravel) may turn the warning into
+                // an exception; swallow it too so observation never breaks the request.
+            }
+        }
     }
 
     private function responseContext(AbstractRequest $request, ResourceObject $ro): ResourceResponseContext
@@ -67,6 +89,18 @@ final class SemanticLogInvoker implements InvokerInterface
         }
 
         return new ResourceResponseContext($ro->code, $bodyRef);
+    }
+
+    /**
+     * Keep the resource uri canonical (path only). The query already lives in
+     * `params`, so recording it in the uri too would duplicate it into the event
+     * uri and make the stree formatter render the query string twice.
+     */
+    private static function stripQuery(string $uri): string
+    {
+        $queryStart = strpos($uri, '?');
+
+        return $queryStart === false ? $uri : substr($uri, 0, $queryStart);
     }
 
     private static function httpCode(Throwable $e): int

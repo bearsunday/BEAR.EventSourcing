@@ -76,7 +76,7 @@ Recorded methods by default — `GET` is observation data, not a state change, s
 
 Include `GET` explicitly for development-time read tracing by injecting `new RecordedMethods(RecordedMethods::WITH_READS)`.
 
-If `close.context.code` exists and is `400` or greater, the operation is treated as unsuccessful and ignored.
+A response `code` of `400` or greater marks a failed operation, which is ignored; a string of digits such as `"404"` is read the same way. A missing code is treated as success (no failure signal). A code that is present but cannot be read as a status — a non-digit string, a float, a boolean — is treated as a failure too, so only confirmed successes become events.
 
 ### Event identity
 
@@ -166,6 +166,27 @@ Forgetting `MediaQuerySqlModule` (or `AuraSqlModule`) surfaces as an explicit un
 
 Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store; the bundled SQL uses SQLite dialect (`INSERT OR IGNORE`), so port the two statements when targeting another database. `event_id` is UNIQUE — that constraint is what makes appends idempotent. Timestamps are stored in UTC so the `recorded_at` index sorts in time order. `MediaQueryEventStore` keeps JSON and timestamp database mapping inside the adapter, not on `Event`.
 
+A few operational notes:
+
+- **Already using Ray.MediaQuery?** `#[SqlDir]` is a single binding, so a second `MediaQuerySqlModule` must not point at the package's SQL path — it would clobber your own. Instead, copy `sql/event_store/*.sql` into your application's `sqlDir` and add one more `MediaQuerySqlModule` with `interfaceDir` set to the package's `src/Query` and `sqlDir` set to your own directory. Both installs then bind the same `#[SqlDir]` value, so your queries and the event store coexist:
+
+  ```php
+  $this->install(new MediaQuerySqlModule(interfaceDir: $appQueryDir, sqlDir: $appSqlDir));
+  $this->install(new MediaQuerySqlModule(
+      interfaceDir: $packageDir . '/src/Query',
+      sqlDir: $appSqlDir, // event_store_*.sql copied here
+  ));
+  ```
+- **`appendAll` is not atomic.** It appends events one row at a time with no surrounding transaction, so a mid-way failure leaves earlier rows written. The database is application-owned, so wrap a batch in your own transaction when you need all-or-nothing — this is also markedly faster, since one commit replaces one fsync per event:
+
+  ```php
+  $pdo->beginTransaction();
+  $store->appendAll($events);
+  $pdo->commit();
+  ```
+
+- **`params` must be a string-keyed map.** `append()` rejects an `Event` whose `params` has non-string keys with an `EventStoreException`, failing fast rather than storing a row that a later `all()` cannot restore.
+
 ## BEAR.Resource observation bridge (optional)
 
 To produce Semantic Logger open/close entries from BEAR.Resource execution, decorate `InvokerInterface` — not `LoggerInterface`. `ResourceObservationModule` wraps an existing BEAR.Resource module:
@@ -219,9 +240,11 @@ With `DevLogModule` active you read two artifacts:
 **Body files** under `bodyDir`, one per recorded operation, numbered in invocation order. The directory is cleared when `DevLogModule` is constructed, so it always reflects the latest run:
 
 ```text
-var/es/bodies/000001.json   # rendered body of the first recorded operation, i.e. (string) $ro
+var/es/bodies/000001.json   # rendered body of the first recorded operation, i.e. $ro->toString()
 var/es/bodies/000002.json
 ```
+
+`bodyDir` must be a dedicated directory owned by the body store: it is cleared on each run, and to avoid deleting anything else it refuses to clear a directory it did not create or adopt while empty (an ownership marker guards this). Use one `bodyDir` per process; the sequence counter is per-store, so pointing concurrent processes at the same directory can overwrite each other's files. A failed render is recorded as an `exception` in the close context, not written as an empty body file.
 
 **The Semantic Logger log**, a nested open/close tree held in memory until you call `$logger->flush()`. Render it as a readable tree — far smaller than the raw JSON, for both humans and AI. `Resource\Stree\ResourceNodeFormatter` renders each node as one resource operation, so a `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` reads as intent in, result out:
 
