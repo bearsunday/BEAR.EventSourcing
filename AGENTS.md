@@ -14,7 +14,8 @@ Semantic Logger observations -> Events -> optional EventStore
 
 ## Dependency policy
 
-- Require `koriym/semantic-logger` for observations and `ray/media-query` for SQL EventStore support.
+- The core requires only `koriym/semantic-logger` (observations) and `ray/di` (modules).
+- `bear/resource` (observation bridge) and `ray/media-query` (SQL EventStore) are optional features: suggested dependencies, installed in require-dev for tests.
 - Do not copy Semantic Logger code into this repository.
 - If Semantic Logger behavior must be changed temporarily, isolate it with `cweagans/composer-patches` and files under `patches/`.
 - Upstream Semantic Logger changes later as a separate PR.

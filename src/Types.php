@@ -12,6 +12,7 @@ namespace BEAR\EventSourcing;
  * @psalm-type EventParams = array<string, mixed>
  * @psalm-type EventList = list<Event>
  * @psalm-type EventStoreRow = array{
+ *   event_id: string,
  *   uri: string,
  *   method: string,
  *   params_json: string,

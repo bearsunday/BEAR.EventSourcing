@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Tests;
 
+use BEAR\EventSourcing\EventStoreInterface;
 use BEAR\EventSourcing\Module\EventSourcingModule;
+use BEAR\EventSourcing\Module\MediaQueryEventStoreModule;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\SemanticLogExtractorInterface;
@@ -12,6 +14,7 @@ use BEAR\EventSourcing\Tests\Fixture\ResourceRequestContext;
 use BEAR\EventSourcing\Tests\Fixture\ResourceResponseContext;
 use Koriym\SemanticLogger\SemanticLogger;
 use PHPUnit\Framework\TestCase;
+use Ray\Di\Exception\Unbound;
 use Ray\Di\Injector;
 
 final class EventSourcingModuleTest extends TestCase
@@ -38,5 +41,15 @@ final class EventSourcingModuleTest extends TestCase
         $events = $extractor->extract($logger->flush());
 
         $this->assertCount(1, $events);
+    }
+
+    public function testMissingMediaQueryInstallationFailsAtInjectionTime(): void
+    {
+        // The application owns MediaQuerySqlModule; forgetting it must surface as
+        // an explicit unbound error, not as a store that fails on first use.
+        $injector = new Injector(new MediaQueryEventStoreModule());
+
+        $this->expectException(Unbound::class);
+        $injector->getInstance(EventStoreInterface::class);
     }
 }

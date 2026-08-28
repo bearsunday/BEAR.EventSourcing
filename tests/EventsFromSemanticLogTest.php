@@ -82,7 +82,11 @@ final class EventsFromSemanticLogTest extends TestCase
                 id: 'resource_request_1',
                 type: 'resource_request',
                 schemaUrl: 'https://example.com/resource-request.schema.json',
-                context: ['uri' => 'app://self/users', 'method' => 'POST'],
+                context: [
+                    'uri' => 'app://self/users',
+                    'method' => 'POST',
+                    'timestamp' => '2026-06-10T12:34:56.123456+00:00',
+                ],
             )],
             close: [new EventEntry(
                 id: 'resource_response_1',
@@ -200,18 +204,74 @@ final class EventsFromSemanticLogTest extends TestCase
         $this->assertCount(0, $events);
     }
 
-    public function testMissingTimestampFallsBackToExtractionTime(): void
+    public function testNonResourceTypeWithResourceShapedContextIsIgnored(): void
+    {
+        // An http_client entry carries method/uri/timestamp too; only the
+        // resource_request type may become an event.
+        $semanticLog = new LogJson(
+            schemaUrl: 'https://example.com/semantic-log.schema.json',
+            open: [new OpenCloseEntry(
+                id: 'http_client_1',
+                type: 'http_client',
+                schemaUrl: 'https://example.com/http-client.schema.json',
+                context: [
+                    'method' => 'POST',
+                    'uri' => 'https://api.example.com/charges',
+                    'timestamp' => '2026-06-10T12:34:56.123456+00:00',
+                ],
+            )],
+            close: [new EventEntry(
+                id: 'http_client_response_1',
+                type: 'http_client_response',
+                schemaUrl: 'https://example.com/http-client-response.schema.json',
+                context: ['code' => 201, 'body' => ['ok' => true]],
+                openId: 'http_client_1',
+            )],
+        );
+
+        $events = (new SemanticLogExtractor())->extract($semanticLog);
+
+        $this->assertCount(0, $events);
+    }
+
+    #[DataProvider('nonCanonicalTimestampProvider')]
+    public function testEntriesWithoutCanonicalObservedTimestampAreNotExtracted(string $timestamp): void
     {
         $logger = new SemanticLogger();
-        $openId = $logger->open(new ResourceRequestContext('app://self/users', 'POST'));
+        $openId = $logger->open(new ResourceRequestContext('app://self/users', 'POST', timestamp: $timestamp));
         $logger->close(new ResourceResponseContext(201, ['id' => 1]), $openId);
-        $before = new DateTimeImmutable('-1 second');
 
+        // No fallback clock and no lenient parsing: an event is only as real as its observation.
         $events = (new SemanticLogExtractor())->extract($logger->flush());
-        $after = new DateTimeImmutable('+1 second');
 
-        $timestamp = iterator_to_array($events)[0]->timestamp;
-        $this->assertGreaterThanOrEqual($before, $timestamp);
-        $this->assertLessThanOrEqual($after, $timestamp);
+        $this->assertCount(0, $events);
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function nonCanonicalTimestampProvider(): array
+    {
+        return [
+            'missing' => [''],
+            'relative changes per extraction' => ['now'],
+            'offset-less depends on the environment' => ['2026-06-10T12:34:56.123456'],
+        ];
+    }
+
+    public function testExtractionIsDeterministic(): void
+    {
+        $logger = new SemanticLogger();
+        $openId = $logger->open(new ResourceRequestContext(
+            uri: 'app://self/users',
+            method: 'POST',
+            query: ['name' => 'Ada'],
+        ));
+        $logger->close(new ResourceResponseContext(201, ['id' => 1]), $openId);
+        $semanticLog = $logger->flush();
+
+        $first = iterator_to_array((new SemanticLogExtractor())->extract($semanticLog))[0];
+        $second = iterator_to_array((new SemanticLogExtractor())->extract($semanticLog))[0];
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertEquals($first->timestamp, $second->timestamp);
     }
 }

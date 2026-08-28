@@ -43,17 +43,17 @@ Do not:
 
 Three independent layers map onto context modules. Keep `EventSourcingModule` out of `AppModule` so contexts that never touch event sourcing stay clean; install it only where it is used.
 
-- **Observe**: `DevLogModule` (dev) or `ResourceObservationModule` (prod). Both need the BEAR.Resource module passed as `module:` so the bridge can `rename(InvokerInterface)`.
+- **Observe**: `DevLogModule` (dev) or `ResourceObservationModule` (prod). Both need the BEAR.Resource module passed as `module:` so the bridge can decorate `InvokerInterface`.
 - **Extract**: `EventSourcingModule` binds `SemanticLogExtractorInterface`.
-- **Persist**: pass a store (e.g. `MediaQueryEventStoreModule`) to `EventSourcingModule(store: ...)` only when replay/persistence is needed.
+- **Persist**: install `MediaQueryEventStoreModule` alongside only when replay/persistence is needed (with application-owned `AuraSqlModule` + `MediaQuerySqlModule`).
 
-Typical split — `DevModule`: `DevLogModule` + `EventSourcingModule()` (observe, no store). `ProdModule`: `ResourceObservationModule` + `EventSourcingModule(store: new MediaQueryEventStoreModule())` (observe + persist).
+Typical split — `DevModule`: `DevLogModule` + `EventSourcingModule()` (observe, no store). `ProdModule`: `ResourceObservationModule` + `EventSourcingModule()` + `MediaQueryEventStoreModule` (observe + persist).
 
 ## Development observation output
 
 `DevLogModule` produces two artifacts for inspection:
 
-- **Body files** under `bodyDir`, numbered in invocation order (`000001.json`, `000002.json`, …), each holding the rendered body `(string) $ro`. The directory is cleared at injector creation.
+- **Body files** under `bodyDir`, numbered in invocation order (`000001.json`, `000002.json`, …), each holding the rendered body `(string) $ro`. The directory is cleared when `DevLogModule` is constructed.
 - **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. It is a nested open/close **tree** (`LogJson`): child operations sit under their parent's `open`, each node has a request `context` (`uri`/`method`/`params`/`timestamp`) and a `close` whose `context` carries `code` and a `body_ref` to the matching body file. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk.
 
 Read the log as a tree — far fewer tokens than raw JSON, so prefer it for both human and AI inspection. `Resource\Stree\ResourceNodeFormatter` renders each node as one resource operation (intent in, result out):

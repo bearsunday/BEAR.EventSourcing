@@ -8,12 +8,12 @@ use BEAR\EventSourcing\Event;
 use BEAR\EventSourcing\Events;
 use BEAR\EventSourcing\EventsInterface;
 use BEAR\EventSourcing\EventStoreInterface;
-use BEAR\EventSourcing\Types;
 
-/** @psalm-import-type EventList from Types */
+use function array_values;
+
 final class InMemoryEventStore implements EventStoreInterface
 {
-    /** @var EventList */
+    /** @var array<string, Event> Keyed by Event::$id — appending the same event twice is a no-op. */
     private array $events = [];
 
     public function __construct(EventsInterface|null $events = null)
@@ -22,14 +22,16 @@ final class InMemoryEventStore implements EventStoreInterface
             return;
         }
 
-        foreach ($events as $event) {
-            $this->events[] = $event;
-        }
+        $this->appendAll($events);
     }
 
     public function append(Event $event): void
     {
-        $this->events[] = $event;
+        if (isset($this->events[$event->id])) {
+            return;
+        }
+
+        $this->events[$event->id] = $event;
     }
 
     public function appendAll(EventsInterface $events): void
@@ -41,6 +43,6 @@ final class InMemoryEventStore implements EventStoreInterface
 
     public function all(): EventsInterface
     {
-        return new Events($this->events);
+        return new Events(array_values($this->events));
     }
 }

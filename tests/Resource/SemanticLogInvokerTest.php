@@ -157,7 +157,9 @@ final class SemanticLogInvokerTest extends TestCase
         $invoker = new SemanticLogInvoker(
             new CallbackInvoker(static function () use ($logger, $ro): FakeResourceObject {
                 // A lower layer leaks an unclosed context: its own bug, but the request succeeded.
-                $logger->open(new ResourceRequestContext('app://self/leak', 'POST'));
+                $logger->open(
+                    new ResourceRequestContext('app://self/leak', 'POST', [], '2026-06-10T12:34:56.123456+00:00'),
+                );
 
                 return $ro;
             }),
@@ -179,7 +181,9 @@ final class SemanticLogInvokerTest extends TestCase
         $domain = new DomainException('the real business error');
         $invoker = new SemanticLogInvoker(
             new CallbackInvoker(static function () use ($logger, $domain): never {
-                $logger->open(new ResourceRequestContext('app://self/leak', 'POST'));
+                $logger->open(
+                    new ResourceRequestContext('app://self/leak', 'POST', [], '2026-06-10T12:34:56.123456+00:00'),
+                );
 
                 throw $domain;
             }),

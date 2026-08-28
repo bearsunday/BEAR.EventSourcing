@@ -18,8 +18,8 @@ final class ResourceRequestContext extends AbstractContext
     public function __construct(
         public readonly string $uri,
         public readonly string $method,
-        public readonly array $params = [],
-        public readonly string $timestamp = '',
+        public readonly array $params,
+        public readonly string $timestamp,
     ) {
     }
 }

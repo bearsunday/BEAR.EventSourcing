@@ -13,7 +13,6 @@ final class EventSourcingModule extends AbstractModule
 {
     public function __construct(
         private readonly RecordedMethods|null $methods = null,
-        private readonly AbstractModule|null $store = null,
         AbstractModule|null $module = null,
     ) {
         parent::__construct($module);
@@ -26,9 +25,5 @@ final class EventSourcingModule extends AbstractModule
         }
 
         $this->bind(SemanticLogExtractorInterface::class)->to(SemanticLogExtractor::class);
-
-        if ($this->store !== null) {
-            $this->install($this->store);
-        }
     }
 }

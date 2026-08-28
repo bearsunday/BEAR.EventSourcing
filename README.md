@@ -21,7 +21,7 @@ $log = $semanticLogger->flush(); // Koriym\SemanticLogger\LogJson
 $events = (new SemanticLogExtractor())->extract($log);
 
 foreach ($events as $event) {
-    // $event->uri, $event->method, $event->params, $event->result, $event->timestamp
+    // $event->id, $event->uri, $event->method, $event->params, $event->result, $event->timestamp
     echo $event->method, ' ', $event->uri, "\n";
 }
 ```
@@ -54,15 +54,18 @@ Semantic Logger observations -> Events -> optional EventStore
 
 ## What is an event
 
-An `Event` is a successful, state-changing, resource-like operation observed in a Semantic Logger open/close pair. It carries only the facts it observed:
+An `Event` is a successful, state-changing resource operation observed in a Semantic Logger open/close pair of type `resource_request`. It carries only the facts it observed:
 
 | Field | Source |
 | --- | --- |
+| `id` | derived from the observed facts (see below) |
 | `uri` | request `uri` |
 | `method` | request `method` (upper-cased) |
 | `params` | request `params`, falling back to `query` |
-| `timestamp` | request `timestamp`, falling back to extraction time when missing or unparsable |
+| `timestamp` | request `timestamp` — absolute ISO-8601 with an explicit offset; an entry without one is not extracted |
 | `result` | `close.context.body` when present |
+
+Extraction is deterministic: it never invents facts. There is no fallback clock for a missing `timestamp`, and only entries of type `resource_request` qualify — another subsystem's open/close pair that happens to carry `method` and `uri` fields is never misread as a state change. Extracting the same log twice yields the same events.
 
 Recorded methods by default — `GET` is observation data, not a state change, so it is ignored:
 
@@ -74,6 +77,12 @@ Recorded methods by default — `GET` is observation data, not a state change, s
 Include `GET` explicitly for development-time read tracing by injecting `new RecordedMethods(RecordedMethods::WITH_READS)`.
 
 A response `code` of `400` or greater marks a failed operation, which is ignored; a string of digits such as `"404"` is read the same way. A missing code is treated as success (no failure signal). A code that is present but cannot be read as a status — a non-digit string, a float, a boolean — is treated as a failure too, so only confirmed successes become events.
+
+### Event identity
+
+`Event::$id` is a sha256 hash derived from `method`, `uri`, the timestamp normalized to UTC, and key-sorted `params` — the same operation observed at the same instant is the same event. `result` is excluded on purpose: the same domain operation produces the same event regardless of how its response body was recorded.
+
+Identity is what makes the store a source of truth. Re-extraction reproduces the same ids, and every store treats `append` as idempotent per id, so a retried batch never duplicates facts.
 
 ## Filtering and replay
 
@@ -110,7 +119,9 @@ See `examples/extract.php`, `examples/replay.php`, and `examples/store.php` for 
 
 ## Storage (optional)
 
-Persist extracted events explicitly when an application needs storage. `EventStoreInterface` is a small persistence port (`append`, `appendAll`, `all`), not a runtime hook.
+Persist extracted events explicitly when an application needs storage. `EventStoreInterface` is a small persistence port (`append`, `appendAll`, `all`), not a runtime hook. Appending is idempotent per `Event::$id` in every implementation, so replaying or retrying a batch is always safe.
+
+The SQL store and the BEAR.Resource bridge are optional features: `ray/media-query` and `bear/resource` are suggested dependencies, required only when you use them.
 
 Use `InMemoryEventStore` for tests and development:
 
@@ -121,7 +132,7 @@ $store = new InMemoryEventStore();
 $store->appendAll($events);
 ```
 
-Use `MediaQueryEventStore` when the EventStore should be backed by SQL through Ray.MediaQuery. MediaQuery stays application-owned; `EventSourcingModule` only adds the EventStore binding and never hides `AuraSqlModule` or `MediaQuerySqlModule`:
+Use `MediaQueryEventStore` when the EventStore should be backed by SQL through Ray.MediaQuery. MediaQuery stays application-owned; the modules install flat, and EventSourcing modules never hide `AuraSqlModule` or `MediaQuerySqlModule`:
 
 ```php
 use BEAR\EventSourcing\EventStoreInterface;
@@ -142,9 +153,8 @@ final class AppModule extends AbstractModule
             interfaceDir: $packageDir . '/src/Query',
             sqlDir: $packageDir . '/sql/event_store',
         ));
-        $this->install(new EventSourcingModule(
-            store: new MediaQueryEventStoreModule(),
-        ));
+        $this->install(new EventSourcingModule());
+        $this->install(new MediaQueryEventStoreModule());
     }
 }
 
@@ -152,7 +162,9 @@ $store = (new Injector(new AppModule()))->getInstance(EventStoreInterface::class
 $store->appendAll($events);
 ```
 
-Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store. `MediaQueryEventStore` keeps JSON and timestamp database mapping inside the adapter, not on `Event`.
+Forgetting `MediaQuerySqlModule` (or `AuraSqlModule`) surfaces as an explicit unbound error at injection time — never as a store that fails on first use.
+
+Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store; the bundled SQL uses SQLite dialect (`INSERT OR IGNORE`), so port the two statements when targeting another database. `event_id` is UNIQUE — that constraint is what makes appends idempotent. Timestamps are stored in UTC so the `recorded_at` index sorts in time order. `MediaQueryEventStore` keeps JSON and timestamp database mapping inside the adapter, not on `Event`.
 
 A few operational notes:
 
@@ -191,7 +203,16 @@ $injector = new Injector(new ResourceObservationModule(
 
 By default the bridge installs `NullBodyStore`, so no body is stored. Applications that need payload inspection can provide their own `BodyStoreInterface` and store the body in files, SQL, object storage, or test fixtures.
 
-For local AI/debug work, use `DevLogModule`. It clears the body directory when the injector is created, stores rendered bodies as files through `FileBodyStore`, and records `GET` as well as write methods:
+### The application owns the flush
+
+The bridge only writes open/close entries; it never flushes or persists. Inject `SemanticLoggerInterface`, call `$logger->flush()` once per request, and extract (and optionally store) from the returned log. Two operational rules follow:
+
+- The logger accumulates in memory until flushed. In long-running workers (Swoole, FrankenPHP, RoadRunner) it is a singleton that survives requests — flush every request, or observations bleed from one request into the next.
+- `flush()` throws Semantic Logger's `NoLogSessionException` when nothing was recorded — for example a request that performed only `GET` reads under the default `RecordedMethods`. Handle it (or check before flushing) in the code that owns the flush.
+
+Note that the bundled `ResourceResponseContext` records `code` and `body_ref` only — it never inlines the body. Events extracted from a bridge log therefore always carry a `null` `result`; the payload lives behind the `body_ref` pointer (see below). Record your own close context with a `body` field when the event itself must carry the result.
+
+For local AI/debug work, use `DevLogModule`. It clears the body directory when the module is constructed, stores rendered bodies as files through `FileBodyStore`, and records `GET` as well as write methods:
 
 ```php
 use BEAR\EventSourcing\Resource\DevLogModule;
@@ -216,7 +237,7 @@ A `BodyStoreInterface` records a `body_ref` in the close context:
 
 With `DevLogModule` active you read two artifacts:
 
-**Body files** under `bodyDir`, one per recorded operation, numbered in invocation order. The directory is cleared when the injector is created, so it always reflects the latest run:
+**Body files** under `bodyDir`, one per recorded operation, numbered in invocation order. The directory is cleared when `DevLogModule` is constructed, so it always reflects the latest run:
 
 ```text
 var/es/bodies/000001.json   # rendered body of the first recorded operation, i.e. $ro->toString()
@@ -243,6 +264,8 @@ Render it with `TreeRenderer` and a `FormatterRegistry` that registers `Resource
 ## Boundaries
 
 - Semantic Logger is the observation source; EventStore is an optional destination.
-- No automatic persistence during runtime observation.
+- Extraction is deterministic: no fallback clock, no type guessing — the same log always yields the same events.
+- No automatic persistence during runtime observation; the application owns the flush.
 - No `BEAR\Resource\LoggerInterface` decorator.
 - Ray.MediaQuery and database installation stay in the application, never hidden inside EventSourcing modules.
+- `bear/resource` and `ray/media-query` are suggested dependencies — the core requires only `koriym/semantic-logger` and `ray/di`.

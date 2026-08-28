@@ -12,6 +12,7 @@ use BEAR\EventSourcing\EventsInterface;
 use BEAR\EventSourcing\Query\EventStoreQueryInterface;
 use BEAR\EventSourcing\Types;
 use DateTimeImmutable;
+use DateTimeZone;
 use JsonException;
 use Throwable;
 
@@ -43,10 +44,13 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
         // database call is remapped to the EventStore exception contract.
         $paramsJson = self::encode($event->params);
         $resultJson = self::encode($event->result);
-        $timestamp = $event->timestamp->format(self::TIMESTAMP_FORMAT);
+        // Stored in UTC: recorded_at is indexed as TEXT, and lexical order only
+        // matches time order when every row shares one offset.
+        $timestamp = $event->timestamp->setTimezone(new DateTimeZone('UTC'))->format(self::TIMESTAMP_FORMAT);
 
         try {
             $this->query->append(
+                eventId: $event->id,
                 uri: $event->uri,
                 method: $event->method,
                 paramsJson: $paramsJson,
@@ -112,6 +116,7 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
                 timestamp: new DateTimeImmutable($row['recorded_at']),
                 params: self::params($row['params_json']),
                 result: self::decode($row['result_json']),
+                id: $row['event_id'],
             );
         } catch (Throwable $e) {
             throw new EventStoreException('Failed to restore event from stored row.', 0, $e);

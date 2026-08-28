@@ -26,8 +26,7 @@ final class MediaQueryEventStoreAppModule extends AbstractModule
             interfaceDir: $projectDir . '/src/Query',
             sqlDir: $projectDir . '/sql/event_store',
         ));
-        $this->install(new EventSourcingModule(
-            store: new MediaQueryEventStoreModule(),
-        ));
+        $this->install(new EventSourcingModule());
+        $this->install(new MediaQueryEventStoreModule());
     }
 }

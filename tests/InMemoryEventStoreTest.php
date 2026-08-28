@@ -43,6 +43,18 @@ final class InMemoryEventStoreTest extends TestCase
         $this->assertCount(1, $store->all());
     }
 
+    public function testAppendIsIdempotentPerEventId(): void
+    {
+        $store = new InMemoryEventStore();
+        $event = self::event('app://self/users', 'POST');
+
+        $store->append($event);
+        $store->append($event);
+        $store->appendAll(new Events([$event]));
+
+        $this->assertCount(1, $store->all());
+    }
+
     private static function event(string $uri, string $method): Event
     {
         return new Event($uri, $method, new DateTimeImmutable('2026-06-10T12:34:56.123456+00:00'));

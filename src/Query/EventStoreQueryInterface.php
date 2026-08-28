@@ -13,6 +13,7 @@ interface EventStoreQueryInterface
 {
     #[DbQuery('event_store_append')]
     public function append(
+        string $eventId,
         string $uri,
         string $method,
         string $paramsJson,
