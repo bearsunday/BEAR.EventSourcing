@@ -92,7 +92,8 @@ final class MediaQueryObservationIntegrationTest extends TestCase
         $event = $tree['open'][0]['events'][0];
         $this->assertSame('media_query', $event['type']);
         $this->assertSame('event_store_append', $event['context']['name']);
-        $this->assertIsFloat($event['context']['durationMs']);
+        // An integral millisecond value degrades to int in the JSON roundtrip.
+        $this->assertIsNumeric($event['context']['durationMs']);
         $this->assertGreaterThan(0.0, $event['context']['durationMs']);
     }
 }
