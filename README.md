@@ -238,6 +238,38 @@ $injector = new Injector(new DevLogModule(
 ));
 ```
 
+### Wiring inside a BEAR.Sunday context
+
+Passing `module:` is for a standalone injector, where the bridge's wrapped module is the only provider of `InvokerInterface`. A BEAR.Sunday context module (a `dev-` prefix such as `dev-hal-app`) inherits the whole inner chain instead, so it renames the chain's own binding and decorates it in place:
+
+```php
+final class DevModule extends AbstractAppModule
+{
+    protected function configure(): void
+    {
+        $bodyDir = $this->appMeta->logDir . '/es-bodies';
+        FileBodyStore::clearDirectory($bodyDir);
+
+        $this->rename(InvokerInterface::class, 'original_invoker');
+        $this->bind(InvokerInterface::class)
+            ->toConstructor(SemanticLogInvoker::class, [
+                'invoker' => 'original_invoker',
+                'recordedMethods' => Recorded::class,
+            ])
+            ->in(Scope::SINGLETON);
+        $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)
+            ->toInstance(new RecordedMethods(RecordedMethods::WITH_READS));
+        $this->bind(BodyStoreInterface::class)->toInstance(new FileBodyStore($bodyDir));
+        $this->bind(SemanticLoggerInterface::class)->to(SemanticLogger::class)->in(Scope::SINGLETON);
+        $this->install(new EventSourcingModule());
+    }
+}
+```
+
+Do **not** re-provide the package bindings there — `override(new DevLogModule(module: new PackageModule()))` registers the framework pointcuts a second time and every interceptor runs twice. The cache log makes the double execution visible as a `get` scope nested in itself; without a log it is invisible.
+
+Recording and extraction stay separate policies (`#[Recorded]` / `#[Extracted]`): the `WITH_READS` recording above does not widen the extractor's writes-only default.
+
 A `BodyStoreInterface` records a `body_ref` in the close context:
 
 ```json
@@ -304,6 +336,25 @@ $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toI
 ```
 
 Share the instance with `toInstance()`: two separate `to(...)->in(Scope::SINGLETON)` bindings would create one singleton per binding key and split the tree in two. Extraction stays safe in the merged tree — only `resource_request` entries become events, so cache scopes are never misread as state changes. `tests/UnifiedLogTest.php` proves both properties.
+
+Under a compiled injector (a BEAR.Sunday context), alias with a provider instead of `toInstance` — the compiler would serialize the logger instance and each process would get its own copy, splitting the tree again:
+
+```php
+final class CacheLogProvider implements ProviderInterface
+{
+    public function __construct(private readonly SemanticLoggerInterface $logger)
+    {
+    }
+
+    public function get(): SemanticLoggerInterface
+    {
+        return $this->logger;
+    }
+}
+
+$this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)
+    ->toProvider(CacheLogProvider::class)->in(Scope::SINGLETON);
+```
 
 ## Boundaries
 
