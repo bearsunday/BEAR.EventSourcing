@@ -13,7 +13,7 @@ final class ResourceResponseContext extends AbstractContext implements JsonSeria
     public const TYPE = 'resource_response';
 
     /** @psalm-suppress InvalidClassConstantType */
-    public const SCHEMA_URL = 'https://bearsunday.github.io/schemas/semantic-logger/resource-response.json';
+    public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-response.json';
 
     /**
      * @param non-empty-string|null                          $bodyRef
@@ -23,6 +23,7 @@ final class ResourceResponseContext extends AbstractContext implements JsonSeria
         public readonly int $code,
         public readonly string|null $bodyRef = null,
         public readonly array|null $exception = null,
+        public readonly float|null $durationMs = null,
     ) {
     }
 
@@ -36,6 +37,10 @@ final class ResourceResponseContext extends AbstractContext implements JsonSeria
 
         if ($this->exception !== null) {
             $context['exception'] = $this->exception;
+        }
+
+        if ($this->durationMs !== null) {
+            $context['durationMs'] = $this->durationMs;
         }
 
         return $context;

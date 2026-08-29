@@ -12,16 +12,18 @@ use BEAR\EventSourcing\Resource\BodyStoreException;
 use BEAR\Resource\Method;
 use BEAR\Resource\Request;
 use DomainException;
-use Koriym\SemanticLogger\Exception\NoLogSessionException;
 use Koriym\SemanticLogger\SemanticLogger;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
-use function restore_error_handler;
-use function set_error_handler;
+use function json_decode;
+use function json_encode;
 
-use const E_USER_WARNING;
+use const JSON_THROW_ON_ERROR;
 
+/**
+ * @psalm-suppress MixedAssignment,MixedArrayAccess,MixedArgument The canonical JSON view is untyped by design.
+ */
 final class SemanticLogInvokerTest extends TestCase
 {
     public function testCreatesOpenCloseLog(): void
@@ -36,12 +38,17 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/user/1', Method::POST, ['id' => 1]));
 
-        $entry = $logger->flush()->toArray()['open'][0];
+        $entry = self::flushToArray($logger)['open'][0];
         // The uri stays canonical (path only); the query lives in params, not the uri.
         $this->assertSame('app://self/user/1', $entry['context']['uri']);
         $this->assertSame('POST', $entry['context']['method']);
         $this->assertSame(['id' => 1], $entry['context']['params']);
-        $this->assertSame(['code' => 201], self::closeContext($entry));
+        $close = self::closeContext($entry);
+        $durationMs = $close['durationMs'] ?? null;
+        $this->assertIsFloat($durationMs);
+        $this->assertGreaterThanOrEqual(0.0, $durationMs);
+        unset($close['durationMs']);
+        $this->assertSame(['code' => 201], $close);
     }
 
     public function testSkipsGetByDefault(): void
@@ -56,8 +63,8 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/user/1', Method::GET));
 
-        $this->expectException(NoLogSessionException::class);
-        $logger->flush();
+        // Nothing was recorded: the session flushes to an empty log.
+        $this->assertSame([], self::flushToArray($logger)['open']);
     }
 
     public function testRecordsGetWhenConfigured(): void
@@ -73,7 +80,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/user/1', Method::GET));
 
-        $entry = $logger->flush()->toArray()['open'][0];
+        $entry = self::flushToArray($logger)['open'][0];
         $this->assertSame('GET', $entry['context']['method']);
     }
 
@@ -90,11 +97,14 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/user/1', Method::POST));
 
-        $entry = $logger->flush()->toArray()['open'][0];
+        $entry = self::flushToArray($logger)['open'][0];
         $this->assertSame(1, $store->calls);
+        $close = self::closeContext($entry);
+        $this->assertIsFloat($close['durationMs'] ?? null);
+        unset($close['durationMs']);
         $this->assertSame(
             ['code' => 200, 'body_ref' => 'file://var/es/bodies/000001.json'],
-            self::closeContext($entry),
+            $close,
         );
     }
 
@@ -111,7 +121,7 @@ final class SemanticLogInvokerTest extends TestCase
         $result = $invoker->invoke(self::request('app://self/user/1', Method::POST));
 
         $this->assertSame($ro, $result);
-        $entry = $logger->flush()->toArray()['open'][0];
+        $entry = self::flushToArray($logger)['open'][0];
         $context = self::closeContext($entry);
         $exceptionContext = $context['exception'] ?? null;
         $this->assertIsArray($exceptionContext);
@@ -140,17 +150,18 @@ final class SemanticLogInvokerTest extends TestCase
             $this->assertSame($exception, $e);
         }
 
-        $entry = $logger->flush()->toArray()['open'][0];
+        $entry = self::flushToArray($logger)['open'][0];
         $context = self::closeContext($entry);
         $exceptionContext = $context['exception'] ?? null;
         $this->assertIsArray($exceptionContext);
         /** @var array{class: string, message: string} $exceptionContext */
         $this->assertSame(500, $context['code']);
+        $this->assertIsFloat($context['durationMs'] ?? null);
         $this->assertSame(RuntimeException::class, $exceptionContext['class']);
         $this->assertSame('boom', $exceptionContext['message']);
     }
 
-    public function testCloseFailureOnSuccessPathDoesNotBreakRequest(): void
+    public function testLeakedOpenContextDoesNotBreakRequest(): void
     {
         $logger = new SemanticLogger();
         $ro = new FakeResourceObject('app://self/order', ['ok' => true], 201);
@@ -167,15 +178,14 @@ final class SemanticLogInvokerTest extends TestCase
             new NullBodyStore(),
         );
 
-        $warning = self::captureWarning(
-            static fn (): object => $invoker->invoke(self::request('app://self/order', Method::POST)),
-        );
+        $result = $invoker->invoke(self::request('app://self/order', Method::POST));
 
-        $this->assertSame($ro, $warning['result']);
-        $this->assertStringContainsString('Semantic log close failed', $warning['message']);
+        // Observation must never break the request, whether the logger rejects
+        // the out-of-order close silently or by throwing.
+        $this->assertSame($ro, $result);
     }
 
-    public function testCloseFailureOnErrorPathPreservesDomainException(): void
+    public function testLeakedOpenContextPreservesDomainException(): void
     {
         $logger = new SemanticLogger();
         $domain = new DomainException('the real business error');
@@ -192,45 +202,15 @@ final class SemanticLogInvokerTest extends TestCase
         );
 
         $caught = null;
-        $message = null;
-        set_error_handler(static function (int $_severity, string $text) use (&$message): bool {
-            $message = $text;
-
-            return true;
-        }, E_USER_WARNING);
         try {
             $invoker->invoke(self::request('app://self/leak', Method::POST));
             $this->fail('Exception was not thrown.');
         } catch (DomainException $e) {
             $caught = $e;
-        } finally {
-            restore_error_handler();
         }
 
-        // The domain exception survives; it is not masked by the close-time LIFO error.
+        // The domain exception survives; it is not masked by the close-time rejection.
         $this->assertSame($domain, $caught);
-        $this->assertNotNull($message);
-    }
-
-    /**
-     * @param callable(): object $invoke
-     * @return array{result: object|null, message: string}
-     */
-    private static function captureWarning(callable $invoke): array
-    {
-        $message = '';
-        set_error_handler(static function (int $_severity, string $text) use (&$message): bool {
-            $message = $text;
-
-            return true;
-        }, E_USER_WARNING);
-        try {
-            $result = $invoke();
-        } finally {
-            restore_error_handler();
-        }
-
-        return ['result' => $result, 'message' => $message];
     }
 
     public function testNestedInvocationsKeepSemanticLogTree(): void
@@ -255,7 +235,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $outer->invoke(self::request('app://self/outer', Method::POST));
 
-        $outerEntry = $logger->flush()->toArray()['open'][0];
+        $outerEntry = self::flushToArray($logger)['open'][0];
         $this->assertSame('app://self/outer', $outerEntry['context']['uri']);
         $this->assertSame('app://self/inner', self::firstChildContext($outerEntry)['uri']);
     }
@@ -271,6 +251,18 @@ final class SemanticLogInvokerTest extends TestCase
             $method,
             $query,
         );
+    }
+
+    /**
+     * The canonical JSON view of the flushed log: frozen context values arrive
+     * as objects, and the assoc-array decode is what the extractor reads too.
+     *
+     * @return array<string, mixed>
+     */
+    private static function flushToArray(SemanticLogger $logger): array
+    {
+        /** @var array<string, mixed> */
+        return json_decode(json_encode($logger->flush(), JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
     }
 
     /**

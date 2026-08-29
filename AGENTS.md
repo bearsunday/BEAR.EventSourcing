@@ -35,6 +35,7 @@ Core components:
 - `EventsInterface` / `Events`
 - `SemanticLogExtractorInterface` / `SemanticLogExtractor`
 - `RecordedMethods`
+- `EventCollector` for request-boundary flush -> extract -> optional append
 - Semantic Logger log fixtures and extractor tests
 - `EventStoreInterface`, in-memory implementation, and Ray.MediaQuery SQL implementation
 - `EventSourcingModule` and `MediaQueryEventStoreModule` for optional ES bindings

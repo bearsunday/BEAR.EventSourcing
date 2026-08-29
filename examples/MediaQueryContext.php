@@ -17,7 +17,7 @@ final class MediaQueryContext extends AbstractContext
     public const TYPE = 'media_query';
 
     /** @psalm-suppress InvalidClassConstantType */
-    public const SCHEMA_URL = 'https://bearsunday.github.io/schemas/semantic-logger/media-query.json';
+    public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.EventSourcing/schemas/media-query.json';
 
     // `name`, not `id`: stree's compact signal excludes an `id` key (it treats
     // it as the node's structural identifier), so the query identity is `name`.

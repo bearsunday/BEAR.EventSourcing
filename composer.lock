@@ -4,23 +4,24 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "cc9fef9e03c92c7762f93decafe98fdc",
+    "content-hash": "ef2542cce864ed7013f01c4edc626bef",
     "packages": [
         {
             "name": "justinrainbow/json-schema",
-            "version": "6.10.0",
+            "version": "6.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/jsonrainbow/json-schema.git",
-                "reference": "8b1308a9d7bdbdb20ce87ef920f82b4564bb2d33"
+                "reference": "7e420a943a6fbc95e60e3cf67acfbee85b3b4da7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/jsonrainbow/json-schema/zipball/8b1308a9d7bdbdb20ce87ef920f82b4564bb2d33",
-                "reference": "8b1308a9d7bdbdb20ce87ef920f82b4564bb2d33",
+                "url": "https://api.github.com/repos/jsonrainbow/json-schema/zipball/7e420a943a6fbc95e60e3cf67acfbee85b3b4da7",
+                "reference": "7e420a943a6fbc95e60e3cf67acfbee85b3b4da7",
                 "shasum": ""
             },
             "require": {
+                "ext-filter": "*",
                 "ext-json": "*",
                 "marc-mabe/php-enum": "^4.4",
                 "php": "^7.2 || ^8.0"
@@ -53,20 +54,9 @@
             ],
             "authors": [
                 {
-                    "name": "Bruno Prieto Reis",
-                    "email": "bruno.p.reis@gmail.com"
-                },
-                {
-                    "name": "Justin Rainbow",
-                    "email": "justin.rainbow@gmail.com"
-                },
-                {
-                    "name": "Igor Wiedler",
-                    "email": "igor@wiedler.ch"
-                },
-                {
-                    "name": "Robert Schönthal",
-                    "email": "seroscho@googlemail.com"
+                    "name": "Danny van der Sluijs",
+                    "email": "danny.vandersluijs@icloud.com",
+                    "role": "Maintainer"
                 }
             ],
             "description": "A library to validate a json schema.",
@@ -77,9 +67,9 @@
             ],
             "support": {
                 "issues": "https://github.com/jsonrainbow/json-schema/issues",
-                "source": "https://github.com/jsonrainbow/json-schema/tree/6.10.0"
+                "source": "https://github.com/jsonrainbow/json-schema/tree/6.11.0"
             },
-            "time": "2026-06-16T20:50:26+00:00"
+            "time": "2026-08-21T10:30:42+00:00"
         },
         {
             "name": "koriym/null-object",
@@ -137,16 +127,16 @@
         },
         {
             "name": "koriym/semantic-logger",
-            "version": "0.8.0",
+            "version": "0.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/koriym/Koriym.SemanticLogger.git",
-                "reference": "11ceb9e6d7a9e4723736f66bce9be78eb8a5b94d"
+                "reference": "5e427285bad04169e6d33162b2afd2611b3a52c1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/koriym/Koriym.SemanticLogger/zipball/11ceb9e6d7a9e4723736f66bce9be78eb8a5b94d",
-                "reference": "11ceb9e6d7a9e4723736f66bce9be78eb8a5b94d",
+                "url": "https://api.github.com/repos/koriym/Koriym.SemanticLogger/zipball/5e427285bad04169e6d33162b2afd2611b3a52c1",
+                "reference": "5e427285bad04169e6d33162b2afd2611b3a52c1",
                 "shasum": ""
             },
             "require": {
@@ -159,7 +149,7 @@
             },
             "bin": [
                 "bin/validate-semantic-log.php",
-                "bin/stree"
+                "src-stree/bin/stree"
             ],
             "type": "library",
             "extra": {
@@ -170,7 +160,8 @@
             },
             "autoload": {
                 "psr-4": {
-                    "Koriym\\SemanticLogger\\": "src/"
+                    "Koriym\\SemanticLogger\\": "src/",
+                    "Koriym\\SemanticLogger\\Stree\\": "src-stree/src/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -186,9 +177,9 @@
             "description": "Type-safe structured logging with schema validation and meaningful context",
             "support": {
                 "issues": "https://github.com/koriym/Koriym.SemanticLogger/issues",
-                "source": "https://github.com/koriym/Koriym.SemanticLogger/tree/0.8.0"
+                "source": "https://github.com/koriym/Koriym.SemanticLogger/tree/0.9.0"
             },
-            "time": "2026-04-24T08:34:32+00:00"
+            "time": "2026-08-12T12:58:19+00:00"
         },
         {
             "name": "marc-mabe/php-enum",
@@ -265,16 +256,16 @@
         },
         {
             "name": "ray/aop",
-            "version": "2.20.0",
+            "version": "2.20.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ray-di/Ray.Aop.git",
-                "reference": "05a85ecb1a28af1b4414a981f11c79ee7c18e5ba"
+                "reference": "6fa85865b88cdcc262402e5fff5a886ad9287330"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ray-di/Ray.Aop/zipball/05a85ecb1a28af1b4414a981f11c79ee7c18e5ba",
-                "reference": "05a85ecb1a28af1b4414a981f11c79ee7c18e5ba",
+                "url": "https://api.github.com/repos/ray-di/Ray.Aop/zipball/6fa85865b88cdcc262402e5fff5a886ad9287330",
+                "reference": "6fa85865b88cdcc262402e5fff5a886ad9287330",
                 "shasum": ""
             },
             "require": {
@@ -321,7 +312,7 @@
             ],
             "support": {
                 "issues": "https://github.com/ray-di/Ray.Aop/issues",
-                "source": "https://github.com/ray-di/Ray.Aop/tree/2.22.0"
+                "source": "https://github.com/ray-di/Ray.Aop/tree/2.20.1"
             },
             "funding": [
                 {
@@ -333,7 +324,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-07-14T19:46:39+00:00"
+            "time": "2026-08-07T12:03:57+00:00"
         },
         {
             "name": "ray/di",
@@ -1423,17 +1414,102 @@
             "time": "2025-03-03T00:07:00+00:00"
         },
         {
-            "name": "bear/resource",
-            "version": "1.33.0",
+            "name": "bear/query-repository",
+            "version": "1.x-dev",
             "source": {
                 "type": "git",
-                "url": "https://github.com/bearsunday/BEAR.Resource.git",
-                "reference": "0797251f09bbb551d524f36b193ca934d3102d09"
+                "url": "https://github.com/bearsunday/BEAR.QueryRepository.git",
+                "reference": "548ff80a41431b7360940838a6d4dc8907deb214"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/bearsunday/BEAR.Resource/zipball/0797251f09bbb551d524f36b193ca934d3102d09",
-                "reference": "0797251f09bbb551d524f36b193ca934d3102d09",
+                "url": "https://api.github.com/repos/bearsunday/BEAR.QueryRepository/zipball/548ff80a41431b7360940838a6d4dc8907deb214",
+                "reference": "548ff80a41431b7360940838a6d4dc8907deb214",
+                "shasum": ""
+            },
+            "require": {
+                "bear/resource": "^1.16.1",
+                "bear/sunday": "^1.5",
+                "koriym/semantic-logger": "^0.9",
+                "php": "^8.2",
+                "psr/cache": "^1.0 || ^2.0 || ^3.0",
+                "psr/log": "^1.1 || ^2.0 || ^3.0",
+                "ray/aop": "^2.19.1",
+                "ray/di": "^2.20",
+                "ray/psr-cache-module": "^1.5.1",
+                "symfony/cache": "^5.3 || ^6.0 || ^7.3",
+                "symfony/cache-contracts": "^2.4 || ^3.0",
+                "symfony/polyfill-php83": "^v1.32.0"
+            },
+            "require-dev": {
+                "bamarni/composer-bin-plugin": "^1.8",
+                "bear/fastly-module": "^1.0",
+                "madapaja/twig-module": "^2.6",
+                "mobiledetect/mobiledetectlib": "^3.74 || ^4.8",
+                "phpunit/phpunit": "^11.0",
+                "predis/predis": "^2.4",
+                "symfony/process": "^6.1 || ^7.1",
+                "twig/twig": "^3.4.3"
+            },
+            "suggest": {
+                "ext-memcached": "Required for Memcached cache storage backend",
+                "ext-redis": "Required for Redis cache storage backend"
+            },
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "bamarni-bin": {
+                    "bin-links": true,
+                    "forward-command": true
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "BEAR\\QueryRepository\\": [
+                        "src/",
+                        "src-deprecated/"
+                    ],
+                    "BEAR\\RepositoryModule\\Annotation\\": [
+                        "src-annotation/",
+                        "src-annotation-deprecated"
+                    ]
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Akihito Koriyama",
+                    "email": "akihito.koriyama@gmail.com"
+                }
+            ],
+            "description": "AboutResource Query Responsibility Segregation (RQRS) is a caching framework for BEAR.Sunday that optimizes performance by separating query and command responsibilities. It features event-driven cache invalidation, dependency resolution, donut caching, CDN integration, and conditional requests.",
+            "keywords": [
+                "Etag",
+                "caching",
+                "donut caching",
+                "event-driven-content"
+            ],
+            "support": {
+                "issues": "https://github.com/bearsunday/BEAR.QueryRepository/issues",
+                "source": "https://github.com/bearsunday/BEAR.QueryRepository/tree/1.x"
+            },
+            "time": "2026-08-29T09:25:08+00:00"
+        },
+        {
+            "name": "bear/resource",
+            "version": "1.34.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/bearsunday/BEAR.Resource.git",
+                "reference": "b3a29ca7d2ff6054a1c3a9825e3d90b8bef806d8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/bearsunday/BEAR.Resource/zipball/b3a29ca7d2ff6054a1c3a9825e3d90b8bef806d8",
+                "reference": "b3a29ca7d2ff6054a1c3a9825e3d90b8bef806d8",
                 "shasum": ""
             },
             "require": {
@@ -1457,8 +1533,10 @@
                 "bamarni/composer-bin-plugin": "^1.4",
                 "bear/devtools": "^1.0",
                 "koriym/json-schema-faker": "^0.3.1",
+                "koriym/php-server": "^1.0",
                 "phpunit/phpunit": "^11.0",
-                "ray/compiler": "^1.12"
+                "ray/compiler": "^1.12",
+                "webmozart/assert": "^2.0"
             },
             "type": "library",
             "extra": {
@@ -1501,9 +1579,73 @@
             ],
             "support": {
                 "issues": "https://github.com/bearsunday/BEAR.Resource/issues",
-                "source": "https://github.com/bearsunday/BEAR.Resource/tree/1.33.0"
+                "source": "https://github.com/bearsunday/BEAR.Resource/tree/1.34.0"
             },
-            "time": "2026-06-20T22:08:37+00:00"
+            "time": "2026-08-28T16:59:18+00:00"
+        },
+        {
+            "name": "bear/sunday",
+            "version": "1.9.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/bearsunday/BEAR.Sunday.git",
+                "reference": "24b3b9ec78aec50182d53e200deb4b917f89154b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/bearsunday/BEAR.Sunday/zipball/24b3b9ec78aec50182d53e200deb4b917f89154b",
+                "reference": "24b3b9ec78aec50182d53e200deb4b917f89154b",
+                "shasum": ""
+            },
+            "require": {
+                "bear/resource": "^1.33",
+                "php": "^8.2",
+                "psr/log": "^1.1 || ^2.0 || ^3.0",
+                "ray/aop": "^2.12.3",
+                "ray/di": "^2.13",
+                "symfony/polyfill-php83": "^1.31"
+            },
+            "require-dev": {
+                "bamarni/composer-bin-plugin": "^1.8.2",
+                "phpunit/phpunit": "^9.5.10"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "BEAR\\Sunday\\": [
+                        "src/",
+                        "src-deprecated/"
+                    ]
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Akihito Koriyama",
+                    "email": "akihito.koriyama@gmail.com",
+                    "homepage": "http://koriym.github.io/about/"
+                },
+                {
+                    "name": "BEAR.Sunday Contributors",
+                    "homepage": "http://bearsunday.github.io/contributors.html"
+                }
+            ],
+            "description": "A resource-oriented application framework",
+            "keywords": [
+                "aop",
+                "di",
+                "framework",
+                "hypermedia",
+                "rest"
+            ],
+            "support": {
+                "issues": "https://github.com/bearsunday/BEAR.Sunday/issues",
+                "source": "https://github.com/bearsunday/BEAR.Sunday/tree/1.9.0"
+            },
+            "time": "2026-08-23T01:23:42+00:00"
         },
         {
             "name": "composer/pcre",
@@ -3576,6 +3718,55 @@
             "time": "2026-07-06T14:52:39+00:00"
         },
         {
+            "name": "psr/cache",
+            "version": "3.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/cache.git",
+                "reference": "aa5030cfa5405eccfdcb1083ce040c2cb8d253bf"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/cache/zipball/aa5030cfa5405eccfdcb1083ce040c2cb8d253bf",
+                "reference": "aa5030cfa5405eccfdcb1083ce040c2cb8d253bf",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.0.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Cache\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "https://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for caching libraries",
+            "keywords": [
+                "cache",
+                "psr",
+                "psr-6"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/cache/tree/3.0.0"
+            },
+            "time": "2021-02-03T23:26:27+00:00"
+        },
+        {
             "name": "psr/container",
             "version": "2.0.2",
             "source": {
@@ -3840,6 +4031,57 @@
             "time": "2024-09-11T13:17:53+00:00"
         },
         {
+            "name": "psr/simple-cache",
+            "version": "3.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/simple-cache.git",
+                "reference": "764e0b3939f5ca87cb904f570ef9be2d78a07865"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/simple-cache/zipball/764e0b3939f5ca87cb904f570ef9be2d78a07865",
+                "reference": "764e0b3939f5ca87cb904f570ef9be2d78a07865",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.0.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "3.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\SimpleCache\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "https://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interfaces for simple caching",
+            "keywords": [
+                "cache",
+                "caching",
+                "psr",
+                "psr-16",
+                "simple-cache"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/simple-cache/tree/3.0.0"
+            },
+            "time": "2021-10-29T13:26:27+00:00"
+        },
+        {
             "name": "ray/aura-sql-module",
             "version": "1.17.1",
             "source": {
@@ -4030,6 +4272,67 @@
                 "source": "https://github.com/ray-di/Ray.MediaQuery/tree/1.1.1"
             },
             "time": "2026-06-25T14:37:32+00:00"
+        },
+        {
+            "name": "ray/psr-cache-module",
+            "version": "1.5.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ray-di/Ray.PsrCacheModule.git",
+                "reference": "79bf2600da361e5ae300eda90e3ab1a30d5d0388"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ray-di/Ray.PsrCacheModule/zipball/79bf2600da361e5ae300eda90e3ab1a30d5d0388",
+                "reference": "79bf2600da361e5ae300eda90e3ab1a30d5d0388",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2",
+                "psr/cache": "^1.0.1 || ^2.0 || ^3.0",
+                "psr/simple-cache": "^1.0 || ^2.0 || ^3.0",
+                "ray/aop": "^2.10.4",
+                "ray/di": "^2.13.2",
+                "symfony/cache": "^6.0 || ^7.2"
+            },
+            "require-dev": {
+                "bamarni/composer-bin-plugin": "^1.4",
+                "ext-memcached": "*",
+                "ext-redis": "*",
+                "phpunit/phpunit": "^11.5.43",
+                "rector/rector": "^2.2"
+            },
+            "type": "library",
+            "extra": {
+                "bamarni-bin": {
+                    "bin-links": true,
+                    "forward-command": true
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Ray\\PsrCacheModule\\": [
+                        "src/",
+                        "src-deprecated/"
+                    ]
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Akihito Koriyama",
+                    "email": "akihito.koriyama@gmail.com"
+                }
+            ],
+            "description": "PSR-6 PSR-16 cache module for Ray.Di",
+            "support": {
+                "issues": "https://github.com/ray-di/Ray.PsrCacheModule/issues",
+                "source": "https://github.com/ray-di/Ray.PsrCacheModule/tree/1.5.2"
+            },
+            "time": "2026-04-25T11:44:49+00:00"
         },
         {
             "name": "revolt/event-loop",
@@ -5223,16 +5526,16 @@
         },
         {
             "name": "squizlabs/php_codesniffer",
-            "version": "3.13.5",
+            "version": "3.13.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPCSStandards/PHP_CodeSniffer.git",
-                "reference": "0ca86845ce43291e8f5692c7356fccf3bcf02bf4"
+                "reference": "4c378e1a528ea066890fc2397cbdd2f94eb2fc91"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPCSStandards/PHP_CodeSniffer/zipball/0ca86845ce43291e8f5692c7356fccf3bcf02bf4",
-                "reference": "0ca86845ce43291e8f5692c7356fccf3bcf02bf4",
+                "url": "https://api.github.com/repos/PHPCSStandards/PHP_CodeSniffer/zipball/4c378e1a528ea066890fc2397cbdd2f94eb2fc91",
+                "reference": "4c378e1a528ea066890fc2397cbdd2f94eb2fc91",
                 "shasum": ""
             },
             "require": {
@@ -5298,7 +5601,7 @@
                     "type": "thanks_dev"
                 }
             ],
-            "time": "2025-11-04T16:30:35+00:00"
+            "time": "2026-08-06T00:17:32+00:00"
         },
         {
             "name": "staabm/side-effects-detector",
@@ -5351,6 +5654,189 @@
                 }
             ],
             "time": "2024-10-20T05:08:20+00:00"
+        },
+        {
+            "name": "symfony/cache",
+            "version": "v7.4.17",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/cache.git",
+                "reference": "f6028442dd1dfa4f88e9c7360d753948d165e938"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/cache/zipball/f6028442dd1dfa4f88e9c7360d753948d165e938",
+                "reference": "f6028442dd1dfa4f88e9c7360d753948d165e938",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "psr/cache": "^2.0|^3.0",
+                "psr/log": "^1.1|^2|^3",
+                "symfony/cache-contracts": "^3.6",
+                "symfony/deprecation-contracts": "^2.5|^3",
+                "symfony/service-contracts": "^2.5|^3",
+                "symfony/var-exporter": "^6.4|^7.0|^8.0"
+            },
+            "conflict": {
+                "doctrine/dbal": "<3.6",
+                "ext-relay": "<0.12.1",
+                "symfony/dependency-injection": "<6.4",
+                "symfony/http-kernel": "<6.4",
+                "symfony/var-dumper": "<6.4"
+            },
+            "provide": {
+                "psr/cache-implementation": "2.0|3.0",
+                "psr/simple-cache-implementation": "1.0|2.0|3.0",
+                "symfony/cache-implementation": "1.1|2.0|3.0"
+            },
+            "require-dev": {
+                "cache/integration-tests": "^1.0.3",
+                "doctrine/dbal": "^3.6|^4",
+                "predis/predis": "^1.1|^2.0",
+                "psr/simple-cache": "^1.0|^2.0|^3.0",
+                "symfony/clock": "^6.4|^7.0|^8.0",
+                "symfony/config": "^6.4|^7.0|^8.0",
+                "symfony/dependency-injection": "^6.4|^7.0|^8.0",
+                "symfony/filesystem": "^6.4|^7.0|^8.0",
+                "symfony/http-kernel": "^6.4|^7.0|^8.0",
+                "symfony/messenger": "^6.4|^7.0|^8.0",
+                "symfony/var-dumper": "^6.4|^7.0|^8.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\Cache\\": ""
+                },
+                "classmap": [
+                    "Traits/ValueWrapper.php"
+                ],
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nicolas Grekas",
+                    "email": "p@tchwork.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Provides extended PSR-6, PSR-16 (and tags) implementations",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "caching",
+                "psr6"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/cache/tree/v7.4.17"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-08-19T08:28:05+00:00"
+        },
+        {
+            "name": "symfony/cache-contracts",
+            "version": "v3.7.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/cache-contracts.git",
+                "reference": "9789738bc19af1106dc54d6afba9a0b467516cf2"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/cache-contracts/zipball/9789738bc19af1106dc54d6afba9a0b467516cf2",
+                "reference": "9789738bc19af1106dc54d6afba9a0b467516cf2",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.1",
+                "psr/cache": "^3.0"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/contracts",
+                    "name": "symfony/contracts"
+                },
+                "branch-alias": {
+                    "dev-main": "3.7-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Contracts\\Cache\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nicolas Grekas",
+                    "email": "p@tchwork.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Generic abstractions related to caching",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "abstractions",
+                "contracts",
+                "decoupling",
+                "interfaces",
+                "interoperability",
+                "standards"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/cache-contracts/tree/v3.7.1"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-06-05T06:23:12+00:00"
         },
         {
             "name": "symfony/console",
@@ -5675,6 +6161,93 @@
             "time": "2026-04-10T16:19:22+00:00"
         },
         {
+            "name": "symfony/polyfill-deepclone",
+            "version": "v1.42.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/polyfill-deepclone.git",
+                "reference": "70ba0627efc68e97ea392843458a2dd9d6dbd156"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/polyfill-deepclone/zipball/70ba0627efc68e97ea392843458a2dd9d6dbd156",
+                "reference": "70ba0627efc68e97ea392843458a2dd9d6dbd156",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.1"
+            },
+            "provide": {
+                "ext-deepclone": "*"
+            },
+            "suggest": {
+                "ext-deepclone": "For best performance"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/polyfill",
+                    "name": "symfony/polyfill"
+                }
+            },
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ],
+                "psr-4": {
+                    "Symfony\\Polyfill\\DeepClone\\": ""
+                },
+                "classmap": [
+                    "Resources/stubs"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nicolas Grekas",
+                    "email": "p@tchwork.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Symfony polyfill for the deepclone extension",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "compatibility",
+                "deepclone",
+                "polyfill",
+                "portable",
+                "shim"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/polyfill-deepclone/tree/v1.42.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-08-07T06:33:24+00:00"
+        },
+        {
             "name": "symfony/polyfill-intl-grapheme",
             "version": "v1.38.1",
             "source": {
@@ -5928,16 +6501,16 @@
         },
         {
             "name": "symfony/polyfill-php83",
-            "version": "v1.38.2",
+            "version": "v1.41.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/polyfill-php83.git",
-                "reference": "796a26abb75ce49f3a84433cd81bf1009d73d5f8"
+                "reference": "5ea99087fb99c273a9b9236ed4c31e78b16103c6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-php83/zipball/796a26abb75ce49f3a84433cd81bf1009d73d5f8",
-                "reference": "796a26abb75ce49f3a84433cd81bf1009d73d5f8",
+                "url": "https://api.github.com/repos/symfony/polyfill-php83/zipball/5ea99087fb99c273a9b9236ed4c31e78b16103c6",
+                "reference": "5ea99087fb99c273a9b9236ed4c31e78b16103c6",
                 "shasum": ""
             },
             "require": {
@@ -5984,7 +6557,7 @@
                 "shim"
             ],
             "support": {
-                "source": "https://github.com/symfony/polyfill-php83/tree/v1.38.2"
+                "source": "https://github.com/symfony/polyfill-php83/tree/v1.41.0"
             },
             "funding": [
                 {
@@ -6004,7 +6577,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-27T06:51:48+00:00"
+            "time": "2026-07-01T12:47:55+00:00"
         },
         {
             "name": "symfony/polyfill-php84",
@@ -6263,6 +6836,89 @@
                 }
             ],
             "time": "2026-05-23T15:23:29+00:00"
+        },
+        {
+            "name": "symfony/var-exporter",
+            "version": "v8.1.5",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/var-exporter.git",
+                "reference": "b8f7dd85493e8372c7c81a1547caaaf86b9c16d1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/var-exporter/zipball/b8f7dd85493e8372c7c81a1547caaaf86b9c16d1",
+                "reference": "b8f7dd85493e8372c7c81a1547caaaf86b9c16d1",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.4.1",
+                "symfony/deprecation-contracts": "^2.5|^3",
+                "symfony/polyfill-deepclone": "^1.40"
+            },
+            "require-dev": {
+                "symfony/property-access": "^7.4|^8.0",
+                "symfony/serializer": "^7.4|^8.0",
+                "symfony/var-dumper": "^7.4|^8.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\VarExporter\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nicolas Grekas",
+                    "email": "p@tchwork.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Provides tools to export, instantiate, hydrate, clone and lazy-load PHP objects",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "clone",
+                "construct",
+                "deep-clone",
+                "export",
+                "hydrate",
+                "instantiate",
+                "lazy-loading",
+                "proxy",
+                "serialize"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/var-exporter/tree/v8.1.5"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-08-13T16:11:28+00:00"
         },
         {
             "name": "theseer/tokenizer",
@@ -6550,7 +7206,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "bear/query-repository": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {

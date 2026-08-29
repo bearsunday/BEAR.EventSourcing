@@ -12,7 +12,7 @@ final class ResourceRequestContext extends AbstractContext
     public const TYPE = 'resource_request';
 
     /** @psalm-suppress InvalidClassConstantType */
-    public const SCHEMA_URL = 'https://bearsunday.github.io/schemas/semantic-logger/resource-request.json';
+    public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json';
 
     /** @param array<string, mixed> $params */
     public function __construct(
