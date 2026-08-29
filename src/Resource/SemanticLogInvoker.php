@@ -41,18 +41,23 @@ final class SemanticLogInvoker implements InvokerInterface
             timestamp: (new DateTimeImmutable())->format(self::TIMESTAMP_FORMAT),
         ));
 
+        $start = hrtime(true);
         try {
             $ro = $this->invoker->invoke($request);
         } catch (Throwable $e) {
             $this->safeClose(
-                new ResourceResponseContext(code: self::httpCode($e), exception: self::exceptionContext($e)),
+                new ResourceResponseContext(
+                    code: self::httpCode($e),
+                    exception: self::exceptionContext($e),
+                    durationMs: self::elapsedMs($start),
+                ),
                 $openId,
             );
 
             throw $e;
         }
 
-        $this->safeClose($this->responseContext($request, $ro), $openId);
+        $this->safeClose($this->responseContext($request, $ro, self::elapsedMs($start)), $openId);
 
         return $ro;
     }
@@ -60,10 +65,11 @@ final class SemanticLogInvoker implements InvokerInterface
     /**
      * Close the open observation without letting a logging failure escape.
      *
-     * A lower layer that leaks an unclosed context would otherwise make close()
-     * throw (LIFO violation), which on the success path destroys a completed
-     * response and on the error path masks the real domain exception. Observation
-     * must never break the request, so a close failure is downgraded to a warning.
+     * The bundled SemanticLogger records an out-of-order close as a diagnostic,
+     * but the binding is an interface: an implementation that throws would, on
+     * the success path, destroy a completed response and, on the error path,
+     * mask the real domain exception. Observation must never break the request,
+     * so a close failure is downgraded to a warning.
      */
     private function safeClose(ResourceResponseContext $context, string $openId): void
     {
@@ -79,16 +85,28 @@ final class SemanticLogInvoker implements InvokerInterface
         }
     }
 
-    private function responseContext(AbstractRequest $request, ResourceObject $ro): ResourceResponseContext
-    {
+    private function responseContext(
+        AbstractRequest $request,
+        ResourceObject $ro,
+        float $durationMs,
+    ): ResourceResponseContext {
         try {
             $bodyRef = ($this->bodyStore)($request, $ro);
         } catch (Throwable $e) {
             // Observation must not break a completed request: keep the real code and record the failure.
-            return new ResourceResponseContext(code: $ro->code, exception: self::exceptionContext($e));
+            return new ResourceResponseContext(
+                code: $ro->code,
+                exception: self::exceptionContext($e),
+                durationMs: $durationMs,
+            );
         }
 
-        return new ResourceResponseContext($ro->code, $bodyRef);
+        return new ResourceResponseContext($ro->code, $bodyRef, durationMs: $durationMs);
+    }
+
+    private static function elapsedMs(int|float $start): float
+    {
+        return round(((float) hrtime(true) - (float) $start) / 1e6, 3);
     }
 
     /**

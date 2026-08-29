@@ -22,10 +22,11 @@
     },
     "require": {
         "php": "^8.2",
-        "koriym/semantic-logger": "^0.8",
+        "koriym/semantic-logger": "^0.9",
         "ray/di": "^2.19"
     },
     "require-dev": {
+        "bear/query-repository": "1.x-dev",
         "bear/resource": "^1.32",
         "maglnet/composer-require-checker": "^4.14",
         "phpunit/phpunit": "^11.5",
@@ -45,11 +46,13 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "BEAR\\EventSourcing\\Tests\\": "tests/"
+            "BEAR\\EventSourcing\\Tests\\": "tests/",
+            "FakeVendor\\Unified\\": "tests/Fixture/Unified/"
         }
     },
     "scripts": {
         "test": "phpunit",
+        "observe": "php examples/observe/observe.php",
         "phpcs": "phpcs --standard=phpcs.xml",
         "psalm": "psalm --monochrome --show-info=false",
         "require-checker": "composer-require-checker check --config-file=./composer-require-checker.json composer.json",

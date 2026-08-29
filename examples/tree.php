@@ -49,4 +49,4 @@ $config = new RenderConfig(
     formatters: $formatters,
 );
 
-echo (new TreeRenderer())->render($logger->flush()->toArray(), $config), "\n";
+echo (new TreeRenderer($config))->render($logger->flush()), "\n";

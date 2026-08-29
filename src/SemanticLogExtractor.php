@@ -5,15 +5,20 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing;
 
 use DateTimeImmutable;
+use JsonException;
 use Koriym\SemanticLogger\LogJson;
 use Throwable;
 
 use function is_array;
 use function is_int;
 use function is_string;
+use function json_decode;
+use function json_encode;
 use function preg_match;
 use function strlen;
 use function strspn;
+
+use const JSON_THROW_ON_ERROR;
 
 /**
  * @psalm-import-type EventList from Types
@@ -40,10 +45,18 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
         $this->recordedMethods = $recordedMethods ?? new RecordedMethods();
     }
 
+    /** @throws JsonException When the log cannot be represented as JSON. */
     public function extract(LogJson $semanticLog): EventsInterface
     {
         $events = [];
-        $this->walk($semanticLog->toArray()['open'], $events);
+        // Canonicalize to associative arrays: frozen context values arrive as
+        // objects, and the same JSON view is what the schema validates.
+        /** @var array<array-key, mixed> $log */
+        $log = json_decode(json_encode($semanticLog, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        $opens = $log['open'] ?? [];
+        if (is_array($opens)) {
+            $this->walk($opens, $events);
+        }
 
         return new Events($events);
     }

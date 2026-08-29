@@ -8,8 +8,10 @@ use Koriym\SemanticLogger\Stree\NodeFormatterInterface;
 use Koriym\SemanticLogger\Stree\RenderConfig;
 use Koriym\SemanticLogger\Stree\TreeNode;
 
+use function get_object_vars;
 use function http_build_query;
 use function is_array;
+use function is_object;
 use function is_string;
 use function sprintf;
 
@@ -49,6 +51,11 @@ final class ResourceNodeFormatter implements NodeFormatterInterface
     private static function queryString(array $context): string
     {
         $params = $context['params'] ?? $context['query'] ?? null;
+        if (is_object($params)) {
+            // Frozen context values arrive as objects in the rendered log.
+            $params = get_object_vars($params);
+        }
+
         if (! is_array($params) || $params === []) {
             return '';
         }
