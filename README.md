@@ -158,7 +158,8 @@ final class AppModule extends AbstractModule
     }
 }
 
-$store = (new Injector(new AppModule()))->getInstance(EventStoreInterface::class);
+$injector = new Injector(new AppModule());
+$store = $injector->getInstance(EventStoreInterface::class);
 $store->appendAll($events);
 ```
 
@@ -177,9 +178,11 @@ A few operational notes:
       sqlDir: $appSqlDir, // event_store_*.sql copied here
   ));
   ```
-- **`appendAll` is not atomic.** It appends events one row at a time with no surrounding transaction, so a mid-way failure leaves earlier rows written. The database is application-owned, so wrap a batch in your own transaction when you need all-or-nothing — this is also markedly faster, since one commit replaces one fsync per event:
+- **`appendAll` is not atomic.** It appends events one row at a time with no surrounding transaction, so a mid-way failure leaves earlier rows written. The database is application-owned, so wrap a batch in your own transaction when you need all-or-nothing — this is also markedly faster, since one commit replaces one fsync per event. Resolve the PDO from the same injector as `$store` so the transaction wraps the connection MediaQuery writes through; a separate `new PDO(...)` opens its own connection, leaving the transaction guarding nothing while every row still commits:
 
   ```php
+  $pdo = $injector->getInstance(\Aura\Sql\ExtendedPdoInterface::class);
+
   $pdo->beginTransaction();
   $store->appendAll($events);
   $pdo->commit();
