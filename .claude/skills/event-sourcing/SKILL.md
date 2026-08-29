@@ -64,13 +64,12 @@ Read the log as a tree — far fewer tokens than raw JSON, so prefer it for both
 ```text
 request="POST app://self/orders?order_id=O-1000"
 ├── request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"
-│   ├── media_query name=inventory_reserve sku=SKU-1
-│   │   └── rows_ref=file://var/es/rows/000001.json
+│   ├── media_query name=inventory_reserve durationMs=0.42 [event]
 │   └── code=200 body_ref=file://var/es/bodies/000001.json
 └── code=201 body_ref=file://var/es/bodies/000002.json
 ```
 
-Every node follows one rule: intent inline, heavy detail behind a `*_ref` pointer, so an AI can follow it for the full detail. This bridge emits `resource_request` nodes with `body_ref`; in a real app other observers (e.g. Ray.MediaQuery) add non-resource nodes such as a media query — these render in stree's generic form but nest clearly and follow the same rule (e.g. `rows_ref`). Render with `Koriym\SemanticLogger\Stree\TreeRenderer` + a `FormatterRegistry` that registers `ResourceNodeFormatter` for `resource_request`; `examples/tree.php` builds a `DevLogModule`-style log and renders it, with `examples/semantic-tree.txt` as its output. The bundled `vendor/bin/stree <log.json>` works but shows the generic form (type label + raw `timestamp`) because the CLI loads no custom formatters.
+Every node follows one rule: intent inline, heavy detail behind a `*_ref` pointer, so an AI can follow it for the full detail. This bridge emits `resource_request` nodes with `body_ref`; `MediaQueryObservationModule` (optional, Ray.MediaQuery's logger seam) adds `media_query` leaf events — query id, params, wall time; successful queries only, `getCount()`/`getPages()` unobserved, no rows through the seam yet. Render with `Koriym\SemanticLogger\Stree\TreeRenderer` + a `FormatterRegistry` that registers `ResourceNodeFormatter` for `resource_request`; `examples/tree.php` builds a `DevLogModule`-style log and renders it, with `examples/semantic-tree.txt` as its output. The bundled `vendor/bin/stree <log.json>` works but shows the generic form (type label + raw `timestamp`) because the CLI loads no custom formatters.
 
 ## Examples
 

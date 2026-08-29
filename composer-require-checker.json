@@ -4,6 +4,7 @@
         "BEAR\\Resource\\InvokerInterface",
         "BEAR\\Resource\\ResourceObject",
         "Ray\\MediaQuery\\Annotation\\DbQuery",
+        "Ray\\MediaQuery\\MediaQueryLoggerInterface",
         "Ray\\MediaQuery\\Result\\AffectedRows"
     ],
     "php-core-extensions": [

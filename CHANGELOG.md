@@ -18,6 +18,7 @@
 - durationMs on the resource_response close context
 - JSON Schemas for observation contexts under docs/schemas, validated in examples/observe
 - UnifiedLogModule recipe and test: one shared logger merges the BEAR.QueryRepository cache log into the resource tree
+- MediaQueryObservationModule: Ray.MediaQuery's logger seam recorded as media_query leaf events (query id, params, durationMs)
 
 ### Changed
 
