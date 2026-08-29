@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Module;
 
+use BEAR\EventSourcing\Extracted;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\SemanticLogExtractorInterface;
@@ -20,10 +21,8 @@ final class EventSourcingModule extends AbstractModule
 
     protected function configure(): void
     {
-        if ($this->methods !== null) {
-            $this->bind(RecordedMethods::class)->toInstance($this->methods);
-        }
-
+        $this->bind(RecordedMethods::class)->annotatedWith(Extracted::class)
+            ->toInstance($this->methods ?? new RecordedMethods());
         $this->bind(SemanticLogExtractorInterface::class)->to(SemanticLogExtractor::class);
     }
 }

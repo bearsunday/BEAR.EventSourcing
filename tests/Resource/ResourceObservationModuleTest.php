@@ -9,6 +9,7 @@ use BEAR\EventSourcing\Resource\SemanticLogInvoker;
 use BEAR\EventSourcing\Resource\DevLogModule;
 use BEAR\EventSourcing\Resource\FileBodyStore;
 use BEAR\EventSourcing\Resource\BodyStoreInterface;
+use BEAR\EventSourcing\Recorded;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Module\ResourceClientModule;
@@ -48,7 +49,7 @@ final class ResourceObservationModuleTest extends TestCase
         $this->assertFalse(file_exists($dir . '/old.json'));
         $this->assertInstanceOf(SemanticLogInvoker::class, $injector->getInstance(InvokerInterface::class));
         $this->assertInstanceOf(FileBodyStore::class, $injector->getInstance(BodyStoreInterface::class));
-        $this->assertSame('GET', $injector->getInstance(RecordedMethods::class)->normalize('GET'));
+        $this->assertSame('GET', $injector->getInstance(RecordedMethods::class, Recorded::class)->normalize('GET'));
 
         FileBodyStore::clearDirectory($dir);
         rmdir($dir);

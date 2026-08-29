@@ -22,3 +22,4 @@
 ### Changed
 
 - Require koriym/semantic-logger ^0.9
+- Recording and extraction policies bind under separate keys (`#[Recorded]` / `#[Extracted]`), so dev GET recording no longer widens extraction

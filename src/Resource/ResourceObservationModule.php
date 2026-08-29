@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource;
 
+use BEAR\EventSourcing\Recorded;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\Resource\InvokerInterface;
 use Koriym\SemanticLogger\SemanticLogger;
@@ -26,9 +27,8 @@ final class ResourceObservationModule extends AbstractModule
 
     protected function configure(): void
     {
-        if ($this->methods !== null) {
-            $this->bind(RecordedMethods::class)->toInstance($this->methods);
-        }
+        $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)
+            ->toInstance($this->methods ?? new RecordedMethods());
 
         if ($this->bodyStore !== null) {
             $this->bind(BodyStoreInterface::class)->toInstance($this->bodyStore);
@@ -44,7 +44,10 @@ final class ResourceObservationModule extends AbstractModule
 
         $this->rename(InvokerInterface::class, self::INVOKER);
         $this->bind(InvokerInterface::class)
-            ->toConstructor(SemanticLogInvoker::class, ['invoker' => self::INVOKER])
+            ->toConstructor(SemanticLogInvoker::class, [
+                'invoker' => self::INVOKER,
+                'recordedMethods' => Recorded::class,
+            ])
             ->in(Scope::SINGLETON);
     }
 }
