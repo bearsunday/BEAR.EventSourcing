@@ -53,7 +53,8 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
         $this->assertSame('media_query', $event['type']);
         $this->assertSame('inventory_reserve', $event['context']['name']);
         $this->assertSame(['sku' => 'SKU-1'], $event['context']['params']);
-        $this->assertIsFloat($event['context']['durationMs']);
+        // An integral millisecond value degrades to int in the JSON roundtrip.
+        $this->assertIsNumeric($event['context']['durationMs']);
         $this->assertGreaterThanOrEqual(0.0, $event['context']['durationMs']);
         $this->assertSame('query: inventory_reserve', (string) $adapter);
     }
