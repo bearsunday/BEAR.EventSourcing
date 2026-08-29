@@ -1,0 +1,16 @@
+# Changelog
+
+## 0.1.0 (Unreleased)
+
+### Added
+
+- Event: immutable observed fact with a deterministic sha256 id derived from method, uri, UTC-normalized timestamp, and key-sorted params
+- Events / EventsInterface: countable, iterable event collection
+- SemanticLogExtractor: extracts events from Semantic Logger logs; gated to `resource_request` entries, requires an absolute ISO-8601 timestamp with an explicit offset, drops failed or uninterpretable response codes
+- RecordedMethods: records POST/PUT/PATCH/DELETE by default, GET opt-in via `WITH_READS`
+- EventStoreInterface with InMemoryEventStore and the Ray.MediaQuery-backed MediaQueryEventStore; appends are idempotent per event id
+- EventSourcingModule and MediaQueryEventStoreModule for optional Ray.Di wiring
+- ResourceObservationModule: optional BEAR.Resource `InvokerInterface` bridge writing Semantic Logger open/close entries
+- FileBodyStore / NullBodyStore / DevLogModule: development `body_ref` storage with a directory ownership guard
+- ResourceNodeFormatter: stree formatter for `resource_request` nodes
+- SQLite schema and queries for the SQL event store (`event_id` UNIQUE, `INSERT OR IGNORE`)
