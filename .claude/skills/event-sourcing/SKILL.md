@@ -43,11 +43,14 @@ Do not:
 
 Three independent layers map onto context modules. Keep `EventSourcingModule` out of `AppModule` so contexts that never touch event sourcing stay clean; install it only where it is used.
 
-- **Observe**: `DevLogModule` (dev) or `ResourceObservationModule` (prod). Both need the BEAR.Resource module passed as `module:` so the bridge can decorate `InvokerInterface`.
-- **Extract**: `EventSourcingModule` binds `SemanticLogExtractorInterface`.
+- **Observe**: the bridge decorates the `InvokerInterface` binding the app already has — how depends on where you wire it:
+  - Standalone injector (tests, scripts): pass the resource module as `module:` — `new DevLogModule($dir, module: new ResourceModule(...))`.
+  - BEAR.Sunday context module (`dev-` prefix, e.g. `dev-hal-app`): the context module inherits the whole inner chain, so `rename(InvokerInterface::class, ...)` and bind `SemanticLogInvoker` over it in place (see README "Wiring inside a BEAR.Sunday context"). NEVER `override(new DevLogModule(module: new PackageModule()))` — the second `PackageModule` registers the framework pointcuts again and every interceptor runs twice; the cache log shows it as a `get` scope nested in itself.
+- **Extract**: `EventSourcingModule` binds `SemanticLogExtractorInterface`. Recording and extraction are separate policy keys (`#[Recorded]` / `#[Extracted]`), so dev GET recording never widens the writes-only extraction default.
 - **Persist**: install `MediaQueryEventStoreModule` alongside only when replay/persistence is needed (with application-owned `AuraSqlModule` + `MediaQuerySqlModule`).
+- **Unify with the QueryRepository cache log**: alias the `#[CacheLog]` logger to the same instance. Plain injector: `toInstance()`. Compiled injector (Sunday context): a provider returning the injected unannotated logger — `toInstance` would serialize the instance and split the tree per process.
 
-Typical split — `DevModule`: `DevLogModule` + `EventSourcingModule()` (observe, no store). `ProdModule`: `ResourceObservationModule` + `EventSourcingModule()` + `MediaQueryEventStoreModule` (observe + persist).
+Typical split — `DevModule`: rename+decorate + `EventSourcingModule()` (observe, no store). `ProdModule`: the same decoration with the default `RecordedMethods` + `EventSourcingModule()` + `MediaQueryEventStoreModule` (observe + persist). The application owns the flush once per request at the request end (`public/index.php`, or the worker runtime's request-end event via `EventCollector`).
 
 ## Development observation output
 
