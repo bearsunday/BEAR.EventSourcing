@@ -40,7 +40,7 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
 
     private RecordedMethods $recordedMethods;
 
-    public function __construct(RecordedMethods|null $recordedMethods = null)
+    public function __construct(#[Extracted] RecordedMethods|null $recordedMethods = null)
     {
         $this->recordedMethods = $recordedMethods ?? new RecordedMethods();
     }

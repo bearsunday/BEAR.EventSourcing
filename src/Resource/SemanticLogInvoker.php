@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource;
 
+use BEAR\EventSourcing\Recorded;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\InvokerInterface;
@@ -22,7 +23,7 @@ final class SemanticLogInvoker implements InvokerInterface
         private readonly InvokerInterface $invoker,
         private readonly SemanticLoggerInterface $logger,
         private readonly BodyStoreInterface $bodyStore,
-        RecordedMethods|null $recordedMethods = null,
+        #[Recorded] RecordedMethods|null $recordedMethods = null,
     ) {
         $this->recordedMethods = $recordedMethods ?? new RecordedMethods();
     }
