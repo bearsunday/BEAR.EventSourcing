@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-namespace BEAR\EventSourcing\Examples;
+namespace BEAR\EventSourcing\MediaQuery;
 
 use Koriym\SemanticLogger\AbstractContext;
 
 /**
- * Example-only context for a Ray.MediaQuery DB operation embedded inside a
- * resource. Media query observation is a separate concern from this package;
- * the node is here to show a non-resource operation nesting cleanly in the tree.
+ * Leaf event for one executed media query: intent (name + params) and wall
+ * time, attached under the currently open scope. Result rows are not
+ * available through Ray.MediaQuery's logger seam; `rows_ref` stays optional
+ * in the schema for a future richer upstream contract.
  */
 final class MediaQueryContext extends AbstractContext
 {
@@ -19,11 +20,11 @@ final class MediaQueryContext extends AbstractContext
     /** @psalm-suppress InvalidClassConstantType */
     public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.EventSourcing/schemas/media-query.json';
 
-    // `name`, not `id`: stree's compact signal excludes an `id` key (it treats
-    // it as the node's structural identifier), so the query identity is `name`.
+    /** @param array<string, mixed> $params */
     public function __construct(
         public readonly string $name,
-        public readonly string $sku,
+        public readonly array $params,
+        public readonly float $durationMs,
     ) {
     }
 }

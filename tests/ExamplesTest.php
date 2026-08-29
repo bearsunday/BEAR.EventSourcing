@@ -86,11 +86,9 @@ final class ExamplesTest extends TestCase
         $this->assertStringContainsString('└── code=201 body_ref=file://var/es/bodies/000002.json', $output);
         $this->assertStringNotContainsString('timestamp=', $output);
 
-        // An embedded non-resource node (a media query) renders in stree's generic
-        // form, yet the tree structure stays clear and its rows sit behind the same
-        // `*_ref` pointer as a resource body.
-        $this->assertStringContainsString('media_query name=inventory_reserve sku=SKU-1', $output);
-        $this->assertStringContainsString('rows_ref=file://var/es/rows/000001.json', $output);
+        // An embedded non-resource operation (a media query) is a leaf event:
+        // intent and wall time inline, nested under the resource that ran it.
+        $this->assertStringContainsString('media_query name=inventory_reserve durationMs=0.42 [event]', $output);
     }
 
     private static function runExample(string $script): string

@@ -37,7 +37,7 @@
     },
     "suggest": {
         "bear/resource": "To observe BEAR.Resource execution with the InvokerInterface bridge (^1.32)",
-        "ray/media-query": "To back EventStoreInterface with SQL through MediaQueryEventStore (^1.1)"
+        "ray/media-query": "To back EventStoreInterface with SQL and to observe media queries as semantic log events (^1.1)"
     },
     "autoload": {
         "psr-4": {

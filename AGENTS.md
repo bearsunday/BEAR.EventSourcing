@@ -40,6 +40,7 @@ Core components:
 - `EventStoreInterface`, in-memory implementation, and Ray.MediaQuery SQL implementation
 - `EventSourcingModule` and `MediaQueryEventStoreModule` for optional ES bindings
 - Optional BEAR.Resource observation bridge using `InvokerInterface`
+- Optional Ray.MediaQuery observation adapter using `MediaQueryLoggerInterface`
 - Development `FileBodyStore` / `DevLogModule` for local body refs
 
 Keep out of this package:

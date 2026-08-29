@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/media-query.json",
+    "title": "Media query observation",
+    "description": "Leaf event written by the Ray.MediaQuery observation adapter for one executed query: intent (name + params) and wall time. A failed query throws before the logger seam fires and is never recorded. rows_ref is reserved for a richer upstream logger contract that exposes result rows.",
+    "type": "object",
+    "required": ["name", "params", "durationMs"],
+    "properties": {
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The query id (sql file basename)."
+        },
+        "params": {
+            "type": ["object", "array"],
+            "description": "Converted query parameters; an empty map serializes as an empty JSON array. Binary values arrive base64-encoded."
+        },
+        "durationMs": {
+            "type": "number",
+            "minimum": 0
+        },
+        "rows_ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Storage pointer to externalized result rows; not emitted by the current adapter."
+        }
+    },
+    "additionalProperties": false
+}
