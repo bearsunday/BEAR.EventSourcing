@@ -223,6 +223,14 @@ $collect = new EventCollector($logger, $extractor, $store); // store is optional
 $events = $collect(); // once per request, at the boundary
 ```
 
+The collector is the persistence boundary: it consumes the session and returns only the events — the durable facts. A development request end that also wants the tree owns the flush directly and extracts from the same log:
+
+```php
+$log = $logger->flush();                          // the tree, for inspection
+file_put_contents($logFile, json_encode($log));
+$events = $extractor->extract($log);              // the facts
+```
+
 Note that the bundled `ResourceResponseContext` records `code`, `body_ref`, and `durationMs` — it never inlines the body. Events extracted from a bridge log therefore always carry a `null` `result`; the payload lives behind the `body_ref` pointer (see below). Record your own close context with a `body` field when the event itself must carry the result.
 
 For local AI/debug work, use `DevLogModule`. It clears the body directory when the module is constructed, stores rendered bodies as files through `FileBodyStore`, and records `GET` as well as write methods:
