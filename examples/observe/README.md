@@ -17,8 +17,8 @@ composer observe            # デフォルト PHP
 php examples/observe/observe.php
 ```
 
-- **PHP 8.4 では SQL 節（[8]）が環境ガードで skip 表示**。SQL EventStore まで見るには PHP < 8.4（例: `php@8.3`）で実行。理由は aura/sql < 6 が PHP >= 8.4 でロード不可（テストスイートと同じガード条件）。
-- 動作確認済み: PHP 8.4（SQL skip 表示）/ 8.3（SQL 動作、stored rows: 2、recorded_at `+00:00`）。
+- SQL 節（[8]）は aura/sql >= 6 なら PHP 8.4 でも動く。aura/sql < 6 の環境では PHP >= 8.4 でロード不可のため skip 表示になる（テストスイートと同じガード条件）。
+- 動作確認済み: PHP 8.4 / 8.3 とも全節動作（stored rows: 2、recorded_at `+00:00`）。
 
 ## 構成
 
