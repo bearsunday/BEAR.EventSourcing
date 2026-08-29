@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json",
+    "title": "Resource request observation",
+    "description": "Open context written by the BEAR.EventSourcing observation bridge for one BEAR.Resource invocation. The uri is canonical (path only); the query lives in params. The timestamp is absolute ISO-8601 with an explicit offset; an entry without one is never extracted as an event.",
+    "type": "object",
+    "required": ["uri", "method", "params", "timestamp"],
+    "properties": {
+        "uri": {
+            "type": "string",
+            "minLength": 1
+        },
+        "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        },
+        "params": {
+            "type": ["object", "array"],
+            "description": "Request parameters as a string-keyed map; an empty map serializes as an empty JSON array."
+        },
+        "timestamp": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}[+-]\\d{2}:\\d{2}$"
+        }
+    },
+    "additionalProperties": false
+}

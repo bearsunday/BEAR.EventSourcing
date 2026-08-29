@@ -1,0 +1,40 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-response.json",
+    "title": "Resource response observation",
+    "description": "Close context written by the BEAR.EventSourcing observation bridge. The body is never inlined: body_ref points at an externalized rendered body and is not extracted into Event::result. A code of 400 or greater marks a failed operation, which is never extracted as an event.",
+    "type": "object",
+    "required": ["code"],
+    "properties": {
+        "code": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+        },
+        "body_ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Storage pointer to the externalized rendered body; stays in the log for inspection only."
+        },
+        "exception": {
+            "type": "object",
+            "required": ["class", "message"],
+            "properties": {
+                "class": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "message": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "durationMs": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Wall time of the inner invocation in milliseconds, including child operations. Observation data: never part of event identity."
+        }
+    },
+    "additionalProperties": false
+}

@@ -13,7 +13,7 @@ final class ResourceResponseContext extends AbstractContext implements JsonSeria
     public const TYPE = 'resource_response';
 
     /** @psalm-suppress InvalidClassConstantType */
-    public const SCHEMA_URL = 'https://bearsunday.github.io/schemas/semantic-logger/resource-response.json';
+    public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-response.json';
 
     /** @param array<string, mixed>|null $body */
     public function __construct(

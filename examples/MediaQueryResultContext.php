@@ -18,7 +18,7 @@ final class MediaQueryResultContext extends AbstractContext implements JsonSeria
     public const TYPE = 'media_query_result';
 
     /** @psalm-suppress InvalidClassConstantType */
-    public const SCHEMA_URL = 'https://bearsunday.github.io/schemas/semantic-logger/media-query-result.json';
+    public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.EventSourcing/schemas/media-query-result.json';
 
     /** @param non-empty-string $rowsRef */
     public function __construct(

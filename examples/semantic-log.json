@@ -4,7 +4,7 @@
         {
             "id": "resource_request_1",
             "type": "resource_request",
-            "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json",
             "context": {
                 "uri": "app://self/users",
                 "method": "POST",
@@ -17,7 +17,7 @@
             "close": {
                 "id": "resource_response_1",
                 "type": "resource_response",
-                "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-response.json",
                 "context": {
                     "code": 201,
                     "body": {
@@ -30,7 +30,7 @@
         {
             "id": "resource_request_2",
             "type": "resource_request",
-            "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json",
             "context": {
                 "uri": "app://self/users/koriym",
                 "method": "GET",
@@ -42,7 +42,7 @@
             "close": {
                 "id": "resource_response_2",
                 "type": "resource_response",
-                "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-response.json",
                 "context": {
                     "code": 200,
                     "body": {
@@ -55,7 +55,7 @@
         {
             "id": "resource_request_3",
             "type": "resource_request",
-            "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json",
             "context": {
                 "uri": "app://self/orders",
                 "method": "POST",
@@ -68,7 +68,7 @@
                 {
                     "id": "resource_request_4",
                     "type": "resource_request",
-                    "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+                    "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json",
                     "context": {
                         "uri": "app://self/inventory/SKU-1",
                         "method": "PUT",
@@ -81,7 +81,7 @@
                     "close": {
                         "id": "resource_response_3",
                         "type": "resource_response",
-                        "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+                        "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-response.json",
                         "context": {
                             "code": 200,
                             "body": {
@@ -95,7 +95,7 @@
             "close": {
                 "id": "resource_response_4",
                 "type": "resource_response",
-                "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-response.json",
                 "context": {
                     "code": 201,
                     "body": {
@@ -108,7 +108,7 @@
         {
             "id": "resource_request_5",
             "type": "resource_request",
-            "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-request.json",
+            "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json",
             "context": {
                 "uri": "app://self/users/koriym",
                 "method": "DELETE",
@@ -120,7 +120,7 @@
             "close": {
                 "id": "resource_response_5",
                 "type": "resource_response",
-                "schemaUrl": "https://bearsunday.github.io/schemas/semantic-logger/resource-response.json",
+                "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-response.json",
                 "context": {
                     "code": 409,
                     "body": {
