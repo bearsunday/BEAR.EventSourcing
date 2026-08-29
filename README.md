@@ -211,9 +211,19 @@ By default the bridge installs `NullBodyStore`, so no body is stored. Applicatio
 The bridge only writes open/close entries; it never flushes or persists. Inject `SemanticLoggerInterface`, call `$logger->flush()` once per request, and extract (and optionally store) from the returned log. Two operational rules follow:
 
 - The logger accumulates in memory until flushed. In long-running workers (Swoole, FrankenPHP, RoadRunner) it is a singleton that survives requests — flush every request, or observations bleed from one request into the next.
-- `flush()` throws Semantic Logger's `NoLogSessionException` when nothing was recorded — for example a request that performed only `GET` reads under the default `RecordedMethods`. Handle it (or check before flushing) in the code that owns the flush.
+- `flush()` returns an empty log when nothing was recorded — for example a request that performed only `GET` reads under the default `RecordedMethods`. Extracting an empty log yields empty events, so the flush owner has no exception to handle.
 
-Note that the bundled `ResourceResponseContext` records `code` and `body_ref` only — it never inlines the body. Events extracted from a bridge log therefore always carry a `null` `result`; the payload lives behind the `body_ref` pointer (see below). Record your own close context with a `body` field when the event itself must carry the result.
+`EventCollector` packages flush -> extract -> optional append into one call for the handler that owns the request boundary. In worker runtimes, call it from the runtime's own request-end event (a Swoole request close, a RoadRunner worker-loop iteration) — no process-shutdown hook is involved:
+
+```php
+use BEAR\EventSourcing\EventCollector;
+
+$collect = new EventCollector($logger, $extractor, $store); // store is optional
+
+$events = $collect(); // once per request, at the boundary
+```
+
+Note that the bundled `ResourceResponseContext` records `code`, `body_ref`, and `durationMs` — it never inlines the body. Events extracted from a bridge log therefore always carry a `null` `result`; the payload lives behind the `body_ref` pointer (see below). Record your own close context with a `body` field when the event itself must carry the result.
 
 For local AI/debug work, use `DevLogModule`. It clears the body directory when the module is constructed, stores rendered bodies as files through `FileBodyStore`, and records `GET` as well as write methods:
 
@@ -231,10 +241,12 @@ $injector = new Injector(new DevLogModule(
 A `BodyStoreInterface` records a `body_ref` in the close context:
 
 ```json
-{"code": 200, "body_ref": "file:///path/to/var/es/bodies/000001.json"}
+{"code": 200, "body_ref": "file:///path/to/var/es/bodies/000001.json", "durationMs": 0.42}
 ```
 
 `body_ref` is a reference to a stored rendered body. It stays in the Semantic Log for inspection and is **not** extracted into `Event::$result` — the event's `result` comes from `close.context.body`. A bridge log that records only `body_ref` therefore yields an event with a `null` result; the payload lives in the externalized body, not in the event. The same domain operation produces the same event regardless of which `BodyStoreInterface` the bridge uses.
+
+`durationMs` is the wall time of the invocation, children included. It is observation data: it stays in the close context and is never part of event identity, for the same reason `result` is excluded — the same domain operation is the same event regardless of how long it took. The log answers *which* request was slow and *where* in the tree; *why* remains the profiler's job.
 
 ### What dev observation produces
 
@@ -263,6 +275,35 @@ request="POST app://self/orders?order_id=O-1000"
 The request line is the intent (`method` on a `uri` with its params as a query string); the `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent — a resource calling a resource, and a resource embedding a non-resource operation such as a media query, which renders in stree's generic form but stays structurally clear. Every node follows one rule: the intent is inline, the heavy detail sits behind a `*_ref` pointer (`body_ref`, `rows_ref`). The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `*_ref` to its file for the full detail.
 
 Render it with `TreeRenderer` and a `FormatterRegistry` that registers `ResourceNodeFormatter` for the `resource_request` type — `examples/tree.php` builds a `DevLogModule`-style log (`body_ref` pointers) and renders it, and `examples/semantic-tree.txt` is its output. The bundled `vendor/bin/stree dev-log.json` works too, but renders the generic form (type label plus a raw `timestamp`) since the CLI does not load custom formatters. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson` of the extraction examples.
+
+### The log is a verifiable contract
+
+Every context names its JSON Schema (`schemaUrl`). The canonical schema files live in `docs/schemas/` and are published at `https://bearsunday.github.io/BEAR.EventSourcing/schemas/`. Validate a flushed log offline with Semantic Logger's validator:
+
+```php
+use Koriym\SemanticLogger\SemanticLogValidator;
+
+(new SemanticLogValidator())->validate($logFile, $projectDir . '/docs/schemas');
+```
+
+`examples/observe/observe.php` ends by validating its own run, so a contract break fails the demo.
+
+## One tree with BEAR.QueryRepository (optional)
+
+BEAR.QueryRepository's semantic cache log records through a `#[CacheLog]`-qualified `SemanticLoggerInterface`. Bind the same instance under both keys and the two observations become one tree: cache scopes nest inside the `resource_request` scope that caused them.
+
+```php
+use BEAR\RepositoryModule\Annotation\CacheLog;
+use Koriym\SemanticLogger\SemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
+
+$logger = new SemanticLogger();
+
+$this->install(new DevLogModule($bodyDir, logger: $logger, module: $appModule));
+$this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toInstance($logger);
+```
+
+Share the instance with `toInstance()`: two separate `to(...)->in(Scope::SINGLETON)` bindings would create one singleton per binding key and split the tree in two. Extraction stays safe in the merged tree — only `resource_request` entries become events, so cache scopes are never misread as state changes. `tests/UnifiedLogTest.php` proves both properties.
 
 ## Boundaries
 

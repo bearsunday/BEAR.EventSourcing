@@ -14,3 +14,11 @@
 - FileBodyStore / NullBodyStore / DevLogModule: development `body_ref` storage with a directory ownership guard
 - ResourceNodeFormatter: stree formatter for `resource_request` nodes
 - SQLite schema and queries for the SQL event store (`event_id` UNIQUE, `INSERT OR IGNORE`)
+- EventCollector: flush -> extract -> optional append in one call for request-end handlers
+- durationMs on the resource_response close context
+- JSON Schemas for observation contexts under docs/schemas, validated in examples/observe
+- UnifiedLogModule recipe and test: one shared logger merges the BEAR.QueryRepository cache log into the resource tree
+
+### Changed
+
+- Require koriym/semantic-logger ^0.9
