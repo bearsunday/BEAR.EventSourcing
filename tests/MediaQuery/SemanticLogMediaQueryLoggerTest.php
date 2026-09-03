@@ -68,11 +68,13 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
         );
 
         $adapter->start();
-        $adapter->log('blob_save', ['payload' => "\xB1\x31"]);
+        $adapter->log('blob_save', ['payload' => "\xB1\x31", 'meta' => ['raw' => "\xB1\x31"]]);
         $logger->close(new ResourceResponseContext(200), $openId);
 
         $entry = self::flushToArray($logger->flush())['open'][0];
         $this->assertSame(base64_encode("\xB1\x31"), $entry['events'][0]['context']['params']['payload']);
+        // Nested values are sanitized too: the context must stay JSON-encodable at any depth.
+        $this->assertSame(base64_encode("\xB1\x31"), $entry['events'][0]['context']['params']['meta']['raw']);
     }
 
     public function testLogWithoutStartRecordsZeroDuration(): void

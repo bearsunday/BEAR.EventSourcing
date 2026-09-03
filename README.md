@@ -325,11 +325,12 @@ use BEAR\EventSourcing\Module\MediaQueryObservationModule;
 $this->install(new MediaQueryObservationModule()); // before the MediaQuery modules
 ```
 
-The module installs flat: only the logger binding. Three boundaries to know:
+The module installs flat: only the logger binding. Boundaries to know:
 
 - A failed query throws before the seam fires, so only successful queries are recorded.
 - `getCount()` and `getPages()` bypass the seam entirely and stay unobserved.
 - Result rows are not available through the seam; the `media_query` schema reserves an optional `rows_ref` for a richer upstream logger contract.
+- The observer sees every query, including its own persistence: with the SQL event store active in the same session, `event_store_append` shows up as a `media_query` event too.
 
 ### The log is a verifiable contract
 

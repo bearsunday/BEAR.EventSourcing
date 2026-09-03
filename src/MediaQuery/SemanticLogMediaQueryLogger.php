@@ -12,6 +12,7 @@ use Throwable;
 use function base64_encode;
 use function hrtime;
 use function implode;
+use function is_array;
 use function is_string;
 use function preg_match;
 use function round;
@@ -49,10 +50,13 @@ final class SemanticLogMediaQueryLogger implements MediaQueryLoggerInterface, St
     public function log(string $queryId, array $values): void
     {
         $durationMs = $this->start === 0 ? 0.0 : round(((float) hrtime(true) - (float) $this->start) / 1e6, 3);
+        $this->start = 0; // an unbracketed log() must not measure from a previous query
         $this->lines[] = sprintf('query: %s', $queryId);
         // Observation must never break a completed query.
         try {
-            $this->logger->event(new MediaQueryContext($queryId, self::utf8Safe($values), $durationMs));
+            /** @var array<string, mixed> $safeValues Top-level keys are the query's named parameters. */
+            $safeValues = self::utf8Safe($values);
+            $this->logger->event(new MediaQueryContext($queryId, $safeValues, $durationMs));
         } catch (Throwable $e) {
             try {
                 trigger_error(sprintf('Media query observation failed: %s', $e->getMessage()), E_USER_WARNING);
@@ -68,14 +72,19 @@ final class SemanticLogMediaQueryLogger implements MediaQueryLoggerInterface, St
     }
 
     /**
-     * @param array<string, mixed> $values
+     * @param array<array-key, mixed> $values
      *
-     * @return array<string, mixed>
+     * @return array<array-key, mixed>
      */
     private static function utf8Safe(array $values): array
     {
         /** @psalm-suppress MixedAssignment */
         foreach ($values as &$value) {
+            if (is_array($value)) {
+                $value = self::utf8Safe($value);
+                continue;
+            }
+
             if (is_string($value) && preg_match('//u', $value) !== 1) {
                 $value = base64_encode($value); // binary-safe: the context must stay JSON-encodable
             }
