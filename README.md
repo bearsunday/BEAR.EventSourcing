@@ -325,12 +325,13 @@ use BEAR\EventSourcing\Module\MediaQueryObservationModule;
 $this->install(new MediaQueryObservationModule()); // before the MediaQuery modules
 ```
 
-The module installs flat: only the logger binding. Boundaries to know:
+The module installs flat: only the logger binding — the adapter needs the unqualified `SemanticLoggerInterface` binding, the same instance the resource bridge and the flush owner use. Boundaries to know:
 
-- A failed query throws before the seam fires, so only successful queries are recorded.
-- `getCount()` and `getPages()` bypass the seam entirely and stay unobserved.
+- A failed query throws before the seam fires, so only successful queries are recorded. A `.sql` file may hold several statements: one event covers the whole invocation, and a failure anywhere in the batch suppresses it.
+- `getCount()` runs outside the seam and stays unobserved. A paginated query (`#[Pager]`) passes through the seam only while its lazy wrapper is constructed — the event's near-zero duration is wrapper construction, and the count/page SQL that runs at iteration time is unobserved.
 - Result rows are not available through the seam; the `media_query` schema reserves an optional `rows_ref` for a richer upstream logger contract.
-- The observer sees every query, including its own persistence: with the SQL event store active in the same session, `event_store_append` shows up as a `media_query` event too.
+- The observer sees every query the seam fires for, including the event store's own appends. Where they land depends on when they run: inside an open scope they nest there; after the flush (the `EventCollector` path) they open the next session as top-level events.
+- The singleton adapter keeps one start marker, so overlapping queries in a coroutine runtime would corrupt durations. Observe per-request runtimes, like the rest of the observation stack.
 
 ### The log is a verifiable contract
 

@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/media-query.json",
     "title": "Media query observation",
-    "description": "Leaf event written by the Ray.MediaQuery observation adapter for one executed query: intent (name + params) and wall time. A failed query throws before the logger seam fires and is never recorded. rows_ref is reserved for a richer upstream logger contract that exposes result rows.",
+    "description": "Leaf event written by the Ray.MediaQuery observation adapter for one successful .sql invocation: intent (name + params) and wall time. The file may contain several statements; the duration covers the batch, and a failure anywhere in it throws before the logger seam fires, so nothing is recorded. rows_ref is reserved for a richer upstream logger contract that exposes result rows.",
     "type": "object",
     "required": ["name", "params", "durationMs"],
     "properties": {

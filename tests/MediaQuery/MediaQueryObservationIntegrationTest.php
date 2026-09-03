@@ -11,6 +11,7 @@ use BEAR\EventSourcing\Resource\ResourceRequestContext;
 use BEAR\EventSourcing\Resource\ResourceResponseContext;
 use BEAR\EventSourcing\Tests\Fixture\MediaQueryEventStoreAppModule;
 use DateTimeImmutable;
+use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PDO;
@@ -18,6 +19,7 @@ use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Ray\Di\InjectorInterface;
 use Ray\Di\Scope;
 
 use function file_get_contents;
@@ -46,6 +48,65 @@ final class MediaQueryObservationIntegrationTest extends TestCase
 
     public function testRealSqlQueryExecutionEmitsMediaQueryEvent(): void
     {
+        $injector = $this->injector();
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $store = $injector->getInstance(EventStoreInterface::class);
+
+        $openId = $logger->open(new ResourceRequestContext(
+            uri: 'app://self/orders',
+            method: 'POST',
+            params: ['order_id' => 'O-1000'],
+            timestamp: '2026-06-10T12:36:00.000000+00:00',
+        ));
+        // A real Ray.MediaQuery execution: SqlQuery::perform() runs the
+        // event_store_append query through the observed logger seam.
+        $store->append(self::event());
+        $logger->close(new ResourceResponseContext(201), $openId);
+
+        $tree = self::toArray($logger->flush());
+        $event = $tree['open'][0]['events'][0];
+        $this->assertSame('media_query', $event['type']);
+        $this->assertSame('event_store_append', $event['context']['name']);
+        // An integral millisecond value degrades to int in the JSON roundtrip.
+        $this->assertIsNumeric($event['context']['durationMs']);
+        $this->assertGreaterThanOrEqual(0.0, $event['context']['durationMs']);
+    }
+
+    public function testAppendAfterFlushLandsInTheNextSession(): void
+    {
+        $injector = $this->injector();
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $store = $injector->getInstance(EventStoreInterface::class);
+
+        $openId = $logger->open(new ResourceRequestContext(
+            uri: 'app://self/orders',
+            method: 'POST',
+            params: ['order_id' => 'O-1000'],
+            timestamp: '2026-06-10T12:36:00.000000+00:00',
+        ));
+        $logger->close(new ResourceResponseContext(201), $openId);
+        $requestSession = self::toArray($logger->flush());
+        $this->assertArrayNotHasKey('events', $requestSession);
+
+        // The EventCollector path: persistence runs after the flush, so its
+        // observation cannot belong to the request's session.
+        $store->append(self::event());
+
+        $nextId = $logger->open(new ResourceRequestContext(
+            uri: 'app://self/users',
+            method: 'GET',
+            params: [],
+            timestamp: '2026-06-10T12:37:00.000000+00:00',
+        ));
+        $logger->close(new ResourceResponseContext(200), $nextId);
+
+        $nextSession = self::toArray($logger->flush());
+        $this->assertSame('media_query', $nextSession['events'][0]['type']);
+        $this->assertSame('event_store_append', $nextSession['events'][0]['context']['name']);
+    }
+
+    private function injector(): InjectorInterface
+    {
         $databaseFile = tempnam(sys_get_temp_dir(), 'bear_es_mq_');
         $this->assertIsString($databaseFile);
         $this->databaseFile = $databaseFile;
@@ -55,7 +116,7 @@ final class MediaQueryObservationIntegrationTest extends TestCase
 
         // Observation binds before the MediaQuery modules; install() keeps
         // the binding the installer already holds.
-        $injector = new Injector(new class ($databaseFile) extends AbstractModule {
+        return new Injector(new class ($databaseFile) extends AbstractModule {
             public function __construct(private readonly string $databaseFile)
             {
                 parent::__construct();
@@ -68,32 +129,22 @@ final class MediaQueryObservationIntegrationTest extends TestCase
                 $this->install(new MediaQueryEventStoreAppModule($this->databaseFile));
             }
         });
-        $logger = $injector->getInstance(SemanticLoggerInterface::class);
-        $store = $injector->getInstance(EventStoreInterface::class);
+    }
 
-        $openId = $logger->open(new ResourceRequestContext(
-            uri: 'app://self/orders',
-            method: 'POST',
-            params: ['order_id' => 'O-1000'],
-            timestamp: '2026-06-10T12:36:00.000000+00:00',
-        ));
-        // A real Ray.MediaQuery execution: SqlQuery::perform() runs the
-        // event_store_append query through the observed logger seam.
-        $store->append(new Event(
+    private static function event(): Event
+    {
+        return new Event(
             uri: 'app://self/orders',
             method: 'POST',
             timestamp: new DateTimeImmutable('2026-06-10T12:36:00.000000+00:00'),
             params: ['order_id' => 'O-1000'],
-        ));
-        $logger->close(new ResourceResponseContext(201), $openId);
+        );
+    }
 
-        /** @var array{open: list<array<array-key, mixed>>} $tree */
-        $tree = json_decode(json_encode($logger->flush(), JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
-        $event = $tree['open'][0]['events'][0];
-        $this->assertSame('media_query', $event['type']);
-        $this->assertSame('event_store_append', $event['context']['name']);
-        // An integral millisecond value degrades to int in the JSON roundtrip.
-        $this->assertIsNumeric($event['context']['durationMs']);
-        $this->assertGreaterThanOrEqual(0.0, $event['context']['durationMs']);
+    /** @return array<string, mixed> */
+    private static function toArray(LogJson $log): array
+    {
+        /** @var array<string, mixed> */
+        return json_decode(json_encode($log, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
     }
 }
