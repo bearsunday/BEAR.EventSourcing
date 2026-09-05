@@ -108,8 +108,6 @@ printf("  re-extraction produced identical ids: %s\n", $ids === $againIds ? 'yes
 
 // ---------------------------------------------------------------------------
 // 6. Filtering with PHP's standard iterators — no query methods on Events.
-//    The inventory filter matches nothing: the nested PUT is in the tree of
-//    [2], not in the stream.
 // ---------------------------------------------------------------------------
 $orderWrites = new CallbackFilterIterator(
     $events->getIterator(),

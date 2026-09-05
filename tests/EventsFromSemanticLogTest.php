@@ -174,7 +174,6 @@ final class EventsFromSemanticLogTest extends TestCase
 
         $events = (new SemanticLogExtractor())->extract($logger->flush());
 
-        // Replaying POST orders re-issues the inventory PUT; recording both would apply it twice.
         $this->assertSame(
             ['app://self/orders'],
             array_map(static fn (Event $event): string => $event->uri, iterator_to_array($events)),

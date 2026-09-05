@@ -103,15 +103,13 @@ final class ExamplesTest extends TestCase
         $this->assertStringContainsString('code=409', $output);
         $this->assertStringContainsString('Bodies behind body_ref (4 file(s))', $output);
 
-        // Extraction boundary: only the root POST becomes an event ("params=" is
-        // printed once per extracted event). The nested PUT, the GET and the
-        // 409 DELETE stay in the observation log.
+        // Extraction boundary: "params=" is printed once per extracted event,
+        // so a count of 1 proves only the root POST became an event.
         $this->assertSame(1, substr_count($output, 'params='));
         $this->assertStringContainsString('POST app://self/orders  params=', $output);
         $this->assertStringContainsString('re-extraction produced identical ids: yes', $output);
         $this->assertStringContainsString('inventory events: 0', $output);
 
-        // Idempotent append in both stores, then ordered replay.
         $this->assertStringContainsString('events stored after re-append: 1 (no duplicates)', $output);
         $this->assertStringContainsString('stored rows after re-append: 1', $output);
         $this->assertSame(1, substr_count($output, 'replay '));
