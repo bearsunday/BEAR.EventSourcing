@@ -54,3 +54,6 @@ jobs:
 
       - name: Run test suite
         run: ./vendor/bin/phpunit
+
+      - name: Run observation demo
+        run: composer observe

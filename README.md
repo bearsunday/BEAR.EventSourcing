@@ -115,7 +115,7 @@ $orderEvents = new CallbackFilterIterator(
 );
 ```
 
-See `examples/extract.php`, `examples/replay.php`, and `examples/store.php` for runnable end-to-end scripts.
+See `examples/extract.php`, `examples/replay.php`, and `examples/store.php` for runnable end-to-end scripts. `composer observe` runs `examples/observe/observe.php`, which drives a live BEAR.Resource application through `DevLogModule` and walks every step from observation to replay.
 
 ## Storage (optional)
 

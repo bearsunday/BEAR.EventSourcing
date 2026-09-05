@@ -50,6 +50,7 @@
     },
     "scripts": {
         "test": "phpunit",
+        "observe": "php examples/observe/observe.php",
         "phpcs": "phpcs --standard=phpcs.xml",
         "psalm": "psalm --monochrome --show-info=false",
         "require-checker": "composer-require-checker check --config-file=./composer-require-checker.json composer.json",
