@@ -38,6 +38,14 @@ use Ray\Di\Injector;
 $loader = require dirname(__DIR__, 2) . '/vendor/autoload.php';
 $loader->addPsr4('FakeApp\\', __DIR__);
 
+// bear/resource and ray/media-query are suggested packages, installed via require-dev.
+foreach (['bear/resource', 'ray/media-query'] as $package) {
+    if (! InstalledVersions::isInstalled($package)) {
+        fwrite(STDERR, "{$package} is not installed; run `composer install` in a development checkout.\n");
+        exit(1);
+    }
+}
+
 $projectDir = dirname(__DIR__, 2);
 $tmp = sys_get_temp_dir() . '/bear-es-observe-' . bin2hex(random_bytes(4));
 mkdir($tmp . '/bodies', 0777, true);
