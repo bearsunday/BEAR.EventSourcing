@@ -91,6 +91,32 @@ final class ExamplesTest extends TestCase
         $this->assertStringContainsString('media_query name=inventory_reserve durationMs=0.42 [event]', $output);
     }
 
+    public function testObserveExampleRunsTheLiveObservationPipeline(): void
+    {
+        $output = self::runExample('observe/observe.php');
+
+        // Live wiring, not a fixture: the internal inventory PUT appears as a
+        // child node of the POST orders request.
+        $this->assertStringContainsString('request="POST app://self/orders?order_id=O-1000"', $output);
+        $this->assertStringContainsString('├── request="PUT app://self/inventory?sku=SKU-1&quantity=1"', $output);
+        $this->assertStringContainsString('code=409', $output);
+        $this->assertStringContainsString('Bodies behind body_ref (4 file(s))', $output);
+
+        // Extraction boundary: only the two writes become events ("params=" is
+        // printed once per extracted event); the GET and the 409 DELETE do not.
+        $this->assertSame(2, substr_count($output, 'params='));
+        $this->assertStringContainsString('re-extraction produced identical ids: yes', $output);
+
+        // Idempotent append in both stores, then ordered replay.
+        $this->assertStringContainsString('events stored after re-append: 2 (no duplicates)', $output);
+        $this->assertStringContainsString('stored rows after re-append: 2', $output);
+        $this->assertSame(2, substr_count($output, 'replay '));
+
+        // Exit 0 (asserted by runExample) only proves [10] did not fail; this
+        // proves the schema validation actually ran to its success line.
+        $this->assertStringContainsString('All contexts validate successfully!', $output);
+    }
+
     private static function runExample(string $script): string
     {
         $output = [];
