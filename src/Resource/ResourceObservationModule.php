@@ -14,7 +14,7 @@ use Ray\Di\Scope;
 
 final class ResourceObservationModule extends AbstractModule
 {
-    private const INVOKER = 'bear_event_sourcing_invoker';
+    private const string INVOKER = 'bear_event_sourcing_invoker';
 
     public function __construct(
         private readonly RecordedMethods|null $methods = null,

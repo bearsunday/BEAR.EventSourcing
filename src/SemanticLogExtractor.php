@@ -41,7 +41,7 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
      * events, so unrelated open/close pairs that happen to carry `method` and
      * `uri` fields are never misread as state changes.
      */
-    public const RESOURCE_REQUEST_TYPE = 'resource_request';
+    public const string RESOURCE_REQUEST_TYPE = 'resource_request';
 
     private RecordedMethods $recordedMethods;
 

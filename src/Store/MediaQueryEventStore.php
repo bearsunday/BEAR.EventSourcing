@@ -29,7 +29,7 @@ use const JSON_THROW_ON_ERROR;
  */
 final readonly class MediaQueryEventStore implements EventStoreInterface
 {
-    private const TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
+    private const string TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
 
     public function __construct(
         private EventStoreQueryInterface $query,
