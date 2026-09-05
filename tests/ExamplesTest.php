@@ -47,11 +47,12 @@ final class ExamplesTest extends TestCase
     {
         $output = self::runExample('extract.php');
 
-        $this->assertSame(3, substr_count($output, '"method":'));
+        $this->assertSame(2, substr_count($output, '"method":'));
         $this->assertStringContainsString('"method": "POST"', $output);
-        $this->assertStringContainsString('"method": "PUT"', $output);
         $this->assertStringNotContainsString('"method": "GET"', $output);
-        $this->assertStringContainsString('"uri": "app://self/inventory/SKU-1"', $output);
+        // The inventory PUT nested inside POST orders is observation, not an event.
+        $this->assertStringNotContainsString('"method": "PUT"', $output);
+        $this->assertStringNotContainsString('app://self/inventory/SKU-1', $output);
         // result is taken from close.context.body, not from a body_ref; "status": "accepted"
         // only appears in the orders response body, so it proves the body became the event result.
         $this->assertStringContainsString('"status": "accepted"', $output);
@@ -71,8 +72,8 @@ final class ExamplesTest extends TestCase
     {
         $output = self::runExample('store.php');
 
-        $this->assertStringContainsString('"stored": 3', $output);
-        $this->assertSame(3, substr_count($output, '"method":'));
+        $this->assertStringContainsString('"stored": 2', $output);
+        $this->assertSame(2, substr_count($output, '"method":'));
     }
 
     public function testTreeExampleRendersCleanResourceTree(): void
@@ -102,15 +103,18 @@ final class ExamplesTest extends TestCase
         $this->assertStringContainsString('code=409', $output);
         $this->assertStringContainsString('Bodies behind body_ref (4 file(s))', $output);
 
-        // Extraction boundary: only the two writes become events ("params=" is
-        // printed once per extracted event); the GET and the 409 DELETE do not.
-        $this->assertSame(2, substr_count($output, 'params='));
+        // Extraction boundary: only the root POST becomes an event ("params=" is
+        // printed once per extracted event). The nested PUT, the GET and the
+        // 409 DELETE stay in the observation log.
+        $this->assertSame(1, substr_count($output, 'params='));
+        $this->assertStringContainsString('POST app://self/orders  params=', $output);
         $this->assertStringContainsString('re-extraction produced identical ids: yes', $output);
+        $this->assertStringContainsString('inventory events: 0', $output);
 
         // Idempotent append in both stores, then ordered replay.
-        $this->assertStringContainsString('events stored after re-append: 2 (no duplicates)', $output);
-        $this->assertStringContainsString('stored rows after re-append: 2', $output);
-        $this->assertSame(2, substr_count($output, 'replay '));
+        $this->assertStringContainsString('events stored after re-append: 1 (no duplicates)', $output);
+        $this->assertStringContainsString('stored rows after re-append: 1', $output);
+        $this->assertSame(1, substr_count($output, 'replay '));
 
         // Exit 0 (asserted by runExample) only proves [10] did not fail; this
         // proves the schema validation actually ran to its success line.

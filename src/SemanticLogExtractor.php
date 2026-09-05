@@ -21,6 +21,13 @@ use function strspn;
 use const JSON_THROW_ON_ERROR;
 
 /**
+ * Extracts events from the boundary requests of a Semantic Logger log.
+ *
+ * Only root `resource_request` entries qualify. A nested request is the work
+ * a boundary request's handler performs; re-executing the boundary request
+ * performs that work again, so recording the nested request as well would
+ * apply it twice on replay. It stays in the log as observation.
+ *
  * @psalm-import-type EventList from Types
  * @psalm-import-type EventParams from Types
  * @psalm-import-type SemanticContext from Types
@@ -53,32 +60,18 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
         // objects, and the same JSON view is what the schema validates.
         /** @var array<array-key, mixed> $log */
         $log = json_decode(json_encode($semanticLog, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
-        $opens = $log['open'] ?? [];
-        if (is_array($opens)) {
-            $this->walk($opens, $events);
+        $roots = $log['open'] ?? [];
+        if (! is_array($roots)) {
+            return new Events($events);
+        }
+
+        foreach ($roots as $entry) {
+            if (is_array($entry)) {
+                $this->appendEvent($entry, $events);
+            }
         }
 
         return new Events($events);
-    }
-
-    /**
-     * @param array<array-key, mixed> $opens
-     * @param EventList   $events
-     */
-    private function walk(array $opens, array &$events): void
-    {
-        foreach ($opens as $entry) {
-            if (! is_array($entry)) {
-                continue;
-            }
-
-            $this->appendEvent($entry, $events);
-
-            $children = $entry['open'] ?? [];
-            if (is_array($children)) {
-                $this->walk($children, $events);
-            }
-        }
     }
 
     /**

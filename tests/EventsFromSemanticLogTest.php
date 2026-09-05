@@ -164,7 +164,7 @@ final class EventsFromSemanticLogTest extends TestCase
         new RecordedMethods(['POST', 1]);
     }
 
-    public function testExtractsNestedEventsInOpenOrder(): void
+    public function testNestedRequestsAreNotExtracted(): void
     {
         $logger = new SemanticLogger();
         $outerId = $logger->open(new ResourceRequestContext('app://self/orders', 'POST'));
@@ -174,10 +174,24 @@ final class EventsFromSemanticLogTest extends TestCase
 
         $events = (new SemanticLogExtractor())->extract($logger->flush());
 
+        // Replaying POST orders re-issues the inventory PUT; recording both would apply it twice.
         $this->assertSame(
-            ['app://self/orders', 'app://self/inventory/1'],
+            ['app://self/orders'],
             array_map(static fn (Event $event): string => $event->uri, iterator_to_array($events)),
         );
+    }
+
+    public function testNestedWriteUnderAnUnrecordedRootIsNotExtracted(): void
+    {
+        $logger = new SemanticLogger();
+        $outerId = $logger->open(new ResourceRequestContext('app://self/orders/1', 'GET'));
+        $innerId = $logger->open(new ResourceRequestContext('app://self/inventory/1', 'PUT'));
+        $logger->close(new ResourceResponseContext(200, ['reserved' => true]), $innerId);
+        $logger->close(new ResourceResponseContext(200, ['id' => 1]), $outerId);
+
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
+
+        $this->assertCount(0, $events);
     }
 
     public function testNonResourceOperationsAreIgnored(): void
