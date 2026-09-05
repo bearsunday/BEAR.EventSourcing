@@ -21,12 +21,10 @@ use function strspn;
 use const JSON_THROW_ON_ERROR;
 
 /**
- * Extracts events from the boundary requests of a Semantic Logger log.
+ * Extracts events from the root `resource_request` entries of a Semantic Logger log.
  *
- * Only root `resource_request` entries qualify. A nested request is the work
- * a boundary request's handler performs; re-executing the boundary request
- * performs that work again, so recording the nested request as well would
- * apply it twice on replay. It stays in the log as observation.
+ * A nested request is work the root's handler performs, so a replayed root
+ * re-issues it; recorded as its own event it would be applied twice.
  *
  * @psalm-import-type EventList from Types
  * @psalm-import-type EventParams from Types
