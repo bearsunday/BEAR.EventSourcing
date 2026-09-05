@@ -13,16 +13,16 @@ use DateTimeImmutable;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Throwable;
 
-final class SemanticLogInvoker implements InvokerInterface
+final readonly class SemanticLogInvoker implements InvokerInterface
 {
-    private const TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
+    private const string TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
 
-    private readonly RecordedMethods $recordedMethods;
+    private RecordedMethods $recordedMethods;
 
     public function __construct(
-        private readonly InvokerInterface $invoker,
-        private readonly SemanticLoggerInterface $logger,
-        private readonly BodyStoreInterface $bodyStore,
+        private InvokerInterface $invoker,
+        private SemanticLoggerInterface $logger,
+        private BodyStoreInterface $bodyStore,
         #[Recorded] RecordedMethods|null $recordedMethods = null,
     ) {
         $this->recordedMethods = $recordedMethods ?? new RecordedMethods();

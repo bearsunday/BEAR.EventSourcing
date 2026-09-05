@@ -18,10 +18,10 @@ use function strtoupper;
 final readonly class RecordedMethods
 {
     /** @var RecordedMethodList */
-    public const STATE_CHANGING = ['POST', 'PUT', 'PATCH', 'DELETE'];
+    public const array STATE_CHANGING = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
     /** @var RecordedMethodList */
-    public const WITH_READS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+    public const array WITH_READS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
     /** @var RecordedMethodList */
     private array $methods;

@@ -21,7 +21,7 @@ use const JSON_UNESCAPED_UNICODE;
 /** @psalm-import-type EventParams from Types */
 final readonly class Event
 {
-    private const ID_TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.u';
+    private const string ID_TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.u';
 
     public string $method;
 

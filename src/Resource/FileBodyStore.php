@@ -36,7 +36,7 @@ use const LOCK_EX;
  */
 final class FileBodyStore implements BodyStoreInterface
 {
-    private const MARKER = '.bear-es-bodies';
+    private const string MARKER = '.bear-es-bodies';
 
     private int $sequence = 0;
 

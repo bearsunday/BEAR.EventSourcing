@@ -21,7 +21,7 @@
         "source": "https://github.com/bearsunday/BEAR.EventSourcing"
     },
     "require": {
-        "php": "^8.2",
+        "php": "^8.3",
         "koriym/semantic-logger": "^0.9",
         "ray/di": "^2.19"
     },
