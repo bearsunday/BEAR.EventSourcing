@@ -47,11 +47,12 @@ final class ExamplesTest extends TestCase
     {
         $output = self::runExample('extract.php');
 
-        $this->assertSame(3, substr_count($output, '"method":'));
+        $this->assertSame(2, substr_count($output, '"method":'));
         $this->assertStringContainsString('"method": "POST"', $output);
-        $this->assertStringContainsString('"method": "PUT"', $output);
         $this->assertStringNotContainsString('"method": "GET"', $output);
-        $this->assertStringContainsString('"uri": "app://self/inventory/SKU-1"', $output);
+        // The inventory PUT nested inside POST orders is observation, not an event.
+        $this->assertStringNotContainsString('"method": "PUT"', $output);
+        $this->assertStringNotContainsString('app://self/inventory/SKU-1', $output);
         // result is taken from close.context.body, not from a body_ref; "status": "accepted"
         // only appears in the orders response body, so it proves the body became the event result.
         $this->assertStringContainsString('"status": "accepted"', $output);
@@ -71,8 +72,8 @@ final class ExamplesTest extends TestCase
     {
         $output = self::runExample('store.php');
 
-        $this->assertStringContainsString('"stored": 3', $output);
-        $this->assertSame(3, substr_count($output, '"method":'));
+        $this->assertStringContainsString('"stored": 2', $output);
+        $this->assertSame(2, substr_count($output, '"method":'));
     }
 
     public function testTreeExampleRendersCleanResourceTree(): void
@@ -89,6 +90,33 @@ final class ExamplesTest extends TestCase
         // An embedded non-resource operation (a media query) is a leaf event:
         // intent and wall time inline, nested under the resource that ran it.
         $this->assertStringContainsString('media_query name=inventory_reserve durationMs=0.42 [event]', $output);
+    }
+
+    public function testObserveExampleRunsTheLiveObservationPipeline(): void
+    {
+        $output = self::runExample('observe/observe.php');
+
+        // Live wiring, not a fixture: the internal inventory PUT appears as a
+        // child node of the POST orders request.
+        $this->assertStringContainsString('request="POST app://self/orders?order_id=O-1000"', $output);
+        $this->assertStringContainsString('├── request="PUT app://self/inventory?sku=SKU-1&quantity=1"', $output);
+        $this->assertStringContainsString('code=409', $output);
+        $this->assertStringContainsString('Bodies behind body_ref (4 file(s))', $output);
+
+        // Extraction boundary: "params=" is printed once per extracted event,
+        // so a count of 1 proves only the root POST became an event.
+        $this->assertSame(1, substr_count($output, 'params='));
+        $this->assertStringContainsString('POST app://self/orders  params=', $output);
+        $this->assertStringContainsString('re-extraction produced identical ids: yes', $output);
+        $this->assertStringContainsString('inventory events: 0', $output);
+
+        $this->assertStringContainsString('events stored after re-append: 1 (no duplicates)', $output);
+        $this->assertStringContainsString('stored rows after re-append: 1', $output);
+        $this->assertSame(1, substr_count($output, 'replay '));
+
+        // Exit 0 (asserted by runExample) only proves [10] did not fail; this
+        // proves the schema validation actually ran to its success line.
+        $this->assertStringContainsString('All contexts validate successfully!', $output);
     }
 
     private static function runExample(string $script): string

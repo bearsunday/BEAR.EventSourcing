@@ -54,7 +54,7 @@ Semantic Logger observations -> Events -> optional EventStore
 
 ## What is an event
 
-An `Event` is a successful, state-changing resource operation observed in a Semantic Logger open/close pair of type `resource_request`. It carries only the facts it observed:
+An `Event` is a successful resource operation observed at the root of a Semantic Logger log: a boundary request, an open/close pair of type `resource_request` with no parent. State-changing methods qualify by default; a root `GET` qualifies only under the opt-in `WITH_READS` policy below. It carries only the facts it observed:
 
 | Field | Source |
 | --- | --- |
@@ -65,7 +65,7 @@ An `Event` is a successful, state-changing resource operation observed in a Sema
 | `timestamp` | request `timestamp` — absolute ISO-8601 with an explicit offset; an entry without one is not extracted |
 | `result` | `close.context.body` when present |
 
-Extraction is deterministic: it never invents facts. There is no fallback clock for a missing `timestamp`, and only entries of type `resource_request` qualify — another subsystem's open/close pair that happens to carry `method` and `uri` fields is never misread as a state change. Extracting the same log twice yields the same events.
+Extraction is deterministic: it never invents facts. There is no fallback clock for a missing `timestamp`, and only root entries of type `resource_request` qualify — another subsystem's open/close pair that happens to carry `method` and `uri` fields is never misread as a state change, and a request nested inside another request is never extracted (see [Recording and observation](#recording-and-observation)). Extracting the same log twice yields the same events.
 
 Recorded methods by default — `GET` is observation data, not a state change, so it is ignored:
 
@@ -83,6 +83,19 @@ A response `code` of `400` or greater marks a failed operation, which is ignored
 `Event::$id` is a sha256 hash derived from `method`, `uri`, the timestamp normalized to UTC, and key-sorted `params` — the same operation observed at the same instant is the same event. `result` is excluded on purpose: the same domain operation produces the same event regardless of how its response body was recorded.
 
 Identity is what makes the store a source of truth. Re-extraction reproduces the same ids, and every store treats `append` as idempotent per id, so a retried batch never duplicates facts.
+
+## Recording and observation
+
+The log and the event stream answer different questions. The event stream records what can be **reproduced**: the boundary write requests (root reads only when opted in), the input a replay re-executes. The log observes what **happened**: every node — reads, failures, nested requests, `durationMs` — for transparency, debugging, and checking a replay against the original run.
+
+Extraction therefore takes root entries only. A `POST app://self/orders` whose handler issues `PUT app://self/inventory/SKU-1` yields one event, the POST. Replaying it re-executes the handler, which issues the PUT again; had the PUT been recorded as well, replay would apply it twice. This is the same boundary MySQL statement-based replication draws when it logs a statement but not the writes its triggers perform. The nested PUT is still in the log, as observation.
+
+Replay by re-execution rests on two conditions the package assumes but does not enforce, the way MySQL flags unsafe statements rather than refusing them:
+
+- **Handlers are deterministic.** A replay reproduces the original run only when the handler's outcome depends solely on its recorded `params`. A clock, a random value, or an external read the handler consults on its own makes the request unsafe to replay; pass such values in as params so they are recorded.
+- **A request is a transaction boundary.** All of a request's writes commit or none of them do. Without this, a handler whose nested `PUT` committed before the root request failed with a `500` leaves a state change that no event records — the root failed, so nothing was extracted.
+
+Two natural extensions are not implemented: verifying determinism by diffing the observation tree a replay produces against the original, and appending events inside the request's own transaction (an outbox). Runtime auto-persistence remains out of scope.
 
 ## Filtering and replay
 
@@ -385,6 +398,7 @@ $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)
 
 - Semantic Logger is the observation source; EventStore is an optional destination.
 - Extraction is deterministic: no fallback clock, no type guessing — the same log always yields the same events.
+- Extraction records boundary requests only; a nested request is observation, never an event.
 - No automatic persistence during runtime observation; the application owns the flush.
 - No `BEAR\Resource\LoggerInterface` decorator.
 - Ray.MediaQuery and database installation stay in the application, never hidden inside EventSourcing modules.

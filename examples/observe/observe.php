@@ -9,9 +9,9 @@ declare(strict_types=1);
 //   1. DevLogModule recording a request tree (nested writes, a read, a failure)
 //   2. FileBodyStore externalizing response bodies behind body_ref
 //   3. Rendering the observation log as a tree
-//   4. Extracting events (state-changing writes only; failures dropped)
+//   4. Extracting events (boundary writes only; nested, read, failed stay in the log)
 //   5. Deterministic event identity (re-extraction yields the same ids)
-//   6. Filtering events with standard iterators
+//   6. Filtering events with standard iterators, and where the nested PUT lives
 //   7. InMemoryEventStore with idempotent re-append
 //   8. MediaQueryEventStore (SQLite) round-trip and idempotency
 //   9. Replaying the stored stream in order
@@ -60,7 +60,7 @@ $injector = new Injector(new DevLogModule(
 ));
 $resource = $injector->getInstance(ResourceInterface::class);
 
-$resource->post->uri('app://self/orders')(['order_id' => 'O-1000']); // nested inventory PUT
+$resource->post->uri('app://self/orders')(['order_id' => 'O-1000']); // performs a nested inventory PUT
 $resource->uri('app://self/orders')(['order_id' => 'O-1000']);        // GET read (WITH_READS)
 $resource->delete->uri('app://self/orders')(['order_id' => 'O-1000']); // failed write, 409
 
@@ -87,11 +87,12 @@ foreach ($bodyFiles as $file) {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Extraction. Only state-changing writes become events; the 409 DELETE is
-//    observed but dropped. GET is observation data, not a state change.
+// 4. Extraction. Only boundary (root) writes become events. The inventory PUT
+//    is the work POST orders performs, so replaying the POST re-issues it;
+//    the 409 DELETE failed; GET is a read. All three stay observation.
 // ---------------------------------------------------------------------------
 $events = (new SemanticLogExtractor())->extract($log);
-echo "\n[4] Extracted events (writes only; failed 409 and GET are dropped)\n";
+echo "\n[4] Extracted events (boundary writes only; nested PUT, GET and 409 stay in the log)\n";
 foreach ($events as $event) {
     printf("  %s %s  params=%s\n", $event->method, $event->uri, json_encode($event->params, JSON_UNESCAPED_SLASHES));
 }
@@ -116,14 +117,20 @@ printf("  re-extraction produced identical ids: %s\n", $ids === $againIds ? 'yes
 // ---------------------------------------------------------------------------
 // 6. Filtering with PHP's standard iterators — no query methods on Events.
 // ---------------------------------------------------------------------------
+$orderWrites = new CallbackFilterIterator(
+    $events->getIterator(),
+    static fn (Event $event): bool => str_starts_with($event->uri, 'app://self/orders'),
+);
 $inventoryWrites = new CallbackFilterIterator(
     $events->getIterator(),
-    static fn (Event $event): bool => $event->method === 'PUT' && str_contains($event->uri, 'inventory'),
+    static fn (Event $event): bool => str_contains($event->uri, 'inventory'),
 );
 echo "\n[6] Filtered with CallbackFilterIterator\n";
-foreach ($inventoryWrites as $event) {
+foreach ($orderWrites as $event) {
     printf("  %s %s\n", $event->method, $event->uri);
 }
+
+printf("  inventory events: %d (the nested PUT is observation; see the tree in [2])\n", iterator_count($inventoryWrites));
 
 // ---------------------------------------------------------------------------
 // 7. InMemoryEventStore: appending is idempotent per event id.

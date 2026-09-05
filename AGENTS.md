@@ -6,6 +6,8 @@ This repository implements event sourcing by extracting immutable event facts fr
 
 Semantic Logger is the observation source. BEAR.Resource runtime observation, when needed, must be an optional `InvokerInterface` bridge that writes Semantic Logger open/close entries. Do not decorate `BEAR\Resource\LoggerInterface` to persist events during request execution.
 
+Recording and observation are separate roles. Events record what a replay re-executes: the boundary (root) requests, state-changing by default. The log observes everything else — nested requests, reads, failures, durations — and is never flattened into the event stream.
+
 Preferred flow:
 
 ```text
