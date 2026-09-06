@@ -2,7 +2,7 @@
 
 Make your application's state changes a **replayable source of truth** — fold the events back to reconstruct state at any point in time.
 
-Every event is a resource operation: a `method` on a `uri`, like `POST app://self/users`. That resource shape keeps replay straightforward, and it lets the same event stream double as an audit history of the recorded state changes: which write, when, to which resource.
+Every event is a resource operation: a `method` on a `uri`, like `POST app://self/users`. That resource shape keeps replay straightforward, and it lets the same event stream double as an audit history of the recorded state changes: which write occurred, when, and to which resource.
 
 ## Installation
 
