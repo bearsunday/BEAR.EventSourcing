@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `skills/bear-observe/`: a Claude Code skill that installs the observation wiring, proves it from the bindings, and reads one request as a tree; absorbs the retired `bear-cache-log` skill from BEAR.QueryRepository
+
 ## 0.1.0 - 2026-09-06
 
 ### Added
