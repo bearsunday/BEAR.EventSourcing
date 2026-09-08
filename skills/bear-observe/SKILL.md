@@ -138,7 +138,9 @@ FAIL が残るなら、アプリの `AppModule` が同じ束縛を後から上�
 測っているものが別物になる:
 
 - **`final class` はインターセプタを受け取れない**。Ray.Aop はクラスを継承して織るので、`final` なリソースの
-  `#[Cacheable]` は静かに無効になり、**木は miss すら出さず空**になる。検査:
+  `#[Cacheable]` は静かに無効になり、**そのリソースの `get` スコープが miss すら出さずに消える**。
+  木全体が空になるとは限らない — final でない他のリソースは普通に出るので、欠けているのは
+  1 本の枝だけのことがある。検査:
 
 ```php
 get_class($injector->getInstance($class)) !== $class;  // false なら織られていない
@@ -310,7 +312,7 @@ body に Request(または ResourceObject)を残すか、announce 側で解決�
 
 | 観測 | アプリ側 | ライブラリ側 | 決め手 |
 |---|---|---|---|
-| 木が空(miss すら無い) | `final`(`ReflectionClass::isFinal()` が true)、属性そのものが無い、文脈が店を束縛していない | sink が arm を拒否 | 織られたか(`get_class`)→ 真なら `isFinal()` と属性の有無で二分 / `error_log` |
+| 期待した `get` スコープが無い(miss すら出ない。木全体が空とは限らず、その 1 本だけ欠けることがある) | `final`(`ReflectionClass::isFinal()` が true)、属性そのものが無い、文脈が店を束縛していない | sink が arm を拒否 | 織られたか(`get_class`)→ 真なら `isFinal()` と属性の有無で二分 / `error_log` |
 | 期待した `save_*` が無い | `put_skipped` の `reason` がアプリ由来(自前 ETag・非 200) | `put_skipped` も無いのに保存されない | `put_skipped` の有無と `reason` |
 | `save_*` の `tags` に子が無い | 値をコピーしている(`#[Embed]` でない) | `depends_on` はあるのにタグが乗らない = 伝播の欠陥(`CacheDependency::depends()` が親の `Surrogate-Key` に子タグを積む) | `depends_on` イベントの有無 |
 | 書き込みが `invalidate` を出さない | 書き込み経路に `#[Refresh]`/`#[Purge]` が無い | 属性はあるのにマッチャがそのメソッドを拾わない | 織られたオブジェクトの `bindings` にそのメソッドがあるか |
