@@ -1,7 +1,7 @@
 ---
 user-invocable: true
 name: bear-observe
-description: BEAR.Sunday アプリに観測用の dev 文脈を設置し、1 リクエストが何をしたか(リソースの入れ子・キャッシュの hit/miss・保存と無効化)を木で読んでデバッグする。決着しなければ xstep に降りる。Use when user says "ログを見て", "キャッシュログを確認して", "何が起きたか", "observe", "リソースの動きを追って", "デバッグして", "遅い", "キャッシュが効いてない", "purge が効かない", or asks what a BEAR.Sunday request actually did.
+description: BEAR.Sunday アプリに観測用の dev 文脈を設置し、1 リクエストが何をしたか(リソースの入れ子・キャッシュの hit/miss・保存と無効化)を木で読む。宣言した意図と照合し、食い違えばアプリかライブラリかを切り分けて報告する。決着しなければ xstep に降りる。Use when user says "ログを見て", "キャッシュログ", "cache log", "何が起きたか", "observe", "リソースの動きを追って", "デバッグして", "遅い", "キャッシュが効いてない", "キャッシュが古い", "purge が効かない", "304 が返らない", "アプリかライブラリか切り分けて", or asks what a BEAR.Sunday request actually did.
 ---
 
 # bear-observe — 1 リクエストが何をしたかを木で読む
@@ -10,11 +10,12 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 テストは緑のまま、遅いだけ、あるいは古いだけになる。見るのはコードではなくログで、順番は決まっている。
 
 ```text
-1. 設置    観測用の dev 文脈をアプリに書く          (harness/setup.php)
-2. 実証    配線が生きていることを束縛から確かめる    (harness/check.php)
-3. 観測    リクエストを 1 本流して木を読む           (harness/tree.php)
-4. 決着    木で足りなければ xstep で実引数を見る
-5. 報告    根拠つきで、アプリかライブラリかを言う
+1. 設置     観測用の dev 文脈をアプリに書く          (harness/setup.php)
+2. 実証     配線が生きていることを束縛から確かめる    (harness/check.php)
+3. 観測     リクエストを 1 本流して木を読む           (harness/tree.php)
+4. 照合     宣言した意図が、どのイベント列で現れるか
+5. 切り分け  食い違ったら、アプリの問題かライブラリの問題か
+6. 報告     根拠つきで、どちらかを言う
 ```
 
 **この手順を実行するのはエージェントで、ユーザーではない。** ユーザーがするのはスキルを入れることと、
@@ -22,6 +23,19 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 
 以下 `<skill>` は、このファイルのあるディレクトリ。`${CLAUDE_PLUGIN_ROOT}` があればそれ、
 プロジェクトに `cp` したなら `.claude/skills/bear-observe`。
+
+## 呼ばれ方 — どこから入るか
+
+「キャッシュログを確認して」「何が起きたか見て」「遅い理由を調べて」で入る。
+
+1. **読める木があるなら、まず読む。** `var/log/*/observe/latest.json` があれば `tree.php` を実行する。
+   設置は済んでいるので §1 は飛ばす。mtime が前回見たときから動いていなければ、**そう言う** —
+   古い木を新しい実行の証拠にしない
+2. 木が無いときだけ §1 の判定に降りる。設置してから、ユーザーに「どのリクエストを見ますか」と聞く
+   (勝手にリクエストを選ばない)。木が薄い・不審なときは §2 の `check.php` で配線から確かめる
+3. 木を読み、§3 の表で問いに答える。ユーザーが問いを持っていなければ、木から言えることを言う:
+   何回リソースが走ったか、hit したか、保存されたか、時間はどこに落ちたか
+4. 宣言どおりに動いているかを問われたら §4、食い違ったら §5。降りるときは何を確かめに行くかを先に言う
 
 ## 0. 前提を 1 度だけ確かめる
 
@@ -34,6 +48,24 @@ composer show bear/event-sourcing bear/query-repository 2>&1 | head -3
 ```bash
 composer require --dev bear/event-sourcing:1.x-dev bear/query-repository:1.x-dev
 ```
+
+## 正典ドキュメント(推測で補完しない)
+
+BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ignore` — 通常の
+`composer require` の vendor には**入らない**。GitHub で読むか
+`composer reinstall bear/query-repository --prefer-source` で取る。
+
+| 知りたいこと | どこ |
+|---|---|
+| **語彙全部と読み方(まずこれ)** | [docs/reading-the-log.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/reading-the-log.md) |
+| ログが答える問いと保証の境界 | [docs/what-the-log-proves.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/what-the-log-proves.md) |
+| 設計根拠・コスト実測・既定オフの理由 | [docs/why-the-log-records-everything.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/why-the-log-records-everything.md) |
+| 各 context のスキーマ(28 種) | [docs/schemas/context/](https://github.com/bearsunday/BEAR.QueryRepository/tree/1.x/docs/schemas/context) — 各イベントの `schemaUrl` が正典 |
+| 動く実例(自己検証つき) | [demo/](https://github.com/bearsunday/BEAR.QueryRepository/tree/1.x/demo) |
+
+スキーマ検証: `vendor/bin/validate-semantic-log.php <log.json> <schema-dir>`(`--prefer-source` なら
+`vendor/bear/query-repository/docs/schemas/context`。dist ならスキーマをアプリ側にコピーして
+リポジトリ管理する — スキーマは公開契約なので固定して持つことに意味がある)。
 
 ## 1. 設置 — 要るかどうかを先に決める
 
@@ -71,6 +103,12 @@ php <skill>/harness/setup.php .
 判断が要るのは、アプリが自前の `DevModule` を持っていたときの畳み込みだけで、そこは `setup.php` が
 `.observe` を隣に置いて手に渡す。
 
+畳み込むときの罠が 1 つある。**包んだモジュールは「足す」のではなく「置き換える」**。アプリが既に
+`QueryRepositoryModule` を持つ(BEAR.Package 経由など)のに、上から `module: new QueryRepositoryModule()`
+を足すと **Ray.Aop の pointcut が累積してインターセプタが 2 回走る** — 1 リクエストで参照 2 回・書き込み
+2 回、木には同じ URI が自分の中に入れ子で現れる。既存グラフに記録だけ足すなら、包まずに
+`bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)` の 1 本だけを差し替える。
+
 `setup.php` は文脈名(`cli-dev-hal-app` 等)とログのパスを出す。以降その文脈名を使う。
 
 ## 2. 実証 — 「入れた」で終わらせない
@@ -91,7 +129,32 @@ php <skill>/harness/check.php . <context>
 | a sink owns the flush | 木は組み上がって shutdown で捨てられる。ファイルが 1 つも増えない |
 
 FAIL が残るなら、アプリの `AppModule` が同じ束縛を後から上書きしていないかを見る
-(`install()` は既存を上書きしないが、`bind()` は上書きする)。
+(`install()` は既存を上書きしないが、`bind()` は上書きする)。到達しない理由が束縛に無ければ
+`error_log`(FPM なら SAPI のエラーログ)を見る。sink の拒否・二重 arm・書けない先は全部そこに出る。
+
+### PASS でも木が薄いとき
+
+`check.php` が見るのは束縛だけで、**インターセプタが織られたかは見ていない**。ここを外すと、
+測っているものが別物になる:
+
+- **`final class` はインターセプタを受け取れない**。Ray.Aop はクラスを継承して織るので、`final` なリソースの
+  `#[Cacheable]` は静かに無効になり、**そのリソースの `get` スコープが miss すら出さずに消える**。
+  木全体が空になるとは限らない — final でない他のリソースは普通に出るので、欠けているのは
+  1 本の枝だけのことがある。検査:
+
+```php
+get_class($injector->getInstance($class)) !== $class;  // false なら織られていない
+$injector->getInstance($class)->bindings;               // メソッド名 => 付いたインターセプタ
+```
+
+- **qualifier は `BEAR\RepositoryModule\Annotation\*`**(`CacheLog`, `ResourceObjectPool`, `TagsPool`, `EtagPool`)。
+  `BEAR\QueryRepository\Annotation\` にも同名クラスがあり、**間違えても例外は出ない** — 自分の
+  `getInstance()` が同じ間違った key で答えるので「束縛は効いている」ように見える。プールの中身を数えて確かめる
+- **weave が変わったら `composer clean`**(コンパイル済み DI が残っていると直した後も織られない)
+- **時間差で判定しない**。プロセス内では refill も 1ms 台で hit と区別できない。判定は必ずイベントで行う
+- **プリセットの実数**は `Expiry`: `short` 60 / `medium` 3600 / `long` 86400 / `never` 31536000 秒。
+  アプリが `StorageExpiryModule` で上書きするので、数値を書き写さず injector から `Expiry` を取って
+  `getTime()` で解決する
 
 ## 3. 観測 — リクエストを流して木を読む
 
@@ -131,52 +194,144 @@ commit されたサンプル出力を判定に使うと、自分の変更が反�
 
 - **`A → B`** — スコープ A が型 B で閉じた。**答えを運ぶのは閉じた型**(`get` を閉じるのが `cache_hit` か
   `cache_miss` か)。`vendor/bin/stree` はこの型を出さないので、判定には `tree.php` を使う
-- **入れ子** — 外側の実行中に内側が起きた。**入れ子は依存の証拠ではない**(§5)
+- **入れ子** — 外側の実行中に内側が起きた。**入れ子は依存の証拠ではない**(§4)
 - **葉** — そのスコープの中で起きた出来事。`save_*` `invalidate` `cache_policy` など
 
 `--full` 相当の生 JSON が要るなら `php -r` ではなく `vendor/bin/stree --json <file>`。
 
-## 4. 木で答えられる問い
+### ファイルが無い現場もある
+
+テストやオラクルは `DevQueryRepositoryLogModule` を使わず、`SemanticLoggerInterface` `#[CacheLog]` に
+`SafeSemanticLogger`(sink 無し)を束縛して、自分で `flush()` を受け取るのが普通だ。この形では
+`var/log` に何も作られない。観測する側が sink になるので、読み方はファイルではなく戻り値:
+
+```php
+$logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
+$resource->get($uri);                       // 操作
+$log = $logger->flush();                    // その場で受け取る(以降は次のセッション)
+```
+
+`flush()` は 1 回で使い切る。操作ごとに呼べばステップ単位で見られるが、**呼んだ後に前のイベントは
+残らない**。`latest.json` を探して「ログが無い」と結論する前に、対象のテストやスクリプトが自分で
+束縛していないかを読む。
+
+### 木で答えられる問い
 
 | 問い | 見るところ |
 |---|---|
 | キャッシュは効いたか | `get` を閉じる型。`cache_hit` / `cache_miss` |
-| どの層で効いたか | 閉じた文脈の `layer`: `resource` / `donut` / `donut-view` / `etag`(304 判定) |
+| どの層で効いたか | 閉じた文脈の `layer`: `resource`(値) / `donut` / `donut-view` / `etag`(304 判定) |
 | 保存されたか、何秒、どのキーで | `save_value` / `save_view` / `save_etag` / `save_donut*` の `tags` `requestedTtl` `saved` |
 | なぜ保存されていないか | `put_skipped` の `reason`(`etag-present` / `error-code` / `not-cacheable`) |
-| purge は何を消したか | `invalidate` の `tags` `roPool` `etagPool` `cdn`。`cdn=skipped` は purger 未設定 |
-| 誰が書いたか | `command` スコープの `source`。直接呼び出しは `manual_store` / `manual_purge` |
+| CDN に何を何秒キャッシュさせたか | `cdn_headers` の `headers`(応答の literal ヘッダ)。lifetime ヘッダが無い = 応答が CDN に寿命を指示しなかった(`putDonut` の種類)。エッジが実際に何を保持したかはこのログの外にある。長すぎるときは **`sMaxAge` 未指定の既定値**(generic 10 秒 / Fastly・Akamai 31536000 秒)を疑う — setter の既定値もここに literal で出る |
+| エッジの再検証(304)はヒットしたか | `conditional_request` スコープの閉じ方。`cache_hit{layer: etag}` = リソースを走らせず 304、`cache_miss{layer: etag}` = 検証子が古い |
+| purge は何を消したか | `invalidate` の `tags` `roPool` `etagPool` `cdn`。`cdn` は `purged`/`failed`/`skipped` の三値、fail-closed |
+| miss は空だったのか、店が読めなかったのか | 同じスコープに `cache_error{operation: read}` があれば縮退。無ければコールド |
+| 誰が書いたか | `command` スコープの `source`。直接呼び出しは `manual_store` / `manual_purge` / `manual_invalidate` |
+| 依存の伝播 | `depends_on` と、`save_*` の `tags` ↔ `invalidate` の `tags` の突き合わせ |
 | 何回リソースが走ったか | `resource_request` の数。N+1 は同じ URI の兄弟が並ぶ形で出る |
 | どこで時間を使ったか | `durationMs`。親から子を引いた残りがその層の自前のコスト |
 | 何を返したか | `body_ref` のファイル(`var/log/<context>/es-bodies/`) |
 
-読み間違えやすい 3 点:
+読み間違えやすい 4 点(いずれも実測):
 
 1. **コールドの `get` にも `pre_write_cleanup` → `invalidate` が出る。** 保存の前に自分の古いエントリを
    消しているだけで、無効化ではない
-2. **`cache_hit` で閉じたスコープの `put_skipped` は正常。** 欠陥として読むのは `cache_miss` で閉じた
-   スコープに出たときだけ
-3. **葉の `cache_miss` と、スコープを閉じる `cache_miss` は別。** donut は内側の層でも葉を出す
+2. **`cache_hit` で閉じたスコープの `put_skipped` は正常**(既に保存済みのものを再保存しない)。
+   欠陥として読むのは `cache_miss` で閉じたスコープに出たときだけ
+3. **葉の `cache_miss` と、スコープを閉じる `cache_miss` は別。** donut は内側の層でも葉を出す。
+   「miss のイベントがある」は「そのスコープが miss で閉じた」ではない
+4. **`#[Cacheable]` は自分の書き込みでは落ちるが、他所の書き込みでは落ちない。** 他のリソースが自分の
+   タグを announce しない限り、TTL が唯一の eviction になる
 
-キャッシュの宣言(`#[Cacheable]` / `#[DonutCache]` / `#[Refresh]` …)ごとに**期待されるイベント列**と、
-食い違ったときの切り分け表は
-[bear-cache-log](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/skills/bear-cache-log/SKILL.md)
-にある(`vendor/bear/query-repository/skills/bear-cache-log/SKILL.md`)。効いていない理由まで踏み込むなら
-そちらへ。
+## 4. 照合 — 宣言した意図と実際
 
-## 5. 木で決着しないとき
+宣言は意図の表明でしかない。**効いている証拠はイベント列**。下表は BEAR.QueryRepository `1.x`(`5abe573`)で
+`demo/run*.php` と `tests/Fake/fake-app/src/Resource/Page/Mx` の fixture を実行して得た列 =
+**その版で期待される形**。手元の出力がこれと違えば、それが所見であって表の誤りではない。
 
-木は「何が起きたか」を言う。「なぜその値になったか」は言わない。降りる前に、まず木で候補を 1 つに絞る。
+| 宣言 | コールド read | 2 回目 | 自分への書き込み |
+|---|---|---|---|
+| `#[Cacheable]` | close `cache_miss`。`cache_policy{expiry, resolvedTtl}` → `save_etag` → `save_value` | close `cache_hit`、イベント 0 件 | `command{source: CommandInterceptor}` に `purge` → `invalidate`、続いて**入れ子の `get` で再生成**(`RefreshSameCommand`)。close は `command_result` |
+| `#[CacheableResponse]` | close `cache_miss{layer: donut}`。`put_donut` → `cdn_headers` → **`save_etag`** → `save_donut_view` → `save_donut`(全体を保存し ETag を持つ = 304 が返る) | close `cache_hit`、イベント 0 件。埋め込んだ子が無効化された回だけ `refresh_donut` → `save_etag` → `save_donut_view` | `#[Purge]`/`#[Refresh]`/`#[RefreshCache]` のいずれでも `command_result [purge, invalidate]`、次の read は `cache_miss`。**1.16.2 以前は `#[RefreshCache]` だけ書き込みが実行されない**(下の注) |
+| `#[DonutCache]` | close `cache_miss`。`put_donut` → `cdn_headers` → `save_donut`。**`save_etag` は出ない** — 全体を保存しないので ETag も無く、304 は返らない | close `cache_hit` + `refresh_donut` → `put_skipped{not-cacheable}`。毎回 donut を組み直すのが正常 | 書き込み側に `#[Purge]`/`#[Refresh]`/`#[RefreshCache]` を書かないと、`command` も `invalidate` も出ない |
+| `#[Embed]` した子を持つ親 | `depends_on` が出て、`save_*` の `tags` に子の URI タグが入る | close `cache_hit` | 子を purge → 親の次の read が `cache_miss` |
+| `#[Refresh]` / `#[Purge]` | — | — | `command` スコープに `purge` + `invalidate`。`pre_write_cleanup` 隣接**だけ**なら誰にも告げていない |
+| `#[HttpCache]` | `cdn_headers` に literal ヘッダ | 同じ | — |
 
-**入れ子を依存の証拠にしない。** 親のスコープに子のスコープが現れるのは、親の実行中に子を読んだ事実だけを
-言う。`ResourceInterface` を注入して手で読んでも同じ形になる。依存が生きているかは `save_*` の `tags` に
-子の URI タグが入っているかで見て、子を purge → 親を読み直して `cache_miss` で閉じることで実証する。
+**1.16.2 以前は、書き込みメソッドに `#[RefreshCache]` を付けるとキャッシュが温まっている間その書き込みが
+実行されない。** `DonutCacheModule` が `#[RefreshCache]` に **query 用の `DonutCacheInterceptor`** を束縛し、
+それは `donutRepository->get()` が当たった時点で `proceed()` を呼ばずにキャッシュ済み表現を返す(HTTP
+メソッドを見ていない)。実測: 先に GET してから DELETE すると `onDelete` の本体は **0 回**、応答は宣言した
+204 ではなく **200 + キャッシュ済みの表現**。GET せずに DELETE すれば 1 回走る。
 
-候補が 1 つ残ったら `koriym/xdebug-mcp`(`composer global require koriym/xdebug-mcp`)。php 本体に Xdebug が
-入っていなくてよい。**vendor は既定で記録から除外される**ので、ライブラリを疑うなら明示して入れる:
+[#215](https://github.com/bearsunday/BEAR.QueryRepository/pull/215) で修正済み(次のリリースに入る)。
+古い版を使っているなら書き込みは `#[Purge]` / `#[Refresh]` で宣言する。なお `#[Cacheable]` クラスでは
+`#[RefreshCache]` は何も足さない — `CommandInterceptor` が既に purge して再生成する。
+
+食い違いの読み方: **期待した `save_*` が無い**なら宣言が届いていない(§2 の「PASS でも木が薄いとき」を
+先に潰す)。**`invalidate` があるのに `cache_miss` にならない**ならタグが交わっていない(下記)。
+
+### 依存が効いているかを確かめる手順
+
+「親が子を埋め込んでいるから、子を purge すれば親も落ちる」は**コードを読んでも分からない**:
+
+1. 親をコールドで読む。`save_*` の `tags` に**子の URI タグが入っている**ことを見る(入っていなければ依存は
+   記録されていない — `#[Embed]` ではなく値をコピーしている疑い)
+2. 子の URI を purge する(`QueryRepositoryInterface::purge(new Uri(...))`)
+3. 親をもう一度読む。**`cache_miss` で閉じれば依存は生きている**。`cache_hit` なら親は古い子を抱えている
+
+`depends_on` は 1 の裏付け、2→3 が実証。効果だけ(値が変わった)で判定すると、TTL で落ちただけの場合と
+区別できない。
+
+**入れ子の `get` スコープは依存の証拠にならない。** 親のスコープの中に子のスコープが現れるのは、
+親の実行中に子を読んだという事実だけを言う。`ResourceInterface` を注入して手で読んでも同じ形になり、
+`depends_on` もタグ伝播も起きない。見るのは入れ子ではなく `depends_on` と `tags`。
+
+**`#[Embed]` を付けただけでは足りない。** 依存を登録するのは `QueryRepository::setCacheDependency()` で、
+保存時に **`$ro->body` に `AbstractRequest` のインスタンスが残っているものだけ**を辿る。埋め込んだ値を
+スカラーに解決して body を作り直すと、その時点で Request は body から消えており、依存は登録されない。
+body に Request(または ResourceObject)を残すか、announce 側で解決する。
+
+### タグと TTL のどちらが要るかは、ログでは決まらない
+
+タグだけ宣言しても、**そのタグを announce する書き込み経路がある値**しか新しく保てない。body に他所の値を
+コピーしていて announce 経路が無ければ、タグは届かず TTL だけが床になる。コードに問う:
+
+1. この body に入る値ごとに、**それを変える書き込み経路**は何か
+2. その経路は invalidate を呼ぶか(呼ばないなら TTL が唯一の eviction)
+3. 同じデータの**別の複製**があるなら、複製の寿命は原本以下か(長いと、原本が捨てた値を複製が返す)
+
+3 は attribute から機械的に検査できる。実例:
+[BeMart `tests/Resource/AgentCorpusCacheTest.php`](https://github.com/be-framework/BeMart/blob/1.x/tests/Resource/AgentCorpusCacheTest.php)
+
+## 5. 切り分け — アプリの問題か、ライブラリの問題か
+
+木は「何が起きたか」を言うが、「誰の落ち度か」は言わない。**先に観測で候補を 1 つに絞り、
+それから該当行の変数を見る**。順番を逆にすると、写しを覗くだけで終わる。
+
+| 観測 | アプリ側 | ライブラリ側 | 決め手 |
+|---|---|---|---|
+| 期待した `get` スコープが無い(miss すら出ない。木全体が空とは限らず、その 1 本だけ欠けることがある) | `final`(`ReflectionClass::isFinal()` が true)、属性そのものが無い、文脈が店を束縛していない | sink が arm を拒否 | 織られたか(`get_class`)→ 真なら `isFinal()` と属性の有無で二分 / `error_log` |
+| 期待した `save_*` が無い | `put_skipped` の `reason` がアプリ由来(自前 ETag・非 200) | `put_skipped` も無いのに保存されない | `put_skipped` の有無と `reason` |
+| `save_*` の `tags` に子が無い | 値をコピーしている(`#[Embed]` でない) | `depends_on` はあるのにタグが乗らない = 伝播の欠陥(`CacheDependency::depends()` が親の `Surrogate-Key` に子タグを積む) | `depends_on` イベントの有無 |
+| 書き込みが `invalidate` を出さない | 書き込み経路に `#[Refresh]`/`#[Purge]` が無い | 属性はあるのにマッチャがそのメソッドを拾わない | 織られたオブジェクトの `bindings` にそのメソッドがあるか |
+| `invalidate` は出るが親が hit のまま | タグの選び方が違う(URI タグと共有サロゲートキーの混同) | タグ集合の交差計算の欠陥 | 2 つのタグ集合を並べて交わりを見る |
+| `invalidate` のタグがどのリソースの宣言とも一致しない | **手書きの `invalidateTags()` が定数からドリフトしている** — リソースは `SURROGATE_KEY` 定数を宣言し、無効化側は生文字列を持ったまま取り残された | — | `invalidate` の `tags` を、リソースが宣言する定数の実値と 1 文字ずつ突き合わせる。docblock だけ正しいことがある |
+| `conditional_request` スコープが 1 つも無い | — | — | **まず要求側を見る**。`If-None-Match` を送っていない要求なら正常で、`bin/dev.php` の CLI 要求は送らない。送ったと確かめた上で無いときだけ、プロキシ・WAF・CDN が落としている |
+| 値が古い | TTL が床(設計判断) | — | `save_*` の `ttl` |
+| `cache_error` / `pool_error` | 店の設定・接続 | 縮退の扱い | 例外か縮退かは `docs/what-the-log-proves.md` |
+
+判断点の在処: `CacheInterceptor`(hit/miss と保存)、`CommandInterceptor`(書き込み後の無効化)、
+`QueryRepository`(put/get/purge)、`ResourceStorage`(タグと 2 プール)、`CacheDependency`(依存の伝播)、
+`DonutRepository`(donut)、`HttpCache` / `CliHttpCache`(304 判定)、`EtagSetter`(ETag 生成)。
+
+**「ライブラリ側」に振った候補が 1 つ残ったときだけ**、該当クラスの分岐を観測する。道具は
+`koriym/xdebug-mcp`(`composer global require koriym/xdebug-mcp`)。**php 本体に Xdebug が入っていなくてよい**
+— ラッパーが自分で読み込む。**vendor は既定で記録から除外される**ので、明示して入れる:
 
 ```bash
-# 1) どの分岐まで届いているか
+# 1) どの分岐まで届いているか(--include-vendor が無いとライブラリのフレームは空)
 xtrace --include-vendor="bear/query-repository" --context="tags absent from parent save" -- php bin/dev.php get /orders
 
 # 2) 判断している行を名前で探す(行番号は版ごとに動く)
@@ -187,37 +342,32 @@ xstep --break="vendor/bear/query-repository/src/CacheDependency.php:<line>" \
   --steps=20 --context="what tags arrive" -- php bin/dev.php get /orders
 ```
 
-`xtrace` はトレースを `/tmp/trace.*.xt` に書いて末尾に場所と規模を出す(1 リクエストで数万行)。
-全部は読まない。`--context` に何を見たいかを書き、ファイルは目的の関数名で `grep` する。
+`xtrace` はスクリプトの stdout をそのまま流し、**トレース自体は `/tmp/trace.*.xt` に書いて**末尾に場所と
+規模を出す(実測: 1 リクエストで 63688 行 / 534 関数)。読むのはそのファイルで、全部は読まない —
+`--context` に何を見たいかを書き、ファイルは目的の関数名で `grep` する。
 
 **`xstep` の前に、ライブラリの既存テストを 1 本走らせる。** 同じシナリオを守るテストが既に赤なら、
-切り分けはそこで終わる。スイート全体は走らせない。
+切り分けはそこで終わる(実測: `--filter testMultipleParentsDependOnSameChild tests/CacheDependencyTest.php`
+が伝播の欠陥をそのまま赤で再現した)。スイート全体は走らせない。
 
 **`var_dump` / `printf` を仕込まない。** 使い捨てスクリプトに同じロジックを書き写して覗くのは、対象ではなく
 写しを見ている(写し間違いに気づけない)。再現スクリプトは**対象を呼ぶだけ**にする。
 
-## 6. 呼ばれ方
+## 6. 報告
 
-「キャッシュログを確認して」「何が起きたか見て」「遅い理由を調べて」で入る。
-
-1. **読める木があるなら、まず読む。** `var/log/*/observe/latest.json` があれば `tree.php` を実行する。
-   設置は済んでいるので §1 は飛ばす。mtime が前回見たときから動いていなければ、**そう言う** —
-   古い木を新しい実行の証拠にしない
-2. 木が無いときだけ §1 の判定に降りる。設置してから、ユーザーに「どのリクエストを見ますか」と聞く
-   (勝手にリクエストを選ばない)。木が薄い・不審なときは §2 の `check.php` で配線から確かめる
-3. 木を読み、§4 の表で問いに答える。ユーザーが問いを持っていなければ、木から言えることを言う:
-   何回リソースが走ったか、hit したか、保存されたか、時間はどこに落ちたか
-4. 木で決着しなければ §5 に降りる。降りるときは何を確かめに行くかを先に言う
-
-## 7. 報告
+切り分けの結論は、次の 6 つで書く。1 つでも欠けたら、まだ報告できていない:
 
 1. **どちらの問題か** — アプリ / ライブラリ / 設計判断のどれか
-2. **観測の根拠** — 木の抜粋。ライブラリを疑うなら `xstep` で見た実引数。「トレースした」と書くのは
-   実際にツールを使ったときだけ
+2. **観測の根拠** — 木の抜粋(`save_value{tags: [...]}` → `invalidate{tags: [...]}` の形)と、
+   ライブラリを疑うなら `xstep` で見た実引数。「トレースした」と書くのは実際にツールを使ったときだけ
 3. **最小再現** — 対象を呼ぶだけのスクリプトかテスト 1 本
-4. **外から見える言葉で** — 「在庫が最大 60 秒古い」のように
+4. **ユーザーが何を感じるか** — 「在庫が最大 60 秒古い」のように、外から見える言葉で
 5. **修正の証明** — 直したなら、**どのイベントがどう変わったかを木で示す**。テストが緑になったことは
    証明ではない(テストは同じ盲点を持ち得る)
+6. **既存の検証はこれを検出できたか** — テスト・オラクル・CI を実際に走らせて答える。緑だったなら
+   **その検証がアプリのコードパスを通っているか**を確かめる。ライブラリの同じ能力を直接叩いて
+   代替検証しているだけなら、アプリ側の誤りは原理的に見えない(実例: オラクルが `purgeTags` を
+   `ResourceStorageInterface::invalidateTags()` に直接渡すと、アプリの無効化サービスを一度も通らない)
 
 **ライブラリだと言うなら、ライブラリの fixture で落ちるテストを添える。添えられないなら、
 まだアプリ側の疑いに戻す。**
@@ -226,4 +376,9 @@ xstep --break="vendor/bear/query-repository/src/CacheDependency.php:<line>" \
 
 観測文脈は開発用だ。プールはファイルで、body は全部ディスクに落ち、記録は無条件。本番で同じことを
 したいなら `ProdQueryRepositoryLogModule`(サンプリングと flush 時の判定を持つ)を見る。
-CDN 側の実挙動・実時間での期限消滅は、どちらの文脈のログにも出ない。
+セッションは URI(クエリ文字列込み)・client validator・生の例外文を含むので、本番の出力先に何を流すかは
+先に決める(scrub や流量制限は `LogWriterInterface` を decorate する)。
+
+CDN 側の実挙動(伝播遅延・エッジ側 eviction)、`#[HttpCache]` の静的ヘッダ設定、独自ヘッダ名のカスタム
+setter、実時間での期限消滅は、どちらの文脈のログにも出ない。詳細は `what-the-log-proves.md` の
+"What the log does not record"。
