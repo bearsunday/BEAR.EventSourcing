@@ -1,0 +1,14 @@
+{
+  "name": "bear-observe",
+  "description": "Sets up an observation context in a BEAR.Sunday application and reads what a request actually did — resource nesting, cache hit/miss, saves and invalidations — from the event-sourcing log.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Akihito Koriyama",
+    "email": "akihito.koriyama@gmail.com"
+  },
+  "homepage": "https://github.com/bearsunday/BEAR.EventSourcing",
+  "repository": "https://github.com/bearsunday/BEAR.EventSourcing",
+  "license": "MIT",
+  "keywords": ["bear-sunday", "event-sourcing", "observability", "cache", "debugging"],
+  "skills": "./skills/"
+}
