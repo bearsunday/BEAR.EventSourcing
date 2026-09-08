@@ -394,6 +394,18 @@ $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)
     ->toProvider(CacheLogProvider::class)->in(Scope::SINGLETON);
 ```
 
+## Agent skill: bear-observe
+
+`skills/bear-observe/` is a Claude Code skill that writes the wiring above into an application, proves it from the bindings, and renders one request as a tree. Install it into a project:
+
+```bash
+mkdir -p .claude/skills && cp -r vendor/bear/event-sourcing/skills/bear-observe .claude/skills/
+```
+
+Then ask an agent to read the log. It runs `harness/setup.php` only when observation is not already working, so an application that is already wired is left alone.
+
+Its `DevModule` template aliases in the opposite direction from the snippet above: `DevQueryRepositoryLogModule` already binds the `#[CacheLog]` key, so the template points the plain `SemanticLoggerInterface` at that one. Either direction gives one tree; this one does not restate the writer and the shutdown sink.
+
 ## Boundaries
 
 - Semantic Logger is the observation source; EventStore is an optional destination.
