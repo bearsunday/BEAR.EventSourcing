@@ -21,6 +21,7 @@ use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\InvokerInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\NullAdapter;
 
 $argvList = $argv;
@@ -75,11 +76,15 @@ $check(
     'no resource_request node at all — the tree has cache scopes with nothing around them',
 );
 
+// Both of these are bound on purpose elsewhere — NullAdapter by the default module, ArrayAdapter
+// by test overrides — and both keep the pool inside one process, which is what a hit needs to
+// outlive.
+$processLocal = [NullAdapter::class, ArrayAdapter::class];
 foreach ([ResourceObjectPool::class => 'resource object', EtagPool::class => 'etag'] as $qualifier => $label) {
     $pool = $get(AdapterInterface::class, $qualifier);
     $check(
         "{$label} pool survives the request",
-        $pool !== null && ! $pool instanceof NullAdapter,
+        $pool !== null && ! in_array($pool::class, $processLocal, true),
         'every GET is a miss, so the log can never show a hit or a 304',
     );
 }

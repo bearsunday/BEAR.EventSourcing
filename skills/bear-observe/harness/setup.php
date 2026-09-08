@@ -52,20 +52,24 @@ if ($missing !== []) {
 $written = [];
 $kept = [];
 $merge = [];
-// A marker per class: the identifier that must appear for the file to be doing our job already.
+// The identifiers that must all appear for the file to be doing our job already. A DevModule that
+// wraps the invoker but installs no log module leaves half a tree, so half the markers is a miss.
+// This only decides whether to leave a template beside the file; whether observation works is
+// check.php's answer, and it comes from the bindings.
 $markers = [
-    'DevModule' => 'SemanticLogInvoker',
-    'ObserveLoggerProvider' => 'CacheLog',
-    'DevPoolProvider' => 'FilesystemAdapter',
+    'DevModule' => ['SemanticLogInvoker', 'DevQueryRepositoryLogModule', 'SemanticLoggerInterface', 'ResourceObjectPool'],
+    'ObserveLoggerProvider' => ['CacheLog'],
+    'DevPoolProvider' => ['FilesystemAdapter'],
 ];
-foreach ($markers as $class => $marker) {
+foreach ($markers as $class => $required) {
     $target = $appDir . '/src/Module/' . $class . '.php';
     $source = str_replace('__NAMESPACE__', $namespace, (string) file_get_contents($templateDir . '/' . $class . '.php'));
 
     if (is_file($target) && ! $force) {
+        $existing = (string) file_get_contents($target);
         // An application's own module already carries bindings this cannot guess at, so the
         // template lands beside it and the merge is a reading job, not a rewrite.
-        if (! str_contains((string) file_get_contents($target), $marker)) {
+        if (array_filter($required, static fn (string $m): bool => ! str_contains($existing, $m)) !== []) {
             file_put_contents($target . '.observe', $source);
             $merge[] = 'src/Module/' . $class . '.php';
             continue;
@@ -83,8 +87,8 @@ foreach ($markers as $class => $marker) {
 // The observation context is the application's own web context with `dev-` in front of it,
 // so DevModule joins the chain the application actually runs rather than a second one.
 $entry = $appDir . '/public/index.php';
-$appContext = is_file($entry) && preg_match("/'(?:prod-|dev-)?([a-z0-9-]*app)'/", (string) file_get_contents($entry), $m) === 1
-    ? $m[1]
+$appContext = is_file($entry) && preg_match("/(['\"])(?:prod-|dev-)?([a-z0-9-]*app)\\1/", (string) file_get_contents($entry), $m) === 1
+    ? $m[2]
     : 'app';
 $context = 'cli-dev-' . $appContext;
 
