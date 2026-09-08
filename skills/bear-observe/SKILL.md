@@ -17,7 +17,11 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 5. 報告    根拠つきで、アプリかライブラリかを言う
 ```
 
-以下 `<skill>` は、このファイルのあるディレクトリ(プロジェクトに入れたなら `.claude/skills/bear-observe`)。
+**この手順を実行するのはエージェントで、ユーザーではない。** ユーザーがするのはスキルを入れることと、
+「ログを見て」と言うことだけ。コマンドをユーザーに貼って待たない。
+
+以下 `<skill>` は、このファイルのあるディレクトリ。`${CLAUDE_PLUGIN_ROOT}` があればそれ、
+プロジェクトに `cp` したなら `.claude/skills/bear-observe`。
 
 ## 0. 前提を 1 度だけ確かめる
 
@@ -48,6 +52,12 @@ php <skill>/harness/setup.php .
 
 `public/index.php` は**変えない**。flush はキャッシュログモジュールの shutdown sink が持つので、
 アプリが自分で書き出す行は要らない。
+
+**このファイル群を自分で書き起こさない。** `templates/` を読んで手で書き直すと、`rename()` した invoker の
+差し替えや 2 つの束縛キーが同じ logger を指す形が微妙にずれる。ずれても例外は出ず、木が薄くなるだけだ
+(§2 の表がその一覧)。namespace と文脈名も `composer.json` と `public/index.php` から取る。
+判断が要るのは、アプリが自前の `DevModule` を持っていたときの畳み込みだけで、そこは `setup.php` が
+`.observe` を隣に置いて手に渡す。
 
 `setup.php` は文脈名(`cli-dev-hal-app` 等)とログのパスを出す。以降その文脈名を使う。
 
@@ -137,7 +147,10 @@ commit されたサンプル出力を判定に使うと、自分の変更が反�
 3. **葉の `cache_miss` と、スコープを閉じる `cache_miss` は別。** donut は内側の層でも葉を出す
 
 キャッシュの宣言(`#[Cacheable]` / `#[DonutCache]` / `#[Refresh]` …)ごとに**期待されるイベント列**と、
-食い違ったときの切り分け表は `bear-cache-log` スキルにある。効いていない理由まで踏み込むならそちらへ。
+食い違ったときの切り分け表は
+[bear-cache-log](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/skills/bear-cache-log/SKILL.md)
+にある(`vendor/bear/query-repository/skills/bear-cache-log/SKILL.md`)。効いていない理由まで踏み込むなら
+そちらへ。
 
 ## 5. 木で決着しないとき
 
