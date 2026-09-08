@@ -396,7 +396,7 @@ $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)
 
 ## Agent skill: bear-observe
 
-`skills/bear-observe/` is a Claude Code skill that writes the wiring above into an application, proves it from the bindings, and renders one request as a tree. Install it into a project:
+`skills/bear-observe/` is a Claude Code skill that writes the wiring above into an application, proves it from the bindings, renders one request as a tree, and reads that tree: the cache event vocabulary, what each `#[Cacheable]`-family declaration is supposed to look like in the log, and app-vs-library triage. Install it into a project:
 
 ```bash
 mkdir -p .claude/skills && cp -r vendor/bear/event-sourcing/skills/bear-observe .claude/skills/
