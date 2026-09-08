@@ -223,7 +223,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 | どの層で効いたか | 閉じた文脈の `layer`: `resource`(値) / `donut` / `donut-view` / `etag`(304 判定) |
 | 保存されたか、何秒、どのキーで | `save_value` / `save_view` / `save_etag` / `save_donut*` の `tags` `requestedTtl` `saved` |
 | なぜ保存されていないか | `put_skipped` の `reason`(`etag-present` / `error-code` / `not-cacheable`) |
-| CDN に何を何秒キャッシュさせたか | `cdn_headers` の `headers`(応答の literal ヘッダ)。lifetime ヘッダが無い = CDN はキャッシュしない。長すぎるときは **`sMaxAge` 未指定の既定値**(generic 10 秒 / Fastly・Akamai 31536000 秒)を疑う — setter の既定値もここに literal で出る |
+| CDN に何を何秒キャッシュさせたか | `cdn_headers` の `headers`(応答の literal ヘッダ)。lifetime ヘッダが無い = 応答が CDN に寿命を指示しなかった(`putDonut` の種類)。エッジが実際に何を保持したかはこのログの外にある。長すぎるときは **`sMaxAge` 未指定の既定値**(generic 10 秒 / Fastly・Akamai 31536000 秒)を疑う — setter の既定値もここに literal で出る |
 | エッジの再検証(304)はヒットしたか | `conditional_request` スコープの閉じ方。`cache_hit{layer: etag}` = リソースを走らせず 304、`cache_miss{layer: etag}` = 検証子が古い |
 | purge は何を消したか | `invalidate` の `tags` `roPool` `etagPool` `cdn`。`cdn` は `purged`/`failed`/`skipped` の三値、fail-closed |
 | miss は空だったのか、店が読めなかったのか | 同じスコープに `cache_error{operation: read}` があれば縮退。無ければコールド |
@@ -318,7 +318,7 @@ body に Request(または ResourceObject)を残すか、announce 側で解決�
 | 書き込みが `invalidate` を出さない | 書き込み経路に `#[Refresh]`/`#[Purge]` が無い | 属性はあるのにマッチャがそのメソッドを拾わない | 織られたオブジェクトの `bindings` にそのメソッドがあるか |
 | `invalidate` は出るが親が hit のまま | タグの選び方が違う(URI タグと共有サロゲートキーの混同) | タグ集合の交差計算の欠陥 | 2 つのタグ集合を並べて交わりを見る |
 | `invalidate` のタグがどのリソースの宣言とも一致しない | **手書きの `invalidateTags()` が定数からドリフトしている** — リソースは `SURROGATE_KEY` 定数を宣言し、無効化側は生文字列を持ったまま取り残された | — | `invalidate` の `tags` を、リソースが宣言する定数の実値と 1 文字ずつ突き合わせる。docblock だけ正しいことがある |
-| `conditional_request` スコープが 1 つも無い | — | — | **どちらでもない**。`If-None-Match` がアプリに届いていない — プロキシ・WAF・CDN が落としている |
+| `conditional_request` スコープが 1 つも無い | — | — | **まず要求側を見る**。`If-None-Match` を送っていない要求なら正常で、`bin/dev.php` の CLI 要求は送らない。送ったと確かめた上で無いときだけ、プロキシ・WAF・CDN が落としている |
 | 値が古い | TTL が床(設計判断) | — | `save_*` の `ttl` |
 | `cache_error` / `pool_error` | 店の設定・接続 | 縮退の扱い | 例外か縮退かは `docs/what-the-log-proves.md` |
 
