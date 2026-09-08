@@ -1,0 +1,15 @@
+{
+  "name": "bear-event-sourcing",
+  "owner": {
+    "name": "Akihito Koriyama",
+    "email": "akihito.koriyama@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "bear-observe",
+      "source": "./",
+      "description": "Observe and debug a BEAR.Sunday request from its event-sourcing log",
+      "version": "0.1.0"
+    }
+  ]
+}
