@@ -83,6 +83,7 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 
 ```bash
 php <skill>/harness/setup.php .
+php <skill>/harness/setup.php . bin/admin.php   # 別の入口の文脈を観測する
 ```
 
 これが書くもの:
@@ -99,7 +100,7 @@ php <skill>/harness/setup.php .
 
 **このファイル群を自分で書き起こさない。** `templates/` を読んで手で書き直すと、`rename()` した invoker の
 差し替えや 2 つの束縛キーが同じ logger を指す形が微妙にずれる。ずれても例外は出ず、木が薄くなるだけだ
-(§2 の表がその一覧)。namespace と文脈名も `composer.json` と `public/index.php` から取る。
+(§2 の表がその一覧)。namespace は `composer.json` から、文脈名は渡した入口(既定 `public/index.php`)から取る。
 判断が要るのは、アプリが自前の `DevModule` を持っていたときの畳み込みだけで、そこは `setup.php` が
 `.observe` を隣に置いて手に渡す。
 
@@ -108,6 +109,12 @@ php <skill>/harness/setup.php .
 を足すと **Ray.Aop の pointcut が累積してインターセプタが 2 回走る** — 1 リクエストで参照 2 回・書き込み
 2 回、木には同じ URI が自分の中に入れ子で現れる。既存グラフに記録だけ足すなら、包まずに
 `bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)` の 1 本だけを差し替える。
+
+**入口が複数あるアプリでは、観測したい入口を第 2 引数で渡す。** 文脈はその入口が渡す文脈リテラルから
+`cli-` `prod-` `dev-` を落として `cli-dev-` を付けたもの(`bin/app.php` の `'cli-hal-api-app'` なら
+`cli-dev-hal-api-app`)。アプリ自身の語(`stage-` など)は文脈の一部なので残る。`bin/dev.php` は 1 つしか
+無いので、入口を切り替えるときは `--force` を付ける — 古いものが残っていれば `note` 行がそう言う。
+ルートに `autoload.php` が無く `vendor/autoload.php` だけの構成でも動く。
 
 `setup.php` は文脈名(`cli-dev-hal-app` 等)とログのパスを出す。以降その文脈名を使う。
 

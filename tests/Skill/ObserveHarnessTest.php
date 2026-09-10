@@ -58,6 +58,44 @@ final class ObserveHarnessTest extends TestCase
         self::remove($this->appDir);
     }
 
+    public function testSetupTakesTheContextFromTheGivenEntryPoint(): void
+    {
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('prod-hal-app', \$GLOBALS, \$_SERVER));\n");
+        $this->write('bin/admin.php', "<?php\nexit((new Bootstrap())('prod-admin-app', \$GLOBALS, \$_SERVER));\n");
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir, 'bin/admin.php');
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString('entry      bin/admin.php', $output);
+        $this->assertStringContainsString('context    cli-dev-admin-app', $output);
+        $this->assertStringContainsString("'cli-dev-admin-app'", $this->read('bin/dev.php'));
+    }
+
+    public function testSetupStripsSapiAndEnvironmentPrefixes(): void
+    {
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('cli-hal-app', \$GLOBALS, \$_SERVER));\n");
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir);
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString('context    cli-dev-hal-app', $output);
+        $this->assertStringNotContainsString('cli-dev-cli-', $output);
+    }
+
+    public function testSetupNotesAKeptDevPhpThatRunsAnotherContext(): void
+    {
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+        $this->write('bin/admin.php', "<?php\nexit((new Bootstrap())('admin-app', \$GLOBALS, \$_SERVER));\n");
+        $this->runHarness('setup.php', $this->appDir);
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir, 'bin/admin.php');
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString('bin/dev.php (--force to overwrite)', $output);
+        $this->assertStringContainsString('note       bin/dev.php runs another context', $output);
+        $this->assertStringContainsString("'cli-dev-hal-app'", $this->read('bin/dev.php'));
+    }
+
     public function testSetupRequiresVendorAutoloadWhenRootAutoloadIsAbsent(): void
     {
         $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
