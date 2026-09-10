@@ -92,6 +92,10 @@ $appContext = is_file($entry) && preg_match("/(['\"])(?:prod-|dev-)?([a-z0-9-]*a
     : 'app';
 $context = 'cli-dev-' . $appContext;
 
+// Resolved here rather than in the generated file, so bin/dev.php keeps the single require line
+// the application's own entry points have.
+$autoload = is_file($appDir . '/autoload.php') ? '/autoload.php' : '/vendor/autoload.php';
+
 $devBin = $appDir . '/bin/dev.php';
 if (! is_file($devBin) || $force) {
     file_put_contents($devBin, <<<PHP
@@ -101,7 +105,7 @@ if (! is_file($devBin) || $force) {
 
     use {$namespace}\\Bootstrap;
 
-    require dirname(__DIR__) . '/autoload.php';
+    require dirname(__DIR__) . '{$autoload}';
     exit((new Bootstrap())('{$context}', \$GLOBALS, \$_SERVER));
 
     PHP);

@@ -27,7 +27,16 @@ use Symfony\Component\Cache\Adapter\NullAdapter;
 $argvList = $argv;
 array_shift($argvList);
 $appDir = realpath($argvList[0] ?? getcwd()) ?: '';
-require $appDir . '/autoload.php';
+// A skeleton has a root autoload.php; an application assembled by hand may only have Composer's.
+// Missing both is a fatal error before the first check runs, so it is reported as a FAIL like
+// everything else here.
+$autoload = is_file($appDir . '/autoload.php') ? '/autoload.php' : '/vendor/autoload.php';
+if (! is_file($appDir . $autoload)) {
+    fwrite(STDERR, "FAIL  no autoload.php or vendor/autoload.php in {$appDir}\n");
+    exit(1);
+}
+
+require $appDir . $autoload;
 
 $composer = json_decode((string) file_get_contents($appDir . '/composer.json'), true);
 $namespace = '';
