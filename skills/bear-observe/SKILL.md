@@ -78,11 +78,12 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 | ある、`SemanticLogInvoker` を含む | 設置済み。§2 の `check.php` だけ走らせて §3 へ |
 | ある、含まない | アプリ自身の `DevModule`。`setup.php` は上書きせず `DevModule.php.observe` を隣に置くので、畳み込みはこちらの仕事 |
 
-`setup.php` は冪等で、既存ファイルは残す(`--force` で上書き)。それでも「観測が動いているか」の判定に
+`setup.php` は冪等で、既存ファイルは残す(`--force` は自前の `DevModule` も含めて全部を上書きする)。それでも「観測が動いているか」の判定に
 **ファイルの有無を使わない** — 判定は §2 の `check.php` で、束縛から取る。
 
 ```bash
 php <skill>/harness/setup.php .
+php <skill>/harness/setup.php . bin/admin.php   # 別の入口の文脈を観測する
 ```
 
 これが書くもの:
@@ -99,7 +100,7 @@ php <skill>/harness/setup.php .
 
 **このファイル群を自分で書き起こさない。** `templates/` を読んで手で書き直すと、`rename()` した invoker の
 差し替えや 2 つの束縛キーが同じ logger を指す形が微妙にずれる。ずれても例外は出ず、木が薄くなるだけだ
-(§2 の表がその一覧)。namespace と文脈名も `composer.json` と `public/index.php` から取る。
+(§2 の表がその一覧)。namespace は `composer.json` から、文脈名は渡した入口(既定 `public/index.php`)から取る。
 判断が要るのは、アプリが自前の `DevModule` を持っていたときの畳み込みだけで、そこは `setup.php` が
 `.observe` を隣に置いて手に渡す。
 
@@ -108,6 +109,13 @@ php <skill>/harness/setup.php .
 を足すと **Ray.Aop の pointcut が累積してインターセプタが 2 回走る** — 1 リクエストで参照 2 回・書き込み
 2 回、木には同じ URI が自分の中に入れ子で現れる。既存グラフに記録だけ足すなら、包まずに
 `bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)` の 1 本だけを差し替える。
+
+**入口が複数あるアプリでは、観測したい入口を第 2 引数で渡す。** 文脈はその入口が渡す文脈リテラルから
+`cli-` `prod-` `dev-` を落として `cli-dev-` を付けたもの(`bin/app.php` の `'cli-hal-api-app'` なら
+`cli-dev-hal-api-app`)。アプリ自身の語(`stage-` など)は文脈の一部なので残る。`bin/dev.php` は 1 つしか
+無いので、入口を切り替えるときは `bin/dev.php` の文脈リテラルを手で書き換える — 古いものが残っていれば
+`note` 行がそう言う。**ここで `--force` を使わない**: `src/Module/*.php` も上書きするので、アプリ自身の
+`DevModule` が消える。ルートに `autoload.php` が無く `vendor/autoload.php` だけの構成でも動く。
 
 `setup.php` は文脈名(`cli-dev-hal-app` 等)とログのパスを出す。以降その文脈名を使う。
 
@@ -228,7 +236,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 | purge は何を消したか | `invalidate` の `tags` `roPool` `etagPool` `cdn`。`cdn` は `purged`/`failed`/`skipped` の三値、fail-closed |
 | miss は空だったのか、店が読めなかったのか | 同じスコープに `cache_error{operation: read}` があれば縮退。無ければコールド |
 | 誰が書いたか | `command` スコープの `source`。直接呼び出しは `manual_store` / `manual_purge` / `manual_invalidate` |
-| 依存の伝播 | `depends_on` と、`save_*` の `tags` ↔ `invalidate` の `tags` の突き合わせ |
+| 依存の伝播 | `save_*` の `tags` ↔ `invalidate` の `tags` の突き合わせ。`depends_on` を出すのは `#[Cacheable]` の親だけで、donut の親は出さない(§4) |
 | 何回リソースが走ったか | `resource_request` の数。N+1 は同じ URI の兄弟が並ぶ形で出る |
 | どこで時間を使ったか | `durationMs`。親から子を引いた残りがその層の自前のコスト |
 | 何を返したか | `body_ref` のファイル(`var/log/<context>/es-bodies/`) |
@@ -255,7 +263,6 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 | `#[Cacheable]` | close `cache_miss`。`cache_policy{expiry, resolvedTtl}` → `save_etag` → `save_value` | close `cache_hit`、イベント 0 件 | `command{source: CommandInterceptor}` に `purge` → `invalidate`、続いて**入れ子の `get` で再生成**(`RefreshSameCommand`)。close は `command_result` |
 | `#[CacheableResponse]` | close `cache_miss{layer: donut}`。`put_donut` → `cdn_headers` → **`save_etag`** → `save_donut_view` → `save_donut`(全体を保存し ETag を持つ = 304 が返る) | close `cache_hit`、イベント 0 件。埋め込んだ子が無効化された回だけ `refresh_donut` → `save_etag` → `save_donut_view` | `#[Purge]`/`#[Refresh]`/`#[RefreshCache]` のいずれでも `command_result [purge, invalidate]`、次の read は `cache_miss`。**1.16.2 以前は `#[RefreshCache]` だけ書き込みが実行されない**(下の注) |
 | `#[DonutCache]` | close `cache_miss`。`put_donut` → `cdn_headers` → `save_donut`。**`save_etag` は出ない** — 全体を保存しないので ETag も無く、304 は返らない | close `cache_hit` + `refresh_donut` → `put_skipped{not-cacheable}`。毎回 donut を組み直すのが正常 | 書き込み側に `#[Purge]`/`#[Refresh]`/`#[RefreshCache]` を書かないと、`command` も `invalidate` も出ない |
-| `#[Embed]` した子を持つ親 | `depends_on` が出て、`save_*` の `tags` に子の URI タグが入る | close `cache_hit` | 子を purge → 親の次の read が `cache_miss` |
 | `#[Refresh]` / `#[Purge]` | — | — | `command` スコープに `purge` + `invalidate`。`pre_write_cleanup` 隣接**だけ**なら誰にも告げていない |
 | `#[HttpCache]` | `cdn_headers` に literal ヘッダ | 同じ | — |
 
@@ -274,24 +281,47 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 
 ### 依存が効いているかを確かめる手順
 
-「親が子を埋め込んでいるから、子を purge すれば親も落ちる」は**コードを読んでも分からない**:
+「親が子を埋め込んでいるから、子を purge すれば親も落ちる」は**コードを読んでも分からない**。
+そのうえ**親の宣言ごとに、記録される依存も purge 後の形も違う**:
 
-1. 親をコールドで読む。`save_*` の `tags` に**子の URI タグが入っている**ことを見る(入っていなければ依存は
-   記録されていない — `#[Embed]` ではなく値をコピーしている疑い)
+| 親の宣言 | 依存の記録 | 子を purge した後の親の read |
+|---|---|---|
+| `#[Cacheable]` | `depends_on` + `save_etag` / `save_value` の `tags` に子の URI タグ | close `cache_miss` — 値ごと作り直す |
+| `#[CacheableResponse]` | `depends_on` は**出ない**。`save_etag` / `save_donut_view` の `tags` に子の URI タグ。`save_donut` には**乗らない**(テンプレートは子の書き込みで落とさない) | close は `cache_hit{layer: donut-view}` のまま。中に `cache_hit{layer: donut}` → `refresh_donut` → `save_etag` → `save_donut_view` と、子の入れ子 `get`(`cache_miss`)が現れる。**`refresh_donut` が依存の証拠** |
+| `#[DonutCache]` | **店には記録しない** — `save_donut` の `tags` は自分の URI タグと自分の宣言だけ。子の URI タグは応答の `Surrogate-Key`(`cdn_headers` の `surrogateKeys`)にだけ乗り、それで落とせるのはエッジ側だけ | purge の前後で形が変わらない。毎回 `cache_hit{layer: donut}` → `refresh_donut` → `put_skipped{not-cacheable}`。子の鮮度は子自身のキャッシュが決める |
+
+`#[DonutCache]` で「依存が無い」と報告するのは誤り。全体を保存しないので落とすものが無く、毎回組み直す
+のが設計判断だ。
+
+手順も宣言で分かれる:
+
+1. 親をコールドで読む。**その宣言が使う `save_*`** の `tags` に子の URI タグが入っていることを見る
+   (`#[Cacheable]` なら `save_value`、`#[CacheableResponse]` なら `save_etag` / `save_donut_view`、
+   `#[DonutCache]` は `save_*` ではなく `cdn_headers` の `surrogateKeys`。
+   入っていなければ `#[Embed]` ではなく値をコピーしている疑い)
 2. 子の URI を purge する(`QueryRepositoryInterface::purge(new Uri(...))`)
-3. 親をもう一度読む。**`cache_miss` で閉じれば依存は生きている**。`cache_hit` なら親は古い子を抱えている
+3. 親をもう一度読む。`#[Cacheable]` は **`cache_miss` で閉じれば依存は生きている**。donut の親は
+   **閉じる型が `cache_hit` のまま**で、`refresh_donut` と子の入れ子 `get` があれば生きている
 
-`depends_on` は 1 の裏付け、2→3 が実証。効果だけ(値が変わった)で判定すると、TTL で落ちただけの場合と
-区別できない。
+`#[Cacheable]` では `depends_on` が 1 の裏付け、2→3 が実証。効果だけ(値が変わった)で判定すると、
+TTL で落ちただけの場合と区別できない。
 
 **入れ子の `get` スコープは依存の証拠にならない。** 親のスコープの中に子のスコープが現れるのは、
 親の実行中に子を読んだという事実だけを言う。`ResourceInterface` を注入して手で読んでも同じ形になり、
-`depends_on` もタグ伝播も起きない。見るのは入れ子ではなく `depends_on` と `tags`。
+`depends_on` もタグ伝播も起きない。見るのは入れ子ではなく、`#[Cacheable]` なら `depends_on` と `tags`、
+donut の親なら `tags` と `refresh_donut`。
 
-**`#[Embed]` を付けただけでは足りない。** 依存を登録するのは `QueryRepository::setCacheDependency()` で、
-保存時に **`$ro->body` に `AbstractRequest` のインスタンスが残っているものだけ**を辿る。埋め込んだ値を
-スカラーに解決して body を作り直すと、その時点で Request は body から消えており、依存は登録されない。
-body に Request(または ResourceObject)を残すか、announce 側で解決する。
+**`#[Embed]` を付けただけでは足りない。** 依存を登録するのは `#[Cacheable]` では
+`QueryRepository::setCacheDependency()`、donut では `ResourceDonut::create()`(`DonutRequest` 経由)で、
+どちらも保存時に **`$ro->body` に `AbstractRequest` のインスタンスが残っているものだけ**を辿る。埋め込んだ
+値をスカラーに解決して body を作り直すと、その時点で Request は body から消えており、宣言がどれでも依存は
+登録されない。body に Request(または ResourceObject)を残すか、announce 側で解決する。
+
+`#[Cacheable]` にはもう 1 つ条件がある。`setCacheDependency()` は子を走らせたあと、子に `ETag` ヘッダが
+無ければ `continue` する — 子自身にキャッシュ宣言が無く ETag を持たなければ、Request が残っていても
+`depends_on` は出ない。donut では `ResourceDonut::create()` が集めた子のタグを店に残すのは
+`#[CacheableResponse]`(`save_etag` / `save_donut_view`)だけで、`#[DonutCache]` は応答の `Surrogate-Key`
+に載せて終わる。
 
 ### タグと TTL のどちらが要るかは、ログでは決まらない
 
@@ -314,7 +344,7 @@ body に Request(または ResourceObject)を残すか、announce 側で解決�
 |---|---|---|---|
 | 期待した `get` スコープが無い(miss すら出ない。木全体が空とは限らず、その 1 本だけ欠けることがある) | `final`(`ReflectionClass::isFinal()` が true)、属性そのものが無い、文脈が店を束縛していない | sink が arm を拒否 | 織られたか(`get_class`)→ 真なら `isFinal()` と属性の有無で二分 / `error_log` |
 | 期待した `save_*` が無い | `put_skipped` の `reason` がアプリ由来(自前 ETag・非 200) | `put_skipped` も無いのに保存されない | `put_skipped` の有無と `reason` |
-| `save_*` の `tags` に子が無い | 値をコピーしている(`#[Embed]` でない) | `depends_on` はあるのにタグが乗らない = 伝播の欠陥(`CacheDependency::depends()` が親の `Surrogate-Key` に子タグを積む) | `depends_on` イベントの有無 |
+| `save_*` の `tags` に子が無い | 値をコピーしている(`#[Embed]` でない)、`#[Cacheable]` の子が `ETag` を持たない(子自身にキャッシュ宣言が無い)、または親が `#[DonutCache]`(店には記録しないのが仕様) | 伝播の欠陥 — `#[Cacheable]` で `depends_on` はあるのにタグが乗らない(`CacheDependency::depends()` が親の `Surrogate-Key` に子タグを積む)、`#[CacheableResponse]` で `cdn_headers` の `surrogateKeys` には子タグがあるのに `save_etag` / `save_donut_view` に乗らない | まず親の宣言。`#[Cacheable]` なら `depends_on` の有無。donut なら `save_donut` ではなく `cdn_headers` の `surrogateKeys` と `save_etag` / `save_donut_view` の `tags` を並べる: `surrogateKeys` にあって `tags` に無い = ライブラリ側、どちらにも無い = アプリ側(Request が body に残っていない) |
 | 書き込みが `invalidate` を出さない | 書き込み経路に `#[Refresh]`/`#[Purge]` が無い | 属性はあるのにマッチャがそのメソッドを拾わない | 織られたオブジェクトの `bindings` にそのメソッドがあるか |
 | `invalidate` は出るが親が hit のまま | タグの選び方が違う(URI タグと共有サロゲートキーの混同) | タグ集合の交差計算の欠陥 | 2 つのタグ集合を並べて交わりを見る |
 | `invalidate` のタグがどのリソースの宣言とも一致しない | **手書きの `invalidateTags()` が定数からドリフトしている** — リソースは `SURROGATE_KEY` 定数を宣言し、無効化側は生文字列を持ったまま取り残された | — | `invalidate` の `tags` を、リソースが宣言する定数の実値と 1 文字ずつ突き合わせる。docblock だけ正しいことがある |
@@ -323,8 +353,9 @@ body に Request(または ResourceObject)を残すか、announce 側で解決�
 | `cache_error` / `pool_error` | 店の設定・接続 | 縮退の扱い | 例外か縮退かは `docs/what-the-log-proves.md` |
 
 判断点の在処: `CacheInterceptor`(hit/miss と保存)、`CommandInterceptor`(書き込み後の無効化)、
-`QueryRepository`(put/get/purge)、`ResourceStorage`(タグと 2 プール)、`CacheDependency`(依存の伝播)、
-`DonutRepository`(donut)、`HttpCache` / `CliHttpCache`(304 判定)、`EtagSetter`(ETag 生成)。
+`QueryRepository`(put/get/purge)、`ResourceStorage`(タグと 2 プール)、`CacheDependency`(依存の伝播 —
+`#[Cacheable]` の経路だけ)、`DonutRepository` / `SurrogateKeys`(donut の子タグ)、
+`HttpCache` / `CliHttpCache`(304 判定)、`EtagSetter`(ETag 生成)。
 
 **「ライブラリ側」に振った候補が 1 つ残ったときだけ**、該当クラスの分岐を観測する。道具は
 `koriym/xdebug-mcp`(`composer global require koriym/xdebug-mcp`)。**php 本体に Xdebug が入っていなくてよい**

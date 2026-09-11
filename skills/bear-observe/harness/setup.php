@@ -6,9 +6,11 @@ declare(strict_types=1);
 /**
  * Installs the observation context into a BEAR.Sunday application.
  *
- * Usage: php setup.php [app-dir] [--force]
+ * Usage: php setup.php [app-dir] [entrypoint] [--force]
  *
  * Writes src/Module/{DevModule,ObserveLoggerProvider,DevPoolProvider}.php and bin/dev.php.
+ * The observation context is built from the context literal in the entrypoint (default
+ * public/index.php), so an application with several entry points is observed one at a time.
  * Existing files are left alone unless --force. Nothing else in the application changes:
  * the flush is the cache log module's shutdown sink, not a line in public/index.php.
  */
@@ -16,7 +18,10 @@ declare(strict_types=1);
 $argvList = $argv;
 array_shift($argvList);
 $force = in_array('--force', $argvList, true);
-$appDir = realpath($argvList[0] ?? getcwd()) ?: '';
+// Options are filtered before the positions are read; otherwise `php setup.php --force` names
+// `--force` as the application directory.
+$positional = array_values(array_filter($argvList, static fn (string $arg): bool => ! str_starts_with($arg, '--')));
+$appDir = realpath($positional[0] ?? getcwd()) ?: '';
 $templateDir = dirname(__DIR__) . '/templates';
 
 function fail(string $message): never
@@ -48,6 +53,26 @@ $missing = array_values(array_filter(
 if ($missing !== []) {
     fail('missing dependencies: ' . implode(' ', $missing) . "\n      run: composer require --dev " . implode(':1.x-dev ', $missing) . ':1.x-dev');
 }
+
+// The observation context is the context of the entry point being observed with `cli-dev-` in
+// front of it, so DevModule joins the chain that entry point actually runs rather than a second
+// one.
+$entryName = $positional[1] ?? 'public/index.php';
+$entry = str_starts_with($entryName, '/') ? $entryName : $appDir . '/' . $entryName;
+// A named entry point that is not there is a typo, and a typo writes nothing. A missing default
+// only means there is nothing to read a context from.
+if (! is_file($entry) && isset($positional[1])) {
+    fail("no entry point at {$entry}");
+}
+
+$literal = is_file($entry) && preg_match("/(['\"])([a-z0-9-]*app)\\1/", (string) file_get_contents($entry), $m) === 1
+    ? $m[2]
+    : 'app';
+// `cli` and `prod` are the SAPI and environment words BEAR.Package's context modules contribute;
+// `dev` is the word this harness writes. The observation context supplies all three itself, so
+// keeping them gives `cli-dev-cli-hal-app`. Any other word (`stage-`, `test-`) is part of the
+// entry point's context and stays.
+$context = 'cli-dev-' . (string) preg_replace('/^(?:(?:cli|prod|dev)-)+/', '', $literal);
 
 $written = [];
 $kept = [];
@@ -84,16 +109,14 @@ foreach ($markers as $class => $required) {
     $written[] = 'src/Module/' . $class . '.php';
 }
 
-// The observation context is the application's own web context with `dev-` in front of it,
-// so DevModule joins the chain the application actually runs rather than a second one.
-$entry = $appDir . '/public/index.php';
-$appContext = is_file($entry) && preg_match("/(['\"])(?:prod-|dev-)?([a-z0-9-]*app)\\1/", (string) file_get_contents($entry), $m) === 1
-    ? $m[2]
-    : 'app';
-$context = 'cli-dev-' . $appContext;
+// Resolved here rather than in the generated file, so bin/dev.php keeps the single require line
+// the application's own entry points have.
+$autoload = is_file($appDir . '/autoload.php') ? '/autoload.php' : '/vendor/autoload.php';
 
+$note = '';
 $devBin = $appDir . '/bin/dev.php';
 if (! is_file($devBin) || $force) {
+    is_dir(dirname($devBin)) || mkdir(dirname($devBin), 0755, true);
     file_put_contents($devBin, <<<PHP
     <?php
 
@@ -101,19 +124,26 @@ if (! is_file($devBin) || $force) {
 
     use {$namespace}\\Bootstrap;
 
-    require dirname(__DIR__) . '/autoload.php';
+    require dirname(__DIR__) . '{$autoload}';
     exit((new Bootstrap())('{$context}', \$GLOBALS, \$_SERVER));
 
     PHP);
     $written[] = 'bin/dev.php';
 } else {
     $kept[] = 'bin/dev.php';
+    // There is one bin/dev.php for however many entry points the application has. A kept one
+    // that boots another context observes that other one, and the log below stays empty.
+    if (! str_contains((string) file_get_contents($devBin), "'{$context}'")) {
+        $note = 'bin/dev.php runs another context; edit its context literal (--force also rewrites src/Module/*)';
+    }
 }
 
 echo "namespace  {$namespace}\n";
+echo 'entry      ' . $entryName . (is_file($entry) ? '' : ' (absent — context defaults to app)') . "\n";
 echo "context    {$context}\n";
 echo "log        var/log/{$context}/observe/latest.json\n";
 $written === [] || print('written    ' . implode(' ', $written) . "\n");
 $kept === [] || print('kept       ' . implode(' ', $kept) . " (--force to overwrite)\n");
+$note === '' || print("note       {$note}\n");
 $merge === [] || print("merge      " . implode(' ', $merge) . " already exist — the observation bindings are in the sibling .observe file; fold them in by hand\n");
 echo 'next       php ' . dirname(__DIR__) . "/harness/check.php {$appDir} {$context}\n";
