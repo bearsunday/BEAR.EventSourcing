@@ -115,6 +115,7 @@ $autoload = is_file($appDir . '/autoload.php') ? '/autoload.php' : '/vendor/auto
 $note = '';
 $devBin = $appDir . '/bin/dev.php';
 if (! is_file($devBin) || $force) {
+    is_dir(dirname($devBin)) || mkdir(dirname($devBin), 0755, true);
     file_put_contents($devBin, <<<PHP
     <?php
 

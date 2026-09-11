@@ -47,9 +47,6 @@ final class ObserveHarnessTest extends TestCase
     protected function setUp(): void
     {
         $this->appDir = sys_get_temp_dir() . '/observe-harness-' . uniqid();
-        // A skeleton ships both directories, so setup.php writes into them rather than creating them.
-        mkdir($this->appDir . '/bin', 0755, true);
-        mkdir($this->appDir . '/src/Module', 0755, true);
         $this->write('composer.json', self::COMPOSER_JSON);
     }
 
