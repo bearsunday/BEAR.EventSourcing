@@ -5,6 +5,7 @@
 ### Added
 
 - `skills/bear-observe/`: a Claude Code skill that installs the observation wiring, proves it from the bindings, and reads one request as a tree; absorbs the retired `bear-cache-log` skill from BEAR.QueryRepository
+- `skills/bear-observe/`: `setup.php` takes the entry point whose context to observe, both harness scripts fall back to `vendor/autoload.php`, and SKILL.md says which declaration records a dependency and where
 
 ## 0.1.0 - 2026-09-06
 
