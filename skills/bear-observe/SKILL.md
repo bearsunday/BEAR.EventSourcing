@@ -288,7 +288,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 |---|---|---|
 | `#[Cacheable]` | `depends_on` + `save_etag` / `save_value` の `tags` に子の URI タグ | close `cache_miss` — 値ごと作り直す |
 | `#[CacheableResponse]` | `depends_on` は**出ない**。`save_etag` / `save_donut_view` の `tags` に子の URI タグ。`save_donut` には**乗らない**(テンプレートは子の書き込みで落とさない) | close は `cache_hit{layer: donut-view}` のまま。中に `cache_hit{layer: donut}` → `refresh_donut` → `save_etag` → `save_donut_view` と、子の入れ子 `get`(`cache_miss`)が現れる。**`refresh_donut` が依存の証拠** |
-| `#[DonutCache]` | **記録しない**。`save_donut` の `tags` は自分の URI タグと自分の宣言だけ | purge の前後で形が変わらない。毎回 `cache_hit{layer: donut}` → `refresh_donut` → `put_skipped{not-cacheable}`。子の鮮度は子自身のキャッシュが決める |
+| `#[DonutCache]` | **店には記録しない** — `save_donut` の `tags` は自分の URI タグと自分の宣言だけ。子の URI タグは応答の `Surrogate-Key`(`cdn_headers` の `surrogateKeys`)にだけ乗り、それで落とせるのはエッジ側だけ | purge の前後で形が変わらない。毎回 `cache_hit{layer: donut}` → `refresh_donut` → `put_skipped{not-cacheable}`。子の鮮度は子自身のキャッシュが決める |
 
 `#[DonutCache]` で「依存が無い」と報告するのは誤り。全体を保存しないので落とすものが無く、毎回組み直す
 のが設計判断だ。
@@ -296,7 +296,8 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 手順も宣言で分かれる:
 
 1. 親をコールドで読む。**その宣言が使う `save_*`** の `tags` に子の URI タグが入っていることを見る
-   (`#[Cacheable]` なら `save_value`、`#[CacheableResponse]` なら `save_etag` / `save_donut_view`。
+   (`#[Cacheable]` なら `save_value`、`#[CacheableResponse]` なら `save_etag` / `save_donut_view`、
+   `#[DonutCache]` は `save_*` ではなく `cdn_headers` の `surrogateKeys`。
    入っていなければ `#[Embed]` ではなく値をコピーしている疑い)
 2. 子の URI を purge する(`QueryRepositoryInterface::purge(new Uri(...))`)
 3. 親をもう一度読む。`#[Cacheable]` は **`cache_miss` で閉じれば依存は生きている**。donut の親は
@@ -311,10 +312,16 @@ TTL で落ちただけの場合と区別できない。
 donut の親なら `tags` と `refresh_donut`。
 
 **`#[Embed]` を付けただけでは足りない。** 依存を登録するのは `#[Cacheable]` では
-`QueryRepository::setCacheDependency()`、donut では `ResourceDonut::create()` で、どちらも保存時に
-**`$ro->body` に `AbstractRequest` のインスタンスが残っているものだけ**を辿る。埋め込んだ値をスカラーに
-解決して body を作り直すと、その時点で Request は body から消えており、宣言がどれでも依存は登録されない。
-body に Request(または ResourceObject)を残すか、announce 側で解決する。
+`QueryRepository::setCacheDependency()`、donut では `ResourceDonut::create()`(`DonutRequest` 経由)で、
+どちらも保存時に **`$ro->body` に `AbstractRequest` のインスタンスが残っているものだけ**を辿る。埋め込んだ
+値をスカラーに解決して body を作り直すと、その時点で Request は body から消えており、宣言がどれでも依存は
+登録されない。body に Request(または ResourceObject)を残すか、announce 側で解決する。
+
+`#[Cacheable]` にはもう 1 つ条件がある。`setCacheDependency()` は子を走らせたあと、子に `ETag` ヘッダが
+無ければ `continue` する — 子自身にキャッシュ宣言が無く ETag を持たなければ、Request が残っていても
+`depends_on` は出ない。donut では `ResourceDonut::create()` が集めた子のタグを店に残すのは
+`#[CacheableResponse]`(`save_etag` / `save_donut_view`)だけで、`#[DonutCache]` は応答の `Surrogate-Key`
+に載せて終わる。
 
 ### タグと TTL のどちらが要るかは、ログでは決まらない
 
@@ -337,7 +344,7 @@ body に Request(または ResourceObject)を残すか、announce 側で解決�
 |---|---|---|---|
 | 期待した `get` スコープが無い(miss すら出ない。木全体が空とは限らず、その 1 本だけ欠けることがある) | `final`(`ReflectionClass::isFinal()` が true)、属性そのものが無い、文脈が店を束縛していない | sink が arm を拒否 | 織られたか(`get_class`)→ 真なら `isFinal()` と属性の有無で二分 / `error_log` |
 | 期待した `save_*` が無い | `put_skipped` の `reason` がアプリ由来(自前 ETag・非 200) | `put_skipped` も無いのに保存されない | `put_skipped` の有無と `reason` |
-| `save_*` の `tags` に子が無い | 値をコピーしている(`#[Embed]` でない)、または親が `#[DonutCache]`(記録しないのが仕様) | 伝播の欠陥 — `#[Cacheable]` で `depends_on` はあるのにタグが乗らない(`CacheDependency::depends()` が親の `Surrogate-Key` に子タグを積む)、`#[CacheableResponse]` で子の入れ子 `get` はあるのに `save_etag` / `save_donut_view` に乗らない | まず親の宣言。`#[Cacheable]` なら `depends_on` の有無、donut なら `save_donut` ではなく `save_etag` / `save_donut_view` の `tags` |
+| `save_*` の `tags` に子が無い | 値をコピーしている(`#[Embed]` でない)、`#[Cacheable]` の子が `ETag` を持たない(子自身にキャッシュ宣言が無い)、または親が `#[DonutCache]`(店には記録しないのが仕様) | 伝播の欠陥 — `#[Cacheable]` で `depends_on` はあるのにタグが乗らない(`CacheDependency::depends()` が親の `Surrogate-Key` に子タグを積む)、`#[CacheableResponse]` で `cdn_headers` の `surrogateKeys` には子タグがあるのに `save_etag` / `save_donut_view` に乗らない | まず親の宣言。`#[Cacheable]` なら `depends_on` の有無。donut なら `save_donut` ではなく `cdn_headers` の `surrogateKeys` と `save_etag` / `save_donut_view` の `tags` を並べる: `surrogateKeys` にあって `tags` に無い = ライブラリ側、どちらにも無い = アプリ側(Request が body に残っていない) |
 | 書き込みが `invalidate` を出さない | 書き込み経路に `#[Refresh]`/`#[Purge]` が無い | 属性はあるのにマッチャがそのメソッドを拾わない | 織られたオブジェクトの `bindings` にそのメソッドがあるか |
 | `invalidate` は出るが親が hit のまま | タグの選び方が違う(URI タグと共有サロゲートキーの混同) | タグ集合の交差計算の欠陥 | 2 つのタグ集合を並べて交わりを見る |
 | `invalidate` のタグがどのリソースの宣言とも一致しない | **手書きの `invalidateTags()` が定数からドリフトしている** — リソースは `SURROGATE_KEY` 定数を宣言し、無効化側は生文字列を持ったまま取り残された | — | `invalidate` の `tags` を、リソースが宣言する定数の実値と 1 文字ずつ突き合わせる。docblock だけ正しいことがある |
