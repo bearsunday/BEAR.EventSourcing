@@ -78,7 +78,7 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 | ある、`SemanticLogInvoker` を含む | 設置済み。§2 の `check.php` だけ走らせて §3 へ |
 | ある、含まない | アプリ自身の `DevModule`。`setup.php` は上書きせず `DevModule.php.observe` を隣に置くので、畳み込みはこちらの仕事 |
 
-`setup.php` は冪等で、既存ファイルは残す(`--force` で上書き)。それでも「観測が動いているか」の判定に
+`setup.php` は冪等で、既存ファイルは残す(`--force` は自前の `DevModule` も含めて全部を上書きする)。それでも「観測が動いているか」の判定に
 **ファイルの有無を使わない** — 判定は §2 の `check.php` で、束縛から取る。
 
 ```bash
@@ -113,8 +113,9 @@ php <skill>/harness/setup.php . bin/admin.php   # 別の入口の文脈を観測
 **入口が複数あるアプリでは、観測したい入口を第 2 引数で渡す。** 文脈はその入口が渡す文脈リテラルから
 `cli-` `prod-` `dev-` を落として `cli-dev-` を付けたもの(`bin/app.php` の `'cli-hal-api-app'` なら
 `cli-dev-hal-api-app`)。アプリ自身の語(`stage-` など)は文脈の一部なので残る。`bin/dev.php` は 1 つしか
-無いので、入口を切り替えるときは `--force` を付ける — 古いものが残っていれば `note` 行がそう言う。
-ルートに `autoload.php` が無く `vendor/autoload.php` だけの構成でも動く。
+無いので、入口を切り替えるときは `bin/dev.php` の文脈リテラルを手で書き換える — 古いものが残っていれば
+`note` 行がそう言う。**ここで `--force` を使わない**: `src/Module/*.php` も上書きするので、アプリ自身の
+`DevModule` が消える。ルートに `autoload.php` が無く `vendor/autoload.php` だけの構成でも動く。
 
 `setup.php` は文脈名(`cli-dev-hal-app` 等)とログのパスを出す。以降その文脈名を使う。
 

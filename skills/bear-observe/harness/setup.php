@@ -132,7 +132,7 @@ if (! is_file($devBin) || $force) {
     // There is one bin/dev.php for however many entry points the application has. A kept one
     // that boots another context observes that other one, and the log below stays empty.
     if (! str_contains((string) file_get_contents($devBin), "'{$context}'")) {
-        $note = 'bin/dev.php runs another context; --force to regenerate';
+        $note = 'bin/dev.php runs another context; edit its context literal (--force also rewrites src/Module/*)';
     }
 }
 
