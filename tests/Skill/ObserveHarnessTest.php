@@ -68,6 +68,18 @@ final class ObserveHarnessTest extends TestCase
         $this->assertStringContainsString("'cli-dev-admin-app'", $this->read('bin/dev.php'));
     }
 
+    public function testSetupFailsOnAMissingNamedEntryPointBeforeWritingAnything(): void
+    {
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir, 'bin/admin.php');
+
+        $this->assertSame(1, $status, $output);
+        $this->assertMatchesRegularExpression('#^FAIL  no entry point at .+/bin/admin\.php$#m', $output);
+        $this->assertFileDoesNotExist($this->appDir . '/src/Module/DevModule.php');
+        $this->assertFileDoesNotExist($this->appDir . '/bin/dev.php');
+    }
+
     public function testSetupStripsSapiAndEnvironmentPrefixes(): void
     {
         $this->write('public/index.php', "<?php\nexit((new Bootstrap())('cli-hal-app', \$GLOBALS, \$_SERVER));\n");

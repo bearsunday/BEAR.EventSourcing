@@ -54,6 +54,26 @@ if ($missing !== []) {
     fail('missing dependencies: ' . implode(' ', $missing) . "\n      run: composer require --dev " . implode(':1.x-dev ', $missing) . ':1.x-dev');
 }
 
+// The observation context is the context of the entry point being observed with `cli-dev-` in
+// front of it, so DevModule joins the chain that entry point actually runs rather than a second
+// one.
+$entryName = $positional[1] ?? 'public/index.php';
+$entry = str_starts_with($entryName, '/') ? $entryName : $appDir . '/' . $entryName;
+// A named entry point that is not there is a typo, and a typo writes nothing. A missing default
+// only means there is nothing to read a context from.
+if (! is_file($entry) && isset($positional[1])) {
+    fail("no entry point at {$entry}");
+}
+
+$literal = is_file($entry) && preg_match("/(['\"])([a-z0-9-]*app)\\1/", (string) file_get_contents($entry), $m) === 1
+    ? $m[2]
+    : 'app';
+// `cli` and `prod` are the SAPI and environment words BEAR.Package's context modules contribute;
+// `dev` is the word this harness writes. The observation context supplies all three itself, so
+// keeping them gives `cli-dev-cli-hal-app`. Any other word (`stage-`, `test-`) is part of the
+// entry point's context and stays.
+$context = 'cli-dev-' . (string) preg_replace('/^(?:(?:cli|prod|dev)-)+/', '', $literal);
+
 $written = [];
 $kept = [];
 $merge = [];
@@ -88,25 +108,6 @@ foreach ($markers as $class => $required) {
     file_put_contents($target, $source);
     $written[] = 'src/Module/' . $class . '.php';
 }
-
-// The observation context is the context of the entry point being observed with `cli-dev-` in
-// front of it, so DevModule joins the chain that entry point actually runs rather than a second
-// one.
-$entryName = $positional[1] ?? 'public/index.php';
-$entry = str_starts_with($entryName, '/') ? $entryName : $appDir . '/' . $entryName;
-// A named entry point that is not there is a typo. A missing default only means there is nothing
-// to read a context from.
-if (! is_file($entry) && isset($positional[1])) {
-    fail("no entry point at {$entry}");
-}
-
-$literal = is_file($entry) && preg_match("/(['\"])([a-z0-9-]*app)\\1/", (string) file_get_contents($entry), $m) === 1
-    ? $m[2]
-    : 'app';
-// `cli-` and `prod-`/`dev-` are BEAR.Package's SAPI and stage modules, which the observation
-// context supplies itself — keeping them gives `cli-dev-cli-hal-app`. Words the application
-// defines (`stage-`, `test-`) are part of its context and stay.
-$context = 'cli-dev-' . (string) preg_replace('/^(?:(?:cli|prod|dev)-)+/', '', $literal);
 
 // Resolved here rather than in the generated file, so bin/dev.php keeps the single require line
 // the application's own entry points have.
