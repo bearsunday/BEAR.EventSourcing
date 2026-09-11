@@ -91,6 +91,20 @@ final class ObserveHarnessTest extends TestCase
         $this->assertStringNotContainsString('cli-dev-cli-', $output);
     }
 
+    public function testSetupStripsTheWholeRunOfPrefixes(): void
+    {
+        $this->write(
+            'public/index.php',
+            "<?php\nexit((new Bootstrap())('prod-cli-dev-hal-app', \$GLOBALS, \$_SERVER));\n",
+        );
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir);
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString('context    cli-dev-hal-app', $output);
+        $this->assertStringContainsString("'cli-dev-hal-app'", $this->read('bin/dev.php'));
+    }
+
     public function testSetupNotesAKeptDevPhpThatRunsAnotherContext(): void
     {
         $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
