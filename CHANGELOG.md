@@ -11,9 +11,9 @@
 - `skills/bear-observe/templates/*.php`: `#[Override]` on every generated method that overrides a parent class method or implements an interface method, so a strict downstream Psalm config (`ensureOverrideAttribute=true`) accepts the generated files. The README's own DevModule/AppModule wiring examples were updated to match
 - `skills/bear-observe/harness/setup.php`: warns whenever an existing `DevModule` is merged rather than replaced — not only when the file itself mentions `BecomingInterface`, since the shared-logger flush this warns about is just as often wired through a different class the app's `DevModule` installs or overrides
 
-### Fixed
+### Note
 
-- `SemanticLogExtractor::extract()`: `json_encode(..., JSON_PRESERVE_ZERO_FRACTION)` when canonicalizing a flushed log, so a whole-number float in a response body does not silently become an int through the round trip
+- Context values that happen to be a whole-number float (`durationMs`, a price) may arrive as either `int` or `float`: koriym/semantic-logger's `ContextFreezer` round-trips every context through its own `json_encode`/`json_decode` at record time without `JSON_PRESERVE_ZERO_FRACTION`, so `0.0` becomes `int(0)` before this package's own code ever runs. Nothing in this package can recover that fraction after the fact — a consumer of a context field that may be a whole-number float must accept `int|float`, not assume `float`
 
 ## 0.1.0 - 2026-09-06
 

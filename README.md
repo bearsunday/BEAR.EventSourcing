@@ -322,6 +322,7 @@ final class DevModule extends AbstractAppModule
             ->toConstructor(SemanticLogInvoker::class, [
                 'invoker' => 'original_invoker',
                 'recordedMethods' => Recorded::class,
+                'paramsFilter' => Filtered::class,
             ])
             ->in(Scope::SINGLETON);
         $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)

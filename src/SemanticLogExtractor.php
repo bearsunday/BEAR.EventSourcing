@@ -18,7 +18,6 @@ use function preg_match;
 use function strlen;
 use function strspn;
 
-use const JSON_PRESERVE_ZERO_FRACTION;
 use const JSON_THROW_ON_ERROR;
 
 /**
@@ -55,15 +54,14 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
     public function extract(LogJson $semanticLog): EventsInterface
     {
         $events = [];
-        // Canonicalize to associative arrays: frozen context values arrive as
-        // objects, and the same JSON view is what the schema validates.
-        // JSON_PRESERVE_ZERO_FRACTION: without it, a whole-number float in a response body
-        // (durationMs, a price, ...) round-trips through json_encode/json_decode as an int —
-        // 2250.0 becomes 2250 — silently changing the type of a value this method never
-        // touches, only canonicalizes.
+        // Canonicalize to associative arrays: frozen context values arrive as objects, and the
+        // same JSON view is what the schema validates. A whole-number float (durationMs, a
+        // price) may already be an int by the time it gets here — koriym/semantic-logger's
+        // ContextFreezer froze the context through its own unflagged json_encode at record
+        // time, before this method ever runs, so this round trip cannot recover it either.
         /** @var array<array-key, mixed> $log */
         $log = json_decode(
-            json_encode($semanticLog, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION),
+            json_encode($semanticLog, JSON_THROW_ON_ERROR),
             true,
             512,
             JSON_THROW_ON_ERROR,

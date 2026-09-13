@@ -22,7 +22,6 @@ use function rmdir;
 use function sys_get_temp_dir;
 use function uniqid;
 
-use const JSON_PRESERVE_ZERO_FRACTION;
 use const JSON_THROW_ON_ERROR;
 
 /**
@@ -52,7 +51,7 @@ final class UnifiedLogTest extends TestCase
         $log = $logger->flush();
         /** @var array{open: list<array<string, mixed>>} $tree */
         $tree = json_decode(
-            json_encode($log, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION),
+            json_encode($log, JSON_THROW_ON_ERROR),
             true,
             512,
             JSON_THROW_ON_ERROR,

@@ -208,7 +208,6 @@ final class EventsFromSemanticLogTest extends TestCase
         $events = (new SemanticLogExtractor())->extract($log);
 
         $this->assertCount(0, $events, 'a filtered (non-replayable) request must not become an event');
-        // Audit visibility is preserved: the request is still in the log itself.
         $tree = $log->toTreeArray();
         $this->assertSame('app://self/admin/login', $tree['open'][0]['context']['uri']);
     }

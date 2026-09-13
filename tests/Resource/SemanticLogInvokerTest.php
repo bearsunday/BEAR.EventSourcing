@@ -21,7 +21,6 @@ use RuntimeException;
 use function json_decode;
 use function json_encode;
 
-use const JSON_PRESERVE_ZERO_FRACTION;
 use const JSON_THROW_ON_ERROR;
 
 /**
@@ -346,15 +345,11 @@ final class SemanticLogInvokerTest extends TestCase
     }
 
     /**
-     * The canonical JSON view of the flushed log: frozen context values arrive
-     * as objects, and the assoc-array decode is what the extractor reads too.
-     *
-     * JSON_PRESERVE_ZERO_FRACTION does not fully stabilize durationMs: koriym/semantic-logger's
-     * own ContextFreezer freezes each context through an internal json_encode()/json_decode()
-     * round trip (without this flag) before this method's encode ever runs, so a durationMs
-     * that happens to round to exactly 0.0 is already an int(0) by the time it reaches here.
-     * The flag is kept anyway — it is still correct for any value that does not pass through
-     * that internal freeze — but assertRecordedDuration(), not assertIsFloat(), is what a
+     * The canonical JSON view of the flushed log: frozen context values arrive as objects, and
+     * the assoc-array decode is what the extractor reads too. A durationMs that rounds to
+     * exactly 0.0 may already be int(0) here — koriym/semantic-logger's ContextFreezer
+     * round-trips every context through its own unflagged json_encode at record time, before
+     * this method ever runs. assertRecordedDuration(), not assertIsFloat(), is what a
      * durationMs assertion in this file must use.
      *
      * @return array<string, mixed>
@@ -363,19 +358,14 @@ final class SemanticLogInvokerTest extends TestCase
     {
         /** @var array<string, mixed> */
         return json_decode(
-            json_encode($logger->flush(), JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION),
+            json_encode($logger->flush(), JSON_THROW_ON_ERROR),
             true,
             512,
             JSON_THROW_ON_ERROR,
         );
     }
 
-    /**
-     * durationMs is a non-negative int or float depending on whether koriym/semantic-logger's
-     * internal freeze happened to round-trip an exact 0.0 through JSON as "0" (see
-     * flushToArray()) — a dependency quirk this package does not own, not something this test
-     * should be flaky against.
-     */
+    /** durationMs may be int or float — see flushToArray() for why. */
     private static function assertRecordedDuration(mixed $value): void
     {
         self::assertTrue(is_int($value) || is_float($value), 'durationMs must be numeric');

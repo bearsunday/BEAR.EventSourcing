@@ -41,17 +41,11 @@ use function strtolower;
  * redacted are a `#[Filtered] ParamsFilterInterface` the application binds itself — this
  * package does not know an arbitrary caller's naming conventions well enough to guess safely.
  *
- * Matching is a name predicate, not an enumerated list: applications spell the same credential
- * field differently (`password_confirm`, `passwordConfirm`, `current_password`, ...). A
- * case-insensitive match on `password`/`token`/`secret` as a substring catches all of those.
- *
- * Filtering recurses into nested arrays and lists: a `params` value carrying a structured body
- * (`['credentials' => ['password' => '...']]`, or a list of such maps) is walked the same way a
- * flat one is, so a credential nested one level deep is not a blind spot.
- *
- * This is a name-based guard, not a secret-value scanner: a field whose name does not fit one of
- * these shapes (a bare `pin` or `otp`, for instance) still needs an application-supplied
- * #[Filtered] ParamsFilterInterface that extends this list.
+ * A case-insensitive substring match, not an enumerated list, so `password_confirm`,
+ * `passwordConfirm`, and `current_password` all match the same rule; nested arrays and lists of
+ * maps are walked the same way a flat one is. This is a name-based guard, not a secret-value
+ * scanner — a field shaped differently (a bare `pin` or `otp`) still needs an
+ * application-supplied `#[Filtered] ParamsFilterInterface`.
  */
 final class SensitiveParamsFilter implements ParamsFilterInterface
 {

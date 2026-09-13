@@ -98,19 +98,12 @@ foreach ($markers as $class => $required) {
         if (array_filter($required, static fn (string $m): bool => ! str_contains($existing, $m)) !== []) {
             file_put_contents($target . '.observe', $source);
             $merge[] = 'src/Module/' . $class . '.php';
-            // Be Framework's BecomingInterface flushes the semantic logger after every
-            // becoming when a DevModule wires it (see be-framework/be's DevBecoming pattern).
-            // Folding this template's SemanticLoggerInterface binding into that same DevModule
-            // shares one logger between the two: the becoming-level flush would then cut a
-            // request's tree in two before this template's own sink ever sees it. The fold
-            // needs its own context word (this repository's own worked example: ObserveModule,
-            // never installed under `dev`), not a literal merge into the existing class.
-            //
-            // Checked as "always warn on this path", not "warn only when this file itself
-            // mentions BecomingInterface": an app's DevModule commonly wires a shared logger
-            // through a *different* class (e.g. override(new DevLoggingModule())) that this
-            // string search would never see, so a same-file check would miss the exact case
-            // that motivated it.
+            // Be Framework's BecomingInterface flushes the semantic logger after every becoming;
+            // folding this template's logger binding into an app's own DevModule risks that
+            // flush cutting a request's tree in two. Warned unconditionally, not only when this
+            // file mentions BecomingInterface, because the shared logger is often wired through
+            // a different class (e.g. override(new DevLoggingModule())) a same-file string
+            // search would never see.
             if ($class === 'DevModule') {
                 $becomingWarning = 'src/Module/DevModule.php already exists — confirm whether it '
                     . '(directly or through another module it installs/overrides) shares its '
