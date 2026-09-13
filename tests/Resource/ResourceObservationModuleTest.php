@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Tests\Resource;
 
-use BEAR\EventSourcing\Resource\ResourceObservationModule;
-use BEAR\EventSourcing\Resource\SemanticLogInvoker;
-use BEAR\EventSourcing\Resource\DevLogModule;
-use BEAR\EventSourcing\Resource\FileBodyStore;
-use BEAR\EventSourcing\Resource\BodyStoreInterface;
+use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Recorded;
 use BEAR\EventSourcing\RecordedMethods;
+use BEAR\EventSourcing\Resource\BodyStoreInterface;
+use BEAR\EventSourcing\Resource\DevLogModule;
+use BEAR\EventSourcing\Resource\FileBodyStore;
+use BEAR\EventSourcing\Resource\ParamsFilterInterface;
+use BEAR\EventSourcing\Resource\ResourceObservationModule;
+use BEAR\EventSourcing\Resource\SemanticLogInvoker;
+use BEAR\EventSourcing\Resource\SensitiveParamsFilter;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Module\ResourceClientModule;
 use PHPUnit\Framework\TestCase;
@@ -32,6 +35,19 @@ final class ResourceObservationModuleTest extends TestCase
         $invoker = $injector->getInstance(InvokerInterface::class);
 
         $this->assertInstanceOf(SemanticLogInvoker::class, $invoker);
+    }
+
+    public function testDefaultParamsFilterResolvesThroughTheRealInjector(): void
+    {
+        // #[Filtered] ParamsFilterInterface is nullable and unbound resolves through
+        // SemanticLogInvoker's own PHP default, but this module also binds it explicitly
+        // (matching #[Recorded] RecordedMethods) so the graph never depends on Ray.Di's
+        // unbound-nullable fallback to reach SensitiveParamsFilter.
+        $injector = new Injector(new ResourceObservationModule(module: new ResourceClientModule()));
+
+        $filter = $injector->getInstance(ParamsFilterInterface::class, Filtered::class);
+
+        $this->assertInstanceOf(SensitiveParamsFilter::class, $filter);
     }
 
     public function testDevModuleClearsDirectoryAndUsesFileBodyStoreWithReads(): void

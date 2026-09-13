@@ -21,6 +21,13 @@ final class ResourceRequestContext extends AbstractContext
         public readonly string $method,
         public readonly array $params,
         public readonly string $timestamp,
+        /**
+         * Whether $params is complete enough to re-execute this operation faithfully. False
+         * when a ParamsFilterInterface removed a key (a credential, typically): the request is
+         * still visible in this log for audit purposes, but SemanticLogExtractor excludes it
+         * from the event stream rather than mint a source-of-truth fact it cannot replay.
+         */
+        public readonly bool $replayable = true,
     ) {
     }
 }

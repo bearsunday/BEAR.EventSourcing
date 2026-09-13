@@ -29,6 +29,7 @@ use function sys_get_temp_dir;
 use function tempnam;
 use function unlink;
 
+use const JSON_PRESERVE_ZERO_FRACTION;
 use const JSON_THROW_ON_ERROR;
 
 /**
@@ -145,6 +146,11 @@ final class MediaQueryObservationIntegrationTest extends TestCase
     private static function toArray(LogJson $log): array
     {
         /** @var array<string, mixed> */
-        return json_decode(json_encode($log, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        return json_decode(
+            json_encode($log, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
     }
 }

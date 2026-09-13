@@ -31,10 +31,12 @@ foreach ($events as $event) {
 ```php
 use BEAR\EventSourcing\Module\EventSourcingModule;
 use BEAR\EventSourcing\RecordedMethods;
+use Override;
 use Ray\Di\AbstractModule;
 
 final class AppModule extends AbstractModule
 {
+    #[Override]
     protected function configure(): void
     {
         $this->install(new EventSourcingModule(
@@ -97,6 +99,47 @@ Replay by re-execution rests on two conditions the package assumes but does not 
 
 Two natural extensions are not implemented: verifying determinism by diffing the observation tree a replay produces against the original, and appending events inside the request's own transaction (an outbox). Runtime auto-persistence remains out of scope.
 
+## Redacting sensitive params (secure by default)
+
+`params` is whatever the request carried — a login's `password`, a checkout's `csrfToken` — and it flows unfiltered into both the log and, when extracted, `Event::params` and `Event::$id`. The resource bridge (`SemanticLogInvoker`) filters this by default: unbound, it constructs `SensitiveParamsFilter`, which removes credential/transport-shaped keys at every depth of `params` (a nested `['credentials' => ['password' => '…']]` is walked the same way a flat one is). An application opts *out* of this — never in — by binding its own `#[Filtered] ParamsFilterInterface`:
+
+```php
+use BEAR\EventSourcing\Filtered;
+use BEAR\EventSourcing\Resource\FilteredParams;
+use BEAR\EventSourcing\Resource\ParamsFilterInterface;
+
+final class AppParamsFilter implements ParamsFilterInterface
+{
+    public function __invoke(array $params): FilteredParams
+    {
+        unset($params['otp']); // extend the default shape, or replace it entirely
+
+        return new FilteredParams($params, replayable: false); // this key was domain input
+    }
+}
+
+$this->bind(ParamsFilterInterface::class)->annotatedWith(Filtered::class)->to(AppParamsFilter::class);
+```
+
+Not every removed key means the same thing, so the filter returns a `FilteredParams` — the params, and whether the operation is still **replayable** with them:
+
+- **Transport** (a `csrf` substring): a CSRF token is single-use and session-bound. A replay engine mints its own regardless of what was recorded, so removing it changes nothing about what the recorded params are for — `SensitiveParamsFilter` removes it and leaves `replayable: true`.
+- **Credential** (`password`/`token`/`secret` as a substring): domain input the handler actually reads to complete the operation — a login password, a `deviceToken` a 2FA handler verifies, an API `secret`. Removing it leaves the recorded params genuinely insufficient to reproduce the operation, so `SensitiveParamsFilter` marks the result `replayable: false`. `token` alone lands here, not with `csrf`, precisely so `deviceToken`/`accessToken` are treated as domain input while `csrfToken` still matches the transport rule first and keeps its request replayable.
+
+The default deliberately stops at those three substrings and does **not** match a generic `key` suffix. An application's own identifiers just as often end in `Key` for reasons that have nothing to do with secrecy: an `idempotencyKey` is exactly the domain input a replay needs to stay deterministic, and stripping it by name pattern alone would make an otherwise-safe write silently non-replayable. A `resetKey`/`authKey`-shaped field an application actually wants redacted is a `#[Filtered] ParamsFilterInterface` it binds itself — this package does not know an arbitrary caller's naming conventions well enough to guess safely.
+
+`SemanticLogInvoker` records `replayable` as-is on the `resource_request` context — it does not itself decide whether a removal matters, only the filter does. `SemanticLogExtractor` reads it back: `replayable: true` (the default, and every request a filter left untouched) extracts normally; `replayable: false` stays in the log for audit visibility (you can still see that an admin login was attempted, by whom, when) but is excluded from the event stream rather than minted into a source-of-truth fact the recorded params cannot actually reproduce:
+
+```text
+resource_request uri=page://self/shopping/checkout method=POST params={"preOrderId":"O-1"} replayable=true
+  → resource_response code=201                                    (extracted: csrfToken alone was removed)
+
+resource_request uri=page://self/admin/login method=POST params={"loginId":"admin"} replayable=false
+  → resource_response code=200                                    (not extracted: password was removed)
+```
+
+This is a name-based guard, not a secret-value scanner: a credential shaped differently (a bare `pin` or `otp`, or an `apiKey`/`resetKey`) still needs an application-supplied filter, and the transport/credential split above is a default judgment call an application is free to override per key. It also only reaches `resource_request` — a separate observation pathway (e.g. an application's own domain-level logger) is a different boundary and needs its own redaction.
+
 ## Filtering and replay
 
 `Events` is a countable, iterable collection. Keep it small and select with PHP's standard iterators instead of adding query methods — filters stack without changing the collection:
@@ -151,6 +194,7 @@ Use `MediaQueryEventStore` when the EventStore should be backed by SQL through R
 use BEAR\EventSourcing\EventStoreInterface;
 use BEAR\EventSourcing\Module\EventSourcingModule;
 use BEAR\EventSourcing\Module\MediaQueryEventStoreModule;
+use Override;
 use Ray\AuraSqlModule\AuraSqlModule;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
@@ -158,6 +202,7 @@ use Ray\MediaQuery\MediaQuerySqlModule;
 
 final class AppModule extends AbstractModule
 {
+    #[Override]
     protected function configure(): void
     {
         $packageDir = __DIR__ . '/vendor/bear/event-sourcing';
@@ -266,6 +311,7 @@ Passing `module:` is for a standalone injector, where the bridge's wrapped modul
 ```php
 final class DevModule extends AbstractAppModule
 {
+    #[Override]
     protected function configure(): void
     {
         $bodyDir = $this->appMeta->logDir . '/es-bodies';

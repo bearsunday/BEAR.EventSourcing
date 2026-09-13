@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource;
 
+use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Recorded;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\Resource\InvokerInterface;
@@ -20,6 +21,7 @@ final class ResourceObservationModule extends AbstractModule
         private readonly RecordedMethods|null $methods = null,
         private readonly BodyStoreInterface|null $bodyStore = null,
         private readonly SemanticLoggerInterface|null $logger = null,
+        private readonly ParamsFilterInterface|null $paramsFilter = null,
         AbstractModule|null $module = null,
     ) {
         parent::__construct($module);
@@ -29,6 +31,8 @@ final class ResourceObservationModule extends AbstractModule
     {
         $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)
             ->toInstance($this->methods ?? new RecordedMethods());
+        $this->bind(ParamsFilterInterface::class)->annotatedWith(Filtered::class)
+            ->toInstance($this->paramsFilter ?? new SensitiveParamsFilter());
 
         if ($this->bodyStore !== null) {
             $this->bind(BodyStoreInterface::class)->toInstance($this->bodyStore);
@@ -47,6 +51,7 @@ final class ResourceObservationModule extends AbstractModule
             ->toConstructor(SemanticLogInvoker::class, [
                 'invoker' => self::INVOKER,
                 'recordedMethods' => Recorded::class,
+                'paramsFilter' => Filtered::class,
             ])
             ->in(Scope::SINGLETON);
     }

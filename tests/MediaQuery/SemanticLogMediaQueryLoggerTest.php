@@ -26,6 +26,7 @@ use function restore_error_handler;
 use function set_error_handler;
 
 use const E_USER_WARNING;
+use const JSON_PRESERVE_ZERO_FRACTION;
 use const JSON_THROW_ON_ERROR;
 
 /**
@@ -153,6 +154,11 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
     private static function flushToArray(LogJson $log): array
     {
         /** @var array{open: list<array<array-key, mixed>>} */
-        return json_decode(json_encode($log, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        return json_decode(
+            json_encode($log, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
     }
 }

@@ -21,6 +21,10 @@
         "timestamp": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}[+-]\\d{2}:\\d{2}$"
+        },
+        "replayable": {
+            "type": "boolean",
+            "description": "False when a ParamsFilterInterface removed a key from params (a credential, typically): the request is recorded for audit visibility but SemanticLogExtractor excludes it from the event stream. Optional and defaults to true — an entry recorded before this field existed, or written by a hand-built context, is treated as replayable."
         }
     },
     "additionalProperties": false

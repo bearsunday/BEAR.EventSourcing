@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource;
 
+use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Recorded;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\Resource\AbstractRequest;
@@ -18,14 +19,19 @@ final readonly class SemanticLogInvoker implements InvokerInterface
     private const string TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
 
     private RecordedMethods $recordedMethods;
+    private ParamsFilterInterface $paramsFilter;
 
     public function __construct(
         private InvokerInterface $invoker,
         private SemanticLoggerInterface $logger,
         private BodyStoreInterface $bodyStore,
         #[Recorded] RecordedMethods|null $recordedMethods = null,
+        #[Filtered] ParamsFilterInterface|null $paramsFilter = null,
     ) {
         $this->recordedMethods = $recordedMethods ?? new RecordedMethods();
+        // Secure by default: an application opts out of redaction by binding its own
+        // #[Filtered] ParamsFilterInterface, never opts in to get it.
+        $this->paramsFilter = $paramsFilter ?? new SensitiveParamsFilter();
     }
 
     public function invoke(AbstractRequest $request): ResourceObject
@@ -35,11 +41,13 @@ final readonly class SemanticLogInvoker implements InvokerInterface
             return $this->invoker->invoke($request);
         }
 
+        $filtered = ($this->paramsFilter)($request->query);
         $openId = $this->logger->open(new ResourceRequestContext(
             uri: self::stripQuery($request->toUri()),
             method: $method,
-            params: $request->query,
+            params: $filtered->params,
             timestamp: (new DateTimeImmutable())->format(self::TIMESTAMP_FORMAT),
+            replayable: $filtered->replayable,
         ));
 
         $start = hrtime(true);

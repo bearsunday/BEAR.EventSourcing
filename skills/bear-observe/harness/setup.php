@@ -74,6 +74,7 @@ $literal = is_file($entry) && preg_match("/(['\"])([a-z0-9-]*app)\\1/", (string)
 // entry point's context and stays.
 $context = 'cli-dev-' . (string) preg_replace('/^(?:(?:cli|prod|dev)-)+/', '', $literal);
 
+$becomingWarning = '';
 $written = [];
 $kept = [];
 $merge = [];
@@ -97,6 +98,28 @@ foreach ($markers as $class => $required) {
         if (array_filter($required, static fn (string $m): bool => ! str_contains($existing, $m)) !== []) {
             file_put_contents($target . '.observe', $source);
             $merge[] = 'src/Module/' . $class . '.php';
+            // Be Framework's BecomingInterface flushes the semantic logger after every
+            // becoming when a DevModule wires it (see be-framework/be's DevBecoming pattern).
+            // Folding this template's SemanticLoggerInterface binding into that same DevModule
+            // shares one logger between the two: the becoming-level flush would then cut a
+            // request's tree in two before this template's own sink ever sees it. The fold
+            // needs its own context word (this repository's own worked example: ObserveModule,
+            // never installed under `dev`), not a literal merge into the existing class.
+            //
+            // Checked as "always warn on this path", not "warn only when this file itself
+            // mentions BecomingInterface": an app's DevModule commonly wires a shared logger
+            // through a *different* class (e.g. override(new DevLoggingModule())) that this
+            // string search would never see, so a same-file check would miss the exact case
+            // that motivated it.
+            if ($class === 'DevModule') {
+                $becomingWarning = 'src/Module/DevModule.php already exists — confirm whether it '
+                    . '(directly or through another module it installs/overrides) shares its '
+                    . 'SemanticLoggerInterface with something that flushes mid-request (Be '
+                    . 'Framework\'s BecomingInterface is the common case); if so, give the fold '
+                    . 'its own context word instead of `dev` (see the "Wiring inside a '
+                    . 'BEAR.Sunday context" section of the README)';
+            }
+
             continue;
         }
 
@@ -146,4 +169,5 @@ $written === [] || print('written    ' . implode(' ', $written) . "\n");
 $kept === [] || print('kept       ' . implode(' ', $kept) . " (--force to overwrite)\n");
 $note === '' || print("note       {$note}\n");
 $merge === [] || print("merge      " . implode(' ', $merge) . " already exist — the observation bindings are in the sibling .observe file; fold them in by hand\n");
+$becomingWarning === '' || print("warning    {$becomingWarning}\n");
 echo 'next       php ' . dirname(__DIR__) . "/harness/check.php {$appDir} {$context}\n";

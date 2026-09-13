@@ -20,6 +20,7 @@ final class ResourceRequestContext extends AbstractContext
         public string $method,
         public array $query = [],
         public string $timestamp = '2026-06-10T12:34:56.123456+00:00',
+        public bool $replayable = true,
     ) {
     }
 }

@@ -16,6 +16,7 @@ use BEAR\RepositoryModule\Annotation\EtagPool;
 use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\InvokerInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Override;
 use Ray\Di\Scope;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 
@@ -31,6 +32,7 @@ final class DevModule extends AbstractAppModule
 {
     private const ORIGINAL_INVOKER = 'original_invoker';
 
+    #[Override]
     protected function configure(): void
     {
         $bodyDir = $this->appMeta->logDir . '/es-bodies';

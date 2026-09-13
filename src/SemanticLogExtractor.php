@@ -18,6 +18,7 @@ use function preg_match;
 use function strlen;
 use function strspn;
 
+use const JSON_PRESERVE_ZERO_FRACTION;
 use const JSON_THROW_ON_ERROR;
 
 /**
@@ -56,8 +57,17 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
         $events = [];
         // Canonicalize to associative arrays: frozen context values arrive as
         // objects, and the same JSON view is what the schema validates.
+        // JSON_PRESERVE_ZERO_FRACTION: without it, a whole-number float in a response body
+        // (durationMs, a price, ...) round-trips through json_encode/json_decode as an int —
+        // 2250.0 becomes 2250 — silently changing the type of a value this method never
+        // touches, only canonicalizes.
         /** @var array<array-key, mixed> $log */
-        $log = json_decode(json_encode($semanticLog, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        $log = json_decode(
+            json_encode($semanticLog, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
         $roots = $log['open'] ?? [];
         if (! is_array($roots)) {
             return new Events($events);
@@ -85,6 +95,13 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
         $request = self::context($entry);
         $response = self::closeContext($entry);
         if ($request === null || $response === null || ! self::isSuccessful($response)) {
+            return;
+        }
+
+        // A ParamsFilterInterface removed a key from the recorded params (a credential,
+        // typically): the request stayed in the log for audit visibility, but its params are
+        // no longer complete enough to mint a replayable fact from.
+        if (($request['replayable'] ?? true) !== true) {
             return;
         }
 
