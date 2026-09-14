@@ -42,9 +42,13 @@ final readonly class Event
      * @param bool        $replayable Whether `params` is complete enough to re-execute this
      *                                operation faithfully. False when a `ParamsFilterInterface`
      *                                withheld domain input (a credential, typically) at record
-     *                                time; the placeholder is then in `params`. Carried into
-     *                                every `EventStoreInterface` so a replay engine reading the
-     *                                store, not the transient log, can still tell.
+     *                                time; the placeholder is then in `params`. "Complete"
+     *                                excludes transport tokens (a CSRF token) that a replay
+     *                                engine mints itself: a filtered `csrfToken` leaves the
+     *                                flag true, and this package provides no minting seam — that
+     *                                is the replay engine's job. Carried into every
+     *                                `EventStoreInterface` so a replay engine reading the store,
+     *                                not the transient log, can still tell.
      *
      * @throws JsonException When params cannot be represented as JSON.
      */

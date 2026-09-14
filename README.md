@@ -101,7 +101,7 @@ Two natural extensions are not implemented: verifying determinism by diffing the
 
 ## Redacting sensitive params (secure by default)
 
-`params` is whatever the request carried — a login's `password`, a checkout's `csrfToken` — and it flows into both the log and, when extracted, `Event::params` and `Event::$id`. The resource bridge (`SemanticLogInvoker`) filters this by default: unbound, it constructs `SensitiveParamsFilter`, which replaces the value of every credential/transport-shaped key at every depth of `params` with `[FILTERED]` (a nested `['credentials' => ['password' => '…']]` is walked the same way a flat one is, and an object value is walked on the JSON view the log will record). The key stays — the same convention as Rails' `filter_parameters` and Sentry's scrubber — so the log still shows that a password was sent, just not what it was. An application opts *out* of this — never in — by binding its own `#[Filtered] ParamsFilterInterface`. Compose the default rather than replace it: a filter that only handles its own key silently switches the built-in protection off.
+`params` is whatever the request carried — a login's `password`, a checkout's `csrfToken` — and it flows into both the log and, when extracted, `Event::params` and `Event::$id`. The resource bridge (`SemanticLogInvoker`) filters this by default: unbound, it constructs `SensitiveParamsFilter`, which replaces the value of every credential/transport-shaped key at every depth of `params` with `[FILTERED]` (a nested `['credentials' => ['password' => '…']]` is walked the same way a flat one is, and an object value is walked on the JSON view the log will record). The key stays — the same convention as Rails' `filter_parameters` and Sentry's scrubber — so the log still shows that a password was sent, just not what it was. An application opts *out* of this — never in — by binding its own `#[Filtered] ParamsFilterInterface`. To add this application's own credential-shaped key to the default set, construct the default with it — `paramsFilter: new SensitiveParamsFilter(['otp'])`, or bind that instance with the qualifier — and it is matched like the built-in set and treated as a credential. Anything beyond that (narrowing the default for a `pageToken`, a different replayability verdict) is a filter of your own. Compose the default rather than replace it: a filter that only handles its own key silently switches the built-in protection off.
 
 ```php
 use BEAR\EventSourcing\Filtered;
@@ -115,7 +115,7 @@ final class AppParamsFilter implements ParamsFilterInterface
     #[Override]
     public function __invoke(array $params): FilteredParams
     {
-        $default = (new SensitiveParamsFilter())($params); // keep password/token/secret/apikey/csrf covered
+        $default = (new SensitiveParamsFilter())($params); // keep the built-in set covered
         $params = $default->params;
         $withheld = isset($params['otp']);                  // this app's own credential-shaped key
         if ($withheld) {
@@ -134,7 +134,7 @@ Bind it in the module that installs the observation wiring, or pass it as `Resou
 Not every filtered key means the same thing, so the filter returns a `FilteredParams` — the params, and whether the operation is still **replayable** with them:
 
 - **Transport** (a `csrf` substring): a CSRF token is single-use and session-bound. This presumes a replay engine that mints its own token — the recorded placeholder is not one — so withholding it changes nothing about what the recorded params are for: `SensitiveParamsFilter` filters it and leaves `replayable: true`. A map under a transport-named key is replaced whole, but a credential nested inside it still flips the flag.
-- **Credential** (`password`/`token`/`secret`/`apikey` as a substring): domain input the handler actually reads to complete the operation — a login password, a `deviceToken` a 2FA handler verifies, an `apiKey`. Withholding it leaves the recorded params genuinely insufficient to reproduce the operation, so `SensitiveParamsFilter` marks the result `replayable: false`. `token` alone lands here, not with `csrf`, precisely so `deviceToken`/`accessToken` are treated as domain input while `csrfToken` still matches the transport rule first and keeps its request replayable. Two costs of that substring: a CSRF field named without `csrf` — Laravel's and Symfony Form's `_token` — is treated as a credential, and a pagination cursor (`pageToken`, `nextToken`) is replaced too, so which page was requested is lost from the audit trail. An application with either field name binds its own filter.
+- **Credential** (`passw`/`pwd`/`passphrase`/`privatekey`/`token`/`secret`/`apikey` as a substring): domain input the handler actually reads to complete the operation — a login password (`passw` so `passwd` matches too), a `deviceToken` a 2FA handler verifies, an `apiKey`. Withholding it leaves the recorded params genuinely insufficient to reproduce the operation, so `SensitiveParamsFilter` marks the result `replayable: false`. `token` alone lands here, not with `csrf`, precisely so `deviceToken`/`accessToken` are treated as domain input while `csrfToken` still matches the transport rule first and keeps its request replayable. Two costs of that substring: a CSRF field named without `csrf` — Laravel's and Symfony Form's `_token` — is treated as a credential, and a pagination cursor (`pageToken`, `nextToken`) is replaced too, so which page was requested is lost from the audit trail. An application with either field name binds its own filter.
 
 The default deliberately does **not** match a generic `key` suffix. An application's own identifiers just as often end in `Key` for reasons that have nothing to do with secrecy: an `idempotencyKey` is exactly the domain input a replay needs to stay deterministic, and filtering it by name pattern alone would make an otherwise-safe write silently non-replayable. `apikey` is the exception — nothing non-secret is named that way. A `resetKey`/`authKey`-shaped field an application actually wants redacted is a `#[Filtered] ParamsFilterInterface` it binds itself — this package does not know an arbitrary caller's naming conventions well enough to guess safely.
 
@@ -150,7 +150,7 @@ resource_request uri=page://self/admin/login method=POST params={"loginId":"admi
 
 Both become events; the second carries `replayable: false`.
 
-This is a name-based guard, not a secret-value scanner: a credential shaped differently (a bare `pin` or `otp`, or a `resetKey`) still needs an application-supplied filter, and the transport/credential split above is a default judgment call an application is free to override per key. It only reaches request `params`: the response body a `BodyStoreInterface` records as `body_ref` is written as-is, the `message` of an exception recorded in the close context is not filtered either, and a separate observation pathway (e.g. an application's own domain-level logger) is a different boundary and needs its own redaction.
+This is a name-based guard, not a secret-value scanner: a credential shaped differently (a bare `pin` or `otp`, or a `resetKey`) is added through the constructor as above, and the transport/credential split is a default judgment call an application is free to override per key. Both of this package's recorders honour the same filter: request `params` here, and the bind values the Ray.MediaQuery adapter records (see [Ray.MediaQuery observation](#raymediaquery-observation-optional)). What it does not reach: the response body a `BodyStoreInterface` records as `body_ref` is written as-is, the `message` of an exception recorded in the close context is not filtered either, and an application's own loggers are a different boundary and need their own redaction.
 
 ## Filtering and replay
 
@@ -235,7 +235,7 @@ $store->appendAll($events);
 
 Forgetting `MediaQuerySqlModule` (or `AuraSqlModule`) surfaces as an explicit unbound error at injection time — never as a store that fails on first use.
 
-Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store; the bundled SQL uses SQLite dialect (`INSERT OR IGNORE`), so port the two statements when targeting another database. `event_id` is UNIQUE — that constraint is what makes appends idempotent. Timestamps are stored in UTC so the `recorded_at` index sorts in time order; `replayable` is stored as an integer flag. A table created from the 0.1.0 schema lacks that column and every append fails until it is added: `ALTER TABLE event_store ADD COLUMN replayable INTEGER NOT NULL DEFAULT 1;`. `MediaQueryEventStore` keeps JSON, timestamp and flag database mapping inside the adapter, not on `Event`.
+Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store; the bundled SQL uses SQLite dialect (`INSERT OR IGNORE`), so port the two statements when targeting another database. `event_id` is UNIQUE — that constraint is what makes appends idempotent. Timestamps are stored in UTC so the `recorded_at` index sorts in time order; `replayable` is stored as an integer flag. Because it is excluded from `event_id`, a re-append of an existing id is ignored whole and the stored flag is kept, like every other column: first write wins. A table created from the 0.1.0 schema lacks the column, and both `append()` and `all()` fail until it is added: `ALTER TABLE event_store ADD COLUMN replayable INTEGER NOT NULL DEFAULT 1;`. An application that copied `sql/event_store/*.sql` into its own `sqlDir` (below) must re-copy them too — the 0.1.0 `event_store_list.sql` does not select the column, and `all()` then fails on the missing key. `MediaQueryEventStore` keeps JSON, timestamp and flag database mapping inside the adapter, not on `Event`.
 
 A few operational notes:
 
@@ -389,7 +389,7 @@ Render it with `TreeRenderer` and a `FormatterRegistry` that registers `Resource
 
 ### Ray.MediaQuery observation (optional)
 
-Ray.MediaQuery exposes a logger seam (`MediaQueryLoggerInterface`) that brackets each query execution. `MediaQueryObservationModule` routes it into the semantic log as one `media_query` leaf event per executed query — the query id, its converted parameters, and wall time measured in the adapter — nested under whichever scope is open:
+Ray.MediaQuery exposes a logger seam (`MediaQueryLoggerInterface`) that brackets each query execution. `MediaQueryObservationModule` routes it into the semantic log as one `media_query` leaf event per executed query — the query id, its converted parameters, and wall time measured in the adapter — nested under whichever scope is open. The parameters pass through the same `#[Filtered] ParamsFilterInterface` as request params (`SensitiveParamsFilter` when unbound), so a query that binds a TOTP secret or a reset token records `[FILTERED]`; the filter's replayability verdict is dropped, since a `media_query` entry is a leaf, not an event:
 
 ```php
 use BEAR\EventSourcing\Module\MediaQueryObservationModule;
@@ -397,7 +397,7 @@ use BEAR\EventSourcing\Module\MediaQueryObservationModule;
 $this->install(new MediaQueryObservationModule()); // before the MediaQuery modules
 ```
 
-The module installs flat: only the logger binding — the adapter needs the unqualified `SemanticLoggerInterface` binding, the same instance the resource bridge and the flush owner use. Boundaries to know:
+The module installs flat: only the logger binding — the adapter needs the unqualified `SemanticLoggerInterface` binding, the same instance the resource bridge and the flush owner use. It binds no `#[Filtered]` filter of its own: unbound, the adapter falls back to the default, and a binding here would collide with `ResourceObservationModule`'s (whichever installed first would win for both recorders). Boundaries to know:
 
 - A failed query throws before the seam fires, so only successful queries are recorded. A `.sql` file may hold several statements: one event covers the whole invocation, and a failure anywhere in the batch suppresses it.
 - `getCount()` runs outside the seam and stays unobserved. A paginated query (`#[Pager]`) passes through the seam only while its lazy wrapper is constructed — the event's near-zero duration is wrapper construction, and the count/page SQL that runs at iteration time is unobserved.

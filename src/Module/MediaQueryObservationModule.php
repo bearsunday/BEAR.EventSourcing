@@ -16,6 +16,12 @@ use Ray\MediaQuery\MediaQueryLoggerInterface;
  * MediaQuery or database modules. install() keeps a binding the installer
  * already holds, so install this before the MediaQuery modules — or bind
  * from a context module, where a direct bind wins over the inner chain.
+ *
+ * Deliberately no #[Filtered] ParamsFilterInterface binding here: the
+ * adapter's parameter is nullable and falls back to SensitiveParamsFilter
+ * when unbound, and a binding in this module would collide with the one
+ * ResourceObservationModule makes — whichever installed first would win for
+ * both recorders, silently replacing a custom filter with the default.
  */
 final class MediaQueryObservationModule extends AbstractModule
 {

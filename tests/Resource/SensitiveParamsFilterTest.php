@@ -125,6 +125,16 @@ final class SensitiveParamsFilterTest extends TestCase
                 ['preOrderId' => 'a', 'items' => [['productCode' => 'sample-001', 'quantity' => 1]]],
                 true,
             ],
+            'passwd, pwd and passphrase filtered, non-replayable (older form spellings)' => [
+                ['passwd' => 'x', 'pwd' => 'y', 'passphrase' => 'z', 'loginId' => 'a'],
+                ['passwd' => '[FILTERED]', 'pwd' => '[FILTERED]', 'passphrase' => '[FILTERED]', 'loginId' => 'a'],
+                false,
+            ],
+            'privateKey and private_key filtered, non-replayable (integration-settings spelling)' => [
+                ['privateKey' => 'x', 'private_key' => 'y'],
+                ['privateKey' => '[FILTERED]', 'private_key' => '[FILTERED]'],
+                false,
+            ],
             'apiKey filtered, non-replayable (the one key-suffixed field that is always a credential)' => [
                 ['apiKey' => 'sk-live-1', 'sku' => 'A'],
                 ['apiKey' => '[FILTERED]', 'sku' => 'A'],
@@ -222,7 +232,35 @@ final class SensitiveParamsFilterTest extends TestCase
         $this->assertSame(1, $result->params['id']);
         [$depth, $end] = self::descend($result->params['deep']);
         $this->assertSame('[FILTERED]', $end);
-        $this->assertLessThan(600, $depth);
+        // The top-level params are depth 1 and 'deep' itself depth 2, so the placeholder lands
+        // one level short of MAX_DEPTH: a regression of the bound moves this number.
+        $this->assertSame(SensitiveParamsFilter::MAX_DEPTH - 1, $depth);
+    }
+
+    public function testExtraCredentialSubstringsExtendTheDefaultSet(): void
+    {
+        // The one-argument path for "also filter this app's key": matched like the built-in
+        // set (case and _/- ignored), and a credential, so the request becomes non-replayable.
+        $filter = new SensitiveParamsFilter(['otp', 'Reset-Key']);
+
+        $result = $filter(['otp' => '123456', 'resetKey' => 'r', 'reset_key' => 's', 'password' => 'p', 'id' => 1]);
+
+        $this->assertSame(
+            [
+                'otp' => '[FILTERED]',
+                'resetKey' => '[FILTERED]',
+                'reset_key' => '[FILTERED]',
+                'password' => '[FILTERED]',
+                'id' => 1,
+            ],
+            $result->params,
+        );
+        $this->assertFalse($result->replayable);
+        $this->assertSame(
+            ['otp' => '1'],
+            (new SensitiveParamsFilter())(['otp' => '1'])->params,
+            'the no-argument default is unchanged',
+        );
     }
 
     public function testNestingWithinTheLimitIsWalkedUnchanged(): void

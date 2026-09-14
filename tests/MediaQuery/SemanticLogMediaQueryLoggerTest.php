@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Tests\MediaQuery;
 
+use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\MediaQuery\SemanticLogMediaQueryLogger;
 use BEAR\EventSourcing\Module\MediaQueryObservationModule;
+use BEAR\EventSourcing\Resource\FilteredParams;
+use BEAR\EventSourcing\Resource\ParamsFilterInterface;
 use BEAR\EventSourcing\Resource\ResourceRequestContext;
 use BEAR\EventSourcing\Resource\ResourceResponseContext;
 use Koriym\SemanticLogger\AbstractContext;
@@ -131,6 +134,103 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
         }
 
         $this->assertStringContainsString('Media query observation failed', $message);
+    }
+
+    public function testFiltersBindValuesByDefault(): void
+    {
+        // The package's own second recorder: a query binding a raw secret (a TOTP key, a reset
+        // token) must not put it in the same log the resource bridge scrubs.
+        $logger = new SemanticLogger();
+        $adapter = new SemanticLogMediaQueryLogger($logger);
+        $openId = $logger->open(
+            new ResourceRequestContext('app://self/admin/2fa', 'PUT', [], '2026-06-10T12:00:00.000000+00:00'),
+        );
+
+        $adapter->start();
+        $adapter->log('admin_two_factor_enable', ['adminId' => 7, 'secret' => 'JBSWY3DPEHPK3PXP', 'token' => 'r']);
+        $logger->close(new ResourceResponseContext(200), $openId);
+
+        $entry = self::flushToArray($logger->flush())['open'][0];
+        $this->assertSame(
+            ['adminId' => 7, 'secret' => '[FILTERED]', 'token' => '[FILTERED]'],
+            $entry['events'][0]['context']['params'],
+        );
+    }
+
+    public function testBoundParamsFilterReachesTheAdapterThroughDi(): void
+    {
+        // The same #[Filtered] qualifier the resource bridge honours, delivered into a plain
+        // to()-bound class with no toConstructor map.
+        $custom = new class implements ParamsFilterInterface {
+            /** @param array<string, mixed> $params */
+            public function __invoke(array $params): FilteredParams
+            {
+                unset($params['otp']);
+
+                return new FilteredParams($params);
+            }
+        };
+        $injector = new Injector(new class ($custom) extends AbstractModule {
+            public function __construct(private readonly ParamsFilterInterface $custom)
+            {
+                parent::__construct();
+            }
+
+            protected function configure(): void
+            {
+                $this->install(new MediaQueryObservationModule());
+                $this->bind(SemanticLoggerInterface::class)->to(SemanticLogger::class)->in(Scope::SINGLETON);
+                $this->bind(ParamsFilterInterface::class)->annotatedWith(Filtered::class)->toInstance($this->custom);
+            }
+        });
+        $logger = $injector->getInstance(SemanticLoggerInterface::class);
+        $adapter = $injector->getInstance(MediaQueryLoggerInterface::class);
+        $openId = $logger->open(
+            new ResourceRequestContext('app://self/verify', 'POST', [], '2026-06-10T12:00:00.000000+00:00'),
+        );
+
+        $adapter->start();
+        $adapter->log('otp_verify', ['otp' => '123456', 'password' => 'kept-by-this-filter']);
+        $logger->close(new ResourceResponseContext(200), $openId);
+
+        $entry = self::flushToArray($logger->flush())['open'][0];
+        $this->assertSame(['password' => 'kept-by-this-filter'], $entry['events'][0]['context']['params']);
+    }
+
+    public function testThrowingParamsFilterRecordsNothingItFailedOn(): void
+    {
+        // Fail closed, as the invoker does: the query is still observed, its bind values are not.
+        $logger = new SemanticLogger();
+        $adapter = new SemanticLogMediaQueryLogger($logger, new class implements ParamsFilterInterface {
+            /** @param array<string, mixed> $params */
+            public function __invoke(array $params): FilteredParams
+            {
+                throw new RuntimeException('filter down');
+            }
+        });
+        $openId = $logger->open(
+            new ResourceRequestContext('app://self/x', 'POST', [], '2026-06-10T12:00:00.000000+00:00'),
+        );
+
+        $message = '';
+        set_error_handler(static function (int $_severity, string $text) use (&$message): bool {
+            $message = $text;
+
+            return true;
+        }, E_USER_WARNING);
+        try {
+            $adapter->start();
+            $adapter->log('orders_add', ['id' => 1, 'password' => 'must-not-leak']);
+        } finally {
+            restore_error_handler();
+        }
+
+        $logger->close(new ResourceResponseContext(200), $openId);
+
+        $entry = self::flushToArray($logger->flush())['open'][0];
+        $this->assertSame('orders_add', $entry['events'][0]['context']['name']);
+        $this->assertSame([], $entry['events'][0]['context']['params']);
+        $this->assertStringContainsString('Media query params filter failed', $message);
     }
 
     public function testModuleBindsLoggerSeam(): void

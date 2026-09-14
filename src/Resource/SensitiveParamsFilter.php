@@ -6,6 +6,8 @@ namespace BEAR\EventSourcing\Resource;
 
 use JsonException;
 
+use function array_map;
+use function array_merge;
 use function is_array;
 use function is_object;
 use function is_string;
@@ -21,9 +23,12 @@ use const JSON_THROW_ON_ERROR;
  * Replaces credential/transport-shaped param values with a placeholder by key name, secure by
  * default, and marks the result non-replayable only when the withheld value was domain input.
  *
- * SemanticLogInvoker constructs this when no #[Filtered] ParamsFilterInterface is bound, so a
- * CSRF token or password never reaches an observation log or an extracted Event by default — a
- * consuming application has to opt out, not opt in, to get that protection.
+ * Both package recorders — SemanticLogInvoker (request params) and SemanticLogMediaQueryLogger
+ * (query bind values) — construct this when no #[Filtered] ParamsFilterInterface is bound, so a
+ * CSRF token or password in either never reaches the observation log or an extracted Event by
+ * default — a consuming application has to opt out, not opt in, to get that protection. What
+ * lies outside it: a response body a BodyStoreInterface records, the message of an exception
+ * recorded in a close context, and an application's own loggers.
  *
  * The key stays and only its value becomes `[FILTERED]` — the same convention as Rails'
  * `filter_parameters` and Sentry's event scrubber. A deleted key would hide that a credential
@@ -37,10 +42,12 @@ use const JSON_THROW_ON_ERROR;
  *   params changes nothing about what those params are for — the request stays replayable.
  *   The value is replaced whole even when it is a map, but a credential key nested inside it
  *   (`csrfConfig => ['secret' => …]`) still decides replayability.
- * - **Credential** (`password`/`token`/`secret`/`apikey` substring): domain input the handler
- *   actually reads to complete the operation (a login password, a device token, an API key or
- *   secret). Withholding it leaves the recorded params genuinely insufficient to reproduce the
- *   operation, so the result is marked non-replayable.
+ * - **Credential** (`passw`/`pwd`/`passphrase`/`privatekey`/`token`/`secret`/`apikey` substring):
+ *   domain input the handler actually reads to complete the operation (a login password, a
+ *   device token, an API key or secret). Withholding it leaves the recorded params genuinely
+ *   insufficient to reproduce the operation, so the result is marked non-replayable. `passw`
+ *   rather than `password` so `passwd` matches too; `passphrase`, `pwd` and `privateKey` are
+ *   the other spellings a form or an integration-settings page actually uses.
  *
  * `token` alone is deliberately in the credential set, not the transport one: `deviceToken` or
  * `accessToken` are domain input a handler verifies, unlike a CSRF token a replay never reuses.
@@ -66,7 +73,10 @@ use const JSON_THROW_ON_ERROR;
  * (`JsonSerializable` and public properties alike), and a value that cannot be encoded as JSON,
  * or nests more than 128 levels deep, is withheld whole rather than guessed at. This is a
  * name-based guard, not a secret-value scanner — a field shaped differently (a bare `pin` or
- * `otp`) still needs an application-supplied `#[Filtered] ParamsFilterInterface`.
+ * `otp`) is not matched by default. Such a key is added to the credential set through the
+ * constructor (`new SensitiveParamsFilter(['otp'])`); anything beyond that — narrowing the
+ * default for a `pageToken`, a different replayability verdict — is an application-supplied
+ * `#[Filtered] ParamsFilterInterface` that composes this one.
  */
 final class SensitiveParamsFilter implements ParamsFilterInterface
 {
@@ -78,19 +88,44 @@ final class SensitiveParamsFilter implements ParamsFilterInterface
      * deep; a reference cycle would otherwise walk until the engine's own limit, and the walk
      * stays clear of a debugger's nesting limit (Xdebug: 512 frames) with room to spare.
      */
-    private const int MAX_DEPTH = 128;
+    public const int MAX_DEPTH = 128;
 
     /** @var list<string> substrings that are transport metadata: filtered, replayability unaffected */
     private const array TRANSPORT_SUBSTRINGS = ['csrf'];
 
     /** @var list<string> substrings that are domain credentials: filtered, marks the result non-replayable */
-    private const array CREDENTIAL_SUBSTRINGS = ['password', 'token', 'secret', 'apikey'];
+    private const array CREDENTIAL_SUBSTRINGS = [
+        'passw',
+        'pwd',
+        'passphrase',
+        'privatekey',
+        'token',
+        'secret',
+        'apikey',
+    ];
+
+    /** @var list<string> the credential set in effect: the default plus what the application added */
+    private readonly array $credentialSubstrings;
+
+    /**
+     * @param list<string> $extraCredentialSubstrings Key substrings this application treats as
+     *                                                credentials on top of the default set (`otp`,
+     *                                                `pin`, `resetKey`); matched the same way,
+     *                                                with case and `_`/`-` ignored.
+     */
+    public function __construct(array $extraCredentialSubstrings = [])
+    {
+        $this->credentialSubstrings = array_merge(
+            self::CREDENTIAL_SUBSTRINGS,
+            array_map(self::normalize(...), $extraCredentialSubstrings),
+        );
+    }
 
     /** @param array<string, mixed> $params */
     public function __invoke(array $params): FilteredParams
     {
         $replayable = true;
-        $filtered = self::filterMap($params, $replayable, 1);
+        $filtered = $this->filterMap($params, $replayable, 1);
 
         /** @var array<string, mixed> $filtered */
         return new FilteredParams($filtered, $replayable);
@@ -106,32 +141,32 @@ final class SensitiveParamsFilter implements ParamsFilterInterface
      *
      * @psalm-suppress MixedAssignment Params values are schema-free by design.
      */
-    private static function filterMap(array $values, bool &$replayable, int $depth): array
+    private function filterMap(array $values, bool &$replayable, int $depth): array
     {
         $result = [];
         foreach ($values as $key => $value) {
             if (is_string($key) && self::isTransportKey($key)) {
                 // Replaced whole, but walked first for its verdict: a credential nested inside
                 // a transport-named map still makes the request non-replayable.
-                self::filterValue($value, $replayable, $depth + 1);
+                $this->filterValue($value, $replayable, $depth + 1);
                 $result[$key] = self::FILTERED;
                 continue;
             }
 
-            if (is_string($key) && self::isCredentialKey($key)) {
+            if (is_string($key) && $this->isCredentialKey($key)) {
                 $result[$key] = self::FILTERED;
                 $replayable = false;
                 continue;
             }
 
-            $result[$key] = self::filterValue($value, $replayable, $depth + 1);
+            $result[$key] = $this->filterValue($value, $replayable, $depth + 1);
         }
 
         return $result;
     }
 
     /** Walks arrays and the JSON view of objects; a value that cannot be walked is withheld whole. */
-    private static function filterValue(mixed $value, bool &$replayable, int $depth): mixed
+    private function filterValue(mixed $value, bool &$replayable, int $depth): mixed
     {
         if ($depth > self::MAX_DEPTH) {
             $replayable = false;
@@ -156,7 +191,7 @@ final class SensitiveParamsFilter implements ParamsFilterInterface
             }
         }
 
-        return is_array($value) ? self::filterMap($value, $replayable, $depth) : $value;
+        return is_array($value) ? $this->filterMap($value, $replayable, $depth) : $value;
     }
 
     private static function isTransportKey(string $key): bool
@@ -164,9 +199,9 @@ final class SensitiveParamsFilter implements ParamsFilterInterface
         return self::containsAny(self::normalize($key), self::TRANSPORT_SUBSTRINGS);
     }
 
-    private static function isCredentialKey(string $key): bool
+    private function isCredentialKey(string $key): bool
     {
-        return self::containsAny(self::normalize($key), self::CREDENTIAL_SUBSTRINGS);
+        return self::containsAny(self::normalize($key), $this->credentialSubstrings);
     }
 
     /** Case and word separators are spelling, not meaning: `api_key`, `API-Key`, `apiKey` are one name. */
