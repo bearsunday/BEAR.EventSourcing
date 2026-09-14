@@ -231,6 +231,8 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
         $this->assertSame('orders_add', $entry['events'][0]['context']['name']);
         $this->assertSame([], $entry['events'][0]['context']['params']);
         $this->assertStringContainsString('Media query params filter failed', $message);
+        $this->assertStringContainsString(RuntimeException::class, $message);
+        $this->assertStringNotContainsString('filter down', $message, 'only the class is reported');
     }
 
     public function testModuleBindsLoggerSeam(): void

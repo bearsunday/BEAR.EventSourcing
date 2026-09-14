@@ -105,7 +105,8 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         try {
             return ($this->paramsFilter)($params);
         } catch (Throwable $e) {
-            self::warn(sprintf('Params filter failed, params withheld: %s', $e->getMessage()));
+            // The class only: a filter's message may quote the very values it was handed.
+            self::warn(sprintf('Params filter failed, params withheld: %s', $e::class));
 
             return new FilteredParams([], replayable: false);
         }

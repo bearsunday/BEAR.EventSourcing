@@ -9,7 +9,10 @@ use JsonException;
 use function array_map;
 use function array_merge;
 use function is_array;
+use function is_finite;
+use function is_float;
 use function is_object;
+use function is_resource;
 use function is_string;
 use function json_decode;
 use function json_encode;
@@ -169,6 +172,14 @@ final class SensitiveParamsFilter implements ParamsFilterInterface
     private function filterValue(mixed $value, bool &$replayable, int $depth): mixed
     {
         if ($depth > self::MAX_DEPTH) {
+            $replayable = false;
+
+            return self::FILTERED;
+        }
+
+        // A resource or a non-finite float cannot be JSON-encoded, so the log could not record it
+        // either; withholding it is the safe side, as for an unencodable object below.
+        if (is_resource($value) || (is_float($value) && ! is_finite($value))) {
             $replayable = false;
 
             return self::FILTERED;

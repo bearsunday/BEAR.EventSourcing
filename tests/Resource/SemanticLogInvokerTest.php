@@ -375,7 +375,12 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertFalse($entry['context']['replayable']);
         $this->assertCount(1, $warnings);
         $this->assertSame(E_USER_WARNING, $warnings[0][0]);
-        $this->assertStringContainsString('unexpected param shape', $warnings[0][1]);
+        $this->assertStringContainsString(RuntimeException::class, $warnings[0][1]);
+        $this->assertStringNotContainsString(
+            'unexpected param shape',
+            $warnings[0][1],
+            'a filter message may quote the values it was handed; only the class is reported',
+        );
     }
 
     /** @param array<string, mixed> $query */

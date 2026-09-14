@@ -89,7 +89,8 @@ final class SemanticLogMediaQueryLogger implements MediaQueryLoggerInterface, St
         try {
             return ($this->paramsFilter)($values)->params;
         } catch (Throwable $e) {
-            self::warn(sprintf('Media query params filter failed: %s', $e->getMessage()));
+            // The class only: a filter's message may quote the very values it was handed.
+            self::warn(sprintf('Media query params filter failed, bind values withheld: %s', $e::class));
 
             return [];
         }

@@ -9,9 +9,12 @@ use JsonSerializable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+use function fclose;
+use function fopen;
 use function is_array;
 
 use const INF;
+use const NAN;
 
 /** @psalm-suppress MixedAssignment,MixedArrayAccess,MixedArgument Filtered params are untyped by design. */
 final class SensitiveParamsFilterTest extends TestCase
@@ -217,6 +220,22 @@ final class SensitiveParamsFilterTest extends TestCase
 
         $this->assertSame(['ratio' => '[FILTERED]', 'id' => 1], $result->params);
         $this->assertFalse($result->replayable);
+    }
+
+    public function testANonFiniteFloatOrAResourceIsWithheldWhole(): void
+    {
+        // Bare INF/NAN and a resource cannot be JSON-encoded either; they are withheld the same way
+        // an unencodable object is, instead of being returned as scalars the log cannot record.
+        $handle = fopen('php://memory', 'r');
+
+        $result = (new SensitiveParamsFilter())(['ratio' => INF, 'nan' => NAN, 'handle' => $handle, 'id' => 1]);
+
+        $this->assertSame(
+            ['ratio' => '[FILTERED]', 'nan' => '[FILTERED]', 'handle' => '[FILTERED]', 'id' => 1],
+            $result->params,
+        );
+        $this->assertFalse($result->replayable);
+        fclose($handle);
     }
 
     public function testNestingDeeperThanJsonAllowsIsWithheldWholeNotWalkedForever(): void
