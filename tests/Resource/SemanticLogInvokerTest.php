@@ -258,7 +258,7 @@ final class SemanticLogInvokerTest extends TestCase
         ));
 
         $entry = self::flushToArray($logger)['open'][0];
-        $this->assertSame(['loginId' => 'admin'], $entry['context']['params']);
+        $this->assertSame(['loginId' => 'admin', 'password' => '[FILTERED]'], $entry['context']['params']);
         $this->assertFalse($entry['context']['replayable']);
     }
 
@@ -282,7 +282,7 @@ final class SemanticLogInvokerTest extends TestCase
     public function testFiltersCsrfTokenByDefaultButKeepsReplayableTrue(): void
     {
         // Transport, not domain input: a replay always mints its own CSRF token regardless of
-        // what was recorded, so removing it does not make the recorded params insufficient.
+        // what was recorded, so withholding it does not make the recorded params insufficient.
         $logger = new SemanticLogger();
         $ro = new FakeResourceObject('app://self/shopping/checkout', ['ok' => true], 201);
         $invoker = new SemanticLogInvoker(
@@ -298,10 +298,9 @@ final class SemanticLogInvokerTest extends TestCase
         ));
 
         $entry = self::flushToArray($logger)['open'][0];
-        $this->assertSame(['preOrderId' => 'aaaa'], $entry['context']['params']);
+        $this->assertSame(['preOrderId' => 'aaaa', 'csrfToken' => '[FILTERED]'], $entry['context']['params']);
         $this->assertTrue($entry['context']['replayable']);
     }
-
 
     public function testCustomParamsFilterOverridesTheDefault(): void
     {

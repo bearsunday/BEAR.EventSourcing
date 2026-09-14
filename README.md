@@ -101,15 +101,17 @@ Two natural extensions are not implemented: verifying determinism by diffing the
 
 ## Redacting sensitive params (secure by default)
 
-`params` is whatever the request carried — a login's `password`, a checkout's `csrfToken` — and it flows unfiltered into both the log and, when extracted, `Event::params` and `Event::$id`. The resource bridge (`SemanticLogInvoker`) filters this by default: unbound, it constructs `SensitiveParamsFilter`, which removes credential/transport-shaped keys at every depth of `params` (a nested `['credentials' => ['password' => '…']]` is walked the same way a flat one is). An application opts *out* of this — never in — by binding its own `#[Filtered] ParamsFilterInterface`:
+`params` is whatever the request carried — a login's `password`, a checkout's `csrfToken` — and it flows into both the log and, when extracted, `Event::params` and `Event::$id`. The resource bridge (`SemanticLogInvoker`) filters this by default: unbound, it constructs `SensitiveParamsFilter`, which replaces the value of every credential/transport-shaped key at every depth of `params` with `[FILTERED]` (a nested `['credentials' => ['password' => '…']]` is walked the same way a flat one is). The key stays — the same convention as Rails' `filter_parameters` and Sentry's scrubber — so the log still shows that a password was sent, just not what it was. An application opts *out* of this — never in — by binding its own `#[Filtered] ParamsFilterInterface`:
 
 ```php
 use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Resource\FilteredParams;
 use BEAR\EventSourcing\Resource\ParamsFilterInterface;
+use Override;
 
 final class AppParamsFilter implements ParamsFilterInterface
 {
+    #[Override]
     public function __invoke(array $params): FilteredParams
     {
         unset($params['otp']); // extend the default shape, or replace it entirely
@@ -121,24 +123,26 @@ final class AppParamsFilter implements ParamsFilterInterface
 $this->bind(ParamsFilterInterface::class)->annotatedWith(Filtered::class)->to(AppParamsFilter::class);
 ```
 
-Not every removed key means the same thing, so the filter returns a `FilteredParams` — the params, and whether the operation is still **replayable** with them:
+Not every filtered key means the same thing, so the filter returns a `FilteredParams` — the params, and whether the operation is still **replayable** with them:
 
-- **Transport** (a `csrf` substring): a CSRF token is single-use and session-bound. A replay engine mints its own regardless of what was recorded, so removing it changes nothing about what the recorded params are for — `SensitiveParamsFilter` removes it and leaves `replayable: true`.
-- **Credential** (`password`/`token`/`secret` as a substring): domain input the handler actually reads to complete the operation — a login password, a `deviceToken` a 2FA handler verifies, an API `secret`. Removing it leaves the recorded params genuinely insufficient to reproduce the operation, so `SensitiveParamsFilter` marks the result `replayable: false`. `token` alone lands here, not with `csrf`, precisely so `deviceToken`/`accessToken` are treated as domain input while `csrfToken` still matches the transport rule first and keeps its request replayable.
+- **Transport** (a `csrf` substring): a CSRF token is single-use and session-bound. A replay engine mints its own regardless of what was recorded, so withholding it changes nothing about what the recorded params are for — `SensitiveParamsFilter` filters it and leaves `replayable: true`.
+- **Credential** (`password`/`token`/`secret` as a substring): domain input the handler actually reads to complete the operation — a login password, a `deviceToken` a 2FA handler verifies, an API `secret`. Withholding it leaves the recorded params genuinely insufficient to reproduce the operation, so `SensitiveParamsFilter` marks the result `replayable: false`. `token` alone lands here, not with `csrf`, precisely so `deviceToken`/`accessToken` are treated as domain input while `csrfToken` still matches the transport rule first and keeps its request replayable. The flip side: a CSRF field named without `csrf` — Laravel's and Symfony Form's `_token` — contains `token` and is treated as a credential, so an application using that field name binds its own filter.
 
-The default deliberately stops at those three substrings and does **not** match a generic `key` suffix. An application's own identifiers just as often end in `Key` for reasons that have nothing to do with secrecy: an `idempotencyKey` is exactly the domain input a replay needs to stay deterministic, and stripping it by name pattern alone would make an otherwise-safe write silently non-replayable. A `resetKey`/`authKey`-shaped field an application actually wants redacted is a `#[Filtered] ParamsFilterInterface` it binds itself — this package does not know an arbitrary caller's naming conventions well enough to guess safely.
+The default deliberately stops at those three substrings and does **not** match a generic `key` suffix. An application's own identifiers just as often end in `Key` for reasons that have nothing to do with secrecy: an `idempotencyKey` is exactly the domain input a replay needs to stay deterministic, and filtering it by name pattern alone would make an otherwise-safe write silently non-replayable. A `resetKey`/`authKey`-shaped field an application actually wants redacted is a `#[Filtered] ParamsFilterInterface` it binds itself — this package does not know an arbitrary caller's naming conventions well enough to guess safely.
 
-`SemanticLogInvoker` records `replayable` as-is on the `resource_request` context — it does not itself decide whether a removal matters, only the filter does. `SemanticLogExtractor` reads it back: `replayable: true` (the default, and every request a filter left untouched) extracts normally; `replayable: false` stays in the log for audit visibility (you can still see that an admin login was attempted, by whom, when) but is excluded from the event stream rather than minted into a source-of-truth fact the recorded params cannot actually reproduce:
+`SemanticLogInvoker` records `replayable` as-is on the `resource_request` context — it does not itself decide whether a withheld value matters, only the filter does. `SemanticLogExtractor` does not act on it either: a `replayable: false` request is extracted like any other, so the event stream stays a complete record of what happened, and the placeholder travels into `Event::params` (and `Event::$id`, which is therefore stable across re-extraction). An admin login is still an event — you can see it was attempted, by whom, when — and what a replay engine does with a request it cannot re-execute faithfully (skip it, seed the credential from elsewhere, stop) is that engine's call, not this package's:
 
 ```text
-resource_request uri=page://self/shopping/checkout method=POST params={"preOrderId":"O-1"} replayable=true
-  → resource_response code=201                                    (extracted: csrfToken alone was removed)
+resource_request uri=page://self/shopping/checkout method=POST params={"preOrderId":"O-1","csrfToken":"[FILTERED]"} replayable=true
+  → resource_response code=201
 
-resource_request uri=page://self/admin/login method=POST params={"loginId":"admin"} replayable=false
-  → resource_response code=200                                    (not extracted: password was removed)
+resource_request uri=page://self/admin/login method=POST params={"loginId":"admin","password":"[FILTERED]"} replayable=false
+  → resource_response code=200
 ```
 
-This is a name-based guard, not a secret-value scanner: a credential shaped differently (a bare `pin` or `otp`, or an `apiKey`/`resetKey`) still needs an application-supplied filter, and the transport/credential split above is a default judgment call an application is free to override per key. It also only reaches `resource_request` — a separate observation pathway (e.g. an application's own domain-level logger) is a different boundary and needs its own redaction.
+Both become events. The flag lives on the log entry, not on `Event`; a replay engine that needs it reads the log.
+
+This is a name-based guard, not a secret-value scanner: a credential shaped differently (a bare `pin` or `otp`, or an `apiKey`/`resetKey`) still needs an application-supplied filter, and the transport/credential split above is a default judgment call an application is free to override per key. It only reaches request `params`: the response body a `BodyStoreInterface` records as `body_ref` is written as-is, and a separate observation pathway (e.g. an application's own domain-level logger) is a different boundary and needs its own redaction.
 
 ## Filtering and replay
 

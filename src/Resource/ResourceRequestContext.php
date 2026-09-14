@@ -23,9 +23,10 @@ final class ResourceRequestContext extends AbstractContext
         public readonly string $timestamp,
         /**
          * Whether $params is complete enough to re-execute this operation faithfully. False
-         * when a ParamsFilterInterface removed a key (a credential, typically): the request is
-         * still visible in this log for audit purposes, but SemanticLogExtractor excludes it
-         * from the event stream rather than mint a source-of-truth fact it cannot replay.
+         * when a ParamsFilterInterface withheld a value (a credential, typically). Recorded
+         * for a replay engine or an auditor to read: SemanticLogExtractor extracts the request
+         * either way, so the event stream stays a complete record of what happened, and what
+         * to do with a request it cannot re-execute faithfully is the replay engine's call.
          */
         public readonly bool $replayable = true,
     ) {

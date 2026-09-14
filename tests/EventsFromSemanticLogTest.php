@@ -21,6 +21,7 @@ use BEAR\EventSourcing\Tests\Fixture\ResourceRequestContext;
 use BEAR\EventSourcing\Tests\Fixture\ResourceResponseContext;
 
 use function array_map;
+use function iterator_to_array;
 
 final class EventsFromSemanticLogTest extends TestCase
 {
@@ -193,23 +194,27 @@ final class EventsFromSemanticLogTest extends TestCase
         $this->assertCount(0, $events);
     }
 
-    public function testNonReplayableRequestIsNotExtractedButStaysInTheLog(): void
+    public function testNonReplayableRequestIsStillExtracted(): void
     {
+        // A filter withheld a credential, so the recorded params cannot re-execute this request
+        // faithfully — but the state change happened, and dropping it would leave every later
+        // event that depends on it unexplained. The flag is recorded on the log entry; what to
+        // do with it is the replay engine's call, not the extractor's.
         $logger = new SemanticLogger();
         $openId = $logger->open(new ResourceRequestContext(
             uri: 'app://self/admin/login',
             method: 'POST',
-            query: ['loginId' => 'admin'],
+            query: ['loginId' => 'admin', 'password' => '[FILTERED]'],
             replayable: false,
         ));
         $logger->close(new ResourceResponseContext(200, ['ok' => true]), $openId);
-        $log = $logger->flush();
 
-        $events = (new SemanticLogExtractor())->extract($log);
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
 
-        $this->assertCount(0, $events, 'a filtered (non-replayable) request must not become an event');
-        $tree = $log->toTreeArray();
-        $this->assertSame('app://self/admin/login', $tree['open'][0]['context']['uri']);
+        $this->assertCount(1, $events, 'a non-replayable request is still an event');
+        $event = iterator_to_array($events)[0];
+        $this->assertSame('app://self/admin/login', $event->uri);
+        $this->assertSame(['loginId' => 'admin', 'password' => '[FILTERED]'], $event->params);
     }
 
     public function testReplayableRequestIsExtractedWhenTheFieldIsExplicitlyTrue(): void

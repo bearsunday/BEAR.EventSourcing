@@ -96,13 +96,6 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
             return;
         }
 
-        // A ParamsFilterInterface removed a key from the recorded params (a credential,
-        // typically): the request stayed in the log for audit visibility, but its params are
-        // no longer complete enough to mint a replayable fact from.
-        if (($request['replayable'] ?? true) !== true) {
-            return;
-        }
-
         $method = $this->recordedMethod($request);
         $uri = self::stringValue($request, 'uri');
         $timestamp = self::timestamp($request);
