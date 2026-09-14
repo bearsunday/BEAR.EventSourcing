@@ -4,12 +4,14 @@ INSERT OR IGNORE INTO event_store (
     method,
     params_json,
     result_json,
-    recorded_at
+    recorded_at,
+    replayable
 ) VALUES (
     :eventId,
     :uri,
     :method,
     :paramsJson,
     :resultJson,
-    :timestamp
+    :timestamp,
+    :replayable
 )

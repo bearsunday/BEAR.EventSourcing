@@ -23,10 +23,11 @@ final class ResourceRequestContext extends AbstractContext
         public readonly string $timestamp,
         /**
          * Whether $params is complete enough to re-execute this operation faithfully. False
-         * when a ParamsFilterInterface withheld a value (a credential, typically). Recorded
-         * for a replay engine or an auditor to read: SemanticLogExtractor extracts the request
-         * either way, so the event stream stays a complete record of what happened, and what
-         * to do with a request it cannot re-execute faithfully is the replay engine's call.
+         * when a ParamsFilterInterface withheld a value (a credential, typically).
+         * SemanticLogExtractor extracts the request either way, so the event stream stays a
+         * complete record of what happened, and carries the flag onto Event::$replayable
+         * (and into the store) for the replay engine, whose call it is what to do with a
+         * request it cannot re-execute faithfully.
          */
         public readonly bool $replayable = true,
     ) {

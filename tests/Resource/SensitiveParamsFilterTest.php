@@ -5,9 +5,15 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\Tests\Resource;
 
 use BEAR\EventSourcing\Resource\SensitiveParamsFilter;
+use JsonSerializable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+use function is_array;
+
+use const INF;
+
+/** @psalm-suppress MixedAssignment,MixedArrayAccess,MixedArgument Filtered params are untyped by design. */
 final class SensitiveParamsFilterTest extends TestCase
 {
     /** @return array<string, array{0: array<string, mixed>, 1: array<string, mixed>, 2: bool}> */
@@ -119,6 +125,26 @@ final class SensitiveParamsFilterTest extends TestCase
                 ['preOrderId' => 'a', 'items' => [['productCode' => 'sample-001', 'quantity' => 1]]],
                 true,
             ],
+            'apiKey filtered, non-replayable (the one key-suffixed field that is always a credential)' => [
+                ['apiKey' => 'sk-live-1', 'sku' => 'A'],
+                ['apiKey' => '[FILTERED]', 'sku' => 'A'],
+                false,
+            ],
+            'api_key and APIKEY spellings filtered, non-replayable' => [
+                ['api_key' => 'x', 'APIKEY' => 'y'],
+                ['api_key' => '[FILTERED]', 'APIKEY' => '[FILTERED]'],
+                false,
+            ],
+            'transport-named map replaced whole, a credential inside still flips replayability' => [
+                ['csrfConfig' => ['secret' => 'x', 'ttl' => 5], 'id' => 1],
+                ['csrfConfig' => '[FILTERED]', 'id' => 1],
+                false,
+            ],
+            'transport-named map without a credential inside replaced whole, stays replayable' => [
+                ['csrfConfig' => ['ttl' => 5], 'id' => 1],
+                ['csrfConfig' => '[FILTERED]', 'id' => 1],
+                true,
+            ],
         ];
     }
 
@@ -143,5 +169,97 @@ final class SensitiveParamsFilterTest extends TestCase
     public function testPlaceholderIsThePublicConstant(): void
     {
         $this->assertSame('[FILTERED]', SensitiveParamsFilter::FILTERED);
+    }
+
+    public function testObjectValuesAreFilteredOnTheirJsonView(): void
+    {
+        // ContextFreezer records an object as its JSON view, so a credential inside a stdClass
+        // would reach the log verbatim if only arrays were walked.
+        $result = (new SensitiveParamsFilter())([
+            'credentials' => (object) ['password' => 'plain', 'user' => 'a'],
+        ]);
+
+        $this->assertSame(['credentials' => ['password' => '[FILTERED]', 'user' => 'a']], $result->params);
+        $this->assertFalse($result->replayable);
+    }
+
+    public function testJsonSerializableValuesAreFilteredOnWhatTheySerializeTo(): void
+    {
+        $device = new class implements JsonSerializable {
+            /** @return array<string, string> */
+            public function jsonSerialize(): array
+            {
+                return ['deviceToken' => 'abc', 'model' => 'x1'];
+            }
+        };
+
+        $result = (new SensitiveParamsFilter())(['device' => $device]);
+
+        $this->assertSame(['device' => ['deviceToken' => '[FILTERED]', 'model' => 'x1']], $result->params);
+        $this->assertFalse($result->replayable);
+    }
+
+    public function testAValueThatCannotBeEncodedIsWithheldWhole(): void
+    {
+        // INF cannot be JSON-encoded; the log could not record it either, so it is withheld
+        // rather than passed through unwalked.
+        $result = (new SensitiveParamsFilter())(['ratio' => (object) ['value' => INF], 'id' => 1]);
+
+        $this->assertSame(['ratio' => '[FILTERED]', 'id' => 1], $result->params);
+        $this->assertFalse($result->replayable);
+    }
+
+    public function testNestingDeeperThanJsonAllowsIsWithheldWholeNotWalkedForever(): void
+    {
+        $leaf = 'leaf';
+        for ($i = 0; $i < 600; $i++) {
+            $leaf = ['n' => $leaf];
+        }
+
+        $result = (new SensitiveParamsFilter())(['deep' => $leaf, 'id' => 1]);
+
+        $this->assertFalse($result->replayable);
+        $this->assertSame(1, $result->params['id']);
+        [$depth, $end] = self::descend($result->params['deep']);
+        $this->assertSame('[FILTERED]', $end);
+        $this->assertLessThan(600, $depth);
+    }
+
+    public function testNestingWithinTheLimitIsWalkedUnchanged(): void
+    {
+        $leaf = 'leaf';
+        for ($i = 0; $i < 100; $i++) {
+            $leaf = ['n' => $leaf];
+        }
+
+        $result = (new SensitiveParamsFilter())(['deep' => $leaf]);
+
+        $this->assertTrue($result->replayable);
+        $this->assertSame(['deep' => $leaf], $result->params);
+    }
+
+    /** @psalm-suppress RedundantCondition Psalm cannot see the write-through a reference would cause. */
+    public function testDoesNotWriteThePlaceholderThroughAReferenceIntoTheCallersParams(): void
+    {
+        $secret = 'plain';
+        $params = ['loginId' => 'a'];
+        $params['password'] = &$secret;
+
+        $result = (new SensitiveParamsFilter())($params);
+
+        $this->assertSame('[FILTERED]', $result->params['password']);
+        $this->assertSame('plain', $secret, 'the real request must still carry the credential the handler reads');
+    }
+
+    /** @return array{0: int, 1: mixed} */
+    private static function descend(mixed $value): array
+    {
+        $depth = 0;
+        while (is_array($value)) {
+            $value = $value['n'];
+            $depth++;
+        }
+
+        return [$depth, $value];
     }
 }

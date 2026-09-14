@@ -41,7 +41,7 @@ final readonly class SemanticLogInvoker implements InvokerInterface
             return $this->invoker->invoke($request);
         }
 
-        $filtered = ($this->paramsFilter)($request->query);
+        $filtered = $this->filterParams($request->query);
         $openId = $this->logger->open(new ResourceRequestContext(
             uri: self::stripQuery($request->toUri()),
             method: $method,
@@ -85,12 +85,39 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         try {
             $this->logger->close($context, $openId);
         } catch (Throwable $e) {
-            try {
-                trigger_error(sprintf('Semantic log close failed: %s', $e->getMessage()), E_USER_WARNING);
-            } catch (Throwable) {
-                // A strict error handler (e.g. Symfony/Laravel) may turn the warning into
-                // an exception; swallow it too so observation never breaks the request.
-            }
+            self::warn(sprintf('Semantic log close failed: %s', $e->getMessage()));
+        }
+    }
+
+    /**
+     * Filter params without letting a filter failure escape — and without recording what
+     * it failed to filter.
+     *
+     * The filter is an application-supplied boundary, so it can throw on a param shape it did
+     * not expect. Observation must never break the request, but recording the unfiltered
+     * params on failure would turn a logging bug into a credential leak: fail closed, record
+     * nothing, and mark the request non-replayable so the gap is visible.
+     *
+     * @param array<string, mixed> $params
+     */
+    private function filterParams(array $params): FilteredParams
+    {
+        try {
+            return ($this->paramsFilter)($params);
+        } catch (Throwable $e) {
+            self::warn(sprintf('Params filter failed, params withheld: %s', $e->getMessage()));
+
+            return new FilteredParams([], replayable: false);
+        }
+    }
+
+    private static function warn(string $message): void
+    {
+        try {
+            trigger_error($message, E_USER_WARNING);
+        } catch (Throwable) {
+            // A strict error handler (e.g. Symfony/Laravel) may turn the warning into
+            // an exception; swallow it too so observation never breaks the request.
         }
     }
 

@@ -56,6 +56,7 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
                 paramsJson: $paramsJson,
                 resultJson: $resultJson,
                 timestamp: $timestamp,
+                replayable: $event->replayable ? 1 : 0,
             );
         } catch (Throwable $e) {
             throw new EventStoreException('Failed to append event.', 0, $e);
@@ -117,6 +118,8 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
                 params: self::params($row['params_json']),
                 result: self::decode($row['result_json']),
                 id: $row['event_id'],
+                // SQLite hands the INTEGER flag back as int or string depending on the driver.
+                replayable: (int) $row['replayable'] === 1,
             );
         } catch (Throwable $e) {
             throw new EventStoreException('Failed to restore event from stored row.', 0, $e);

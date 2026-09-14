@@ -28,6 +28,19 @@ final class EventTest extends TestCase
         $this->assertSame(['id' => 1], $event->result);
     }
 
+    public function testReplayableDefaultsToTrueAndDoesNotChangeIdentity(): void
+    {
+        $timestamp = new DateTimeImmutable('2026-06-10T12:34:56.123456+00:00');
+        $event = new Event('app://self/users', 'POST', $timestamp, ['name' => 'Ada']);
+        $withheld = new Event('app://self/users', 'POST', $timestamp, ['name' => 'Ada'], replayable: false);
+
+        $this->assertTrue($event->replayable);
+        $this->assertFalse($withheld->replayable);
+        // Whether a filter withheld a credential is how the request was recorded, not which
+        // operation it was: re-extracting the same log with a different filter keeps the id.
+        $this->assertSame($event->id, $withheld->id);
+    }
+
     public function testIdIsDeterministicForTheSameObservedFact(): void
     {
         $timestamp = new DateTimeImmutable('2026-06-10T12:34:56.123456+00:00');

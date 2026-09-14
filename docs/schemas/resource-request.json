@@ -24,7 +24,7 @@
         },
         "replayable": {
             "type": "boolean",
-            "description": "False when a ParamsFilterInterface withheld a value from params (a credential, typically). Recorded for a replay engine or an auditor to read; SemanticLogExtractor extracts the request either way. Optional and defaults to true — an entry recorded before this field existed, or written by a hand-built context, is treated as replayable."
+            "description": "False when a ParamsFilterInterface withheld a value from params (a credential, typically). SemanticLogExtractor extracts the request either way and carries the flag onto Event::$replayable for the replay engine to read. Optional and defaults to true — an entry recorded before this field existed, or written by a hand-built context, is treated as replayable; a non-boolean value is treated as not replayable."
         }
     },
     "additionalProperties": false

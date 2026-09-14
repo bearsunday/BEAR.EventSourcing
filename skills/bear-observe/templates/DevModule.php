@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace __NAMESPACE__\Module;
 
+use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Module\EventSourcingModule;
 use BEAR\EventSourcing\Recorded;
 use BEAR\EventSourcing\RecordedMethods;
@@ -43,6 +44,9 @@ final class DevModule extends AbstractAppModule
             ->toConstructor(SemanticLogInvoker::class, [
                 'invoker' => self::ORIGINAL_INVOKER,
                 'recordedMethods' => Recorded::class,
+                // Without this entry Ray.Di ignores the #[Filtered] attribute on the parameter
+                // and an application-bound filter never reaches the invoker.
+                'paramsFilter' => Filtered::class,
             ])
             ->in(Scope::SINGLETON);
         // GET is not a state change, so extraction ignores it; recording it is what makes

@@ -109,6 +109,9 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
             timestamp: $timestamp,
             params: self::params($request),
             result: $response['body'] ?? null,
+            // Absent means replayable (an entry that predates the field); anything but a
+            // literal true is not, the same "uninterpretable is not minted" stance as the code.
+            replayable: ($request['replayable'] ?? true) === true,
         );
     }
 

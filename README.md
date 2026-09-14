@@ -82,7 +82,7 @@ A response `code` of `400` or greater marks a failed operation, which is ignored
 
 ### Event identity
 
-`Event::$id` is a sha256 hash derived from `method`, `uri`, the timestamp normalized to UTC, and key-sorted `params` — the same operation observed at the same instant is the same event. `result` is excluded on purpose: the same domain operation produces the same event regardless of how its response body was recorded.
+`Event::$id` is a sha256 hash derived from `method`, `uri`, the timestamp normalized to UTC, and key-sorted `params` — the same operation observed at the same instant is the same event. `result` is excluded on purpose: the same domain operation produces the same event regardless of how its response body was recorded. So is `replayable` (see [Redacting sensitive params](#redacting-sensitive-params-secure-by-default)): whether a filter withheld a credential is a property of how the request was recorded, not of the operation.
 
 Identity is what makes the store a source of truth. Re-extraction reproduces the same ids, and every store treats `append` as idempotent per id, so a retried batch never duplicates facts.
 
@@ -101,12 +101,13 @@ Two natural extensions are not implemented: verifying determinism by diffing the
 
 ## Redacting sensitive params (secure by default)
 
-`params` is whatever the request carried — a login's `password`, a checkout's `csrfToken` — and it flows into both the log and, when extracted, `Event::params` and `Event::$id`. The resource bridge (`SemanticLogInvoker`) filters this by default: unbound, it constructs `SensitiveParamsFilter`, which replaces the value of every credential/transport-shaped key at every depth of `params` with `[FILTERED]` (a nested `['credentials' => ['password' => '…']]` is walked the same way a flat one is). The key stays — the same convention as Rails' `filter_parameters` and Sentry's scrubber — so the log still shows that a password was sent, just not what it was. An application opts *out* of this — never in — by binding its own `#[Filtered] ParamsFilterInterface`:
+`params` is whatever the request carried — a login's `password`, a checkout's `csrfToken` — and it flows into both the log and, when extracted, `Event::params` and `Event::$id`. The resource bridge (`SemanticLogInvoker`) filters this by default: unbound, it constructs `SensitiveParamsFilter`, which replaces the value of every credential/transport-shaped key at every depth of `params` with `[FILTERED]` (a nested `['credentials' => ['password' => '…']]` is walked the same way a flat one is, and an object value is walked on the JSON view the log will record). The key stays — the same convention as Rails' `filter_parameters` and Sentry's scrubber — so the log still shows that a password was sent, just not what it was. An application opts *out* of this — never in — by binding its own `#[Filtered] ParamsFilterInterface`. Compose the default rather than replace it: a filter that only handles its own key silently switches the built-in protection off.
 
 ```php
 use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Resource\FilteredParams;
 use BEAR\EventSourcing\Resource\ParamsFilterInterface;
+use BEAR\EventSourcing\Resource\SensitiveParamsFilter;
 use Override;
 
 final class AppParamsFilter implements ParamsFilterInterface
@@ -114,23 +115,28 @@ final class AppParamsFilter implements ParamsFilterInterface
     #[Override]
     public function __invoke(array $params): FilteredParams
     {
-        unset($params['otp']); // extend the default shape, or replace it entirely
+        $default = (new SensitiveParamsFilter())($params); // keep password/token/secret/apikey/csrf covered
+        $params = $default->params;
+        $withheld = isset($params['otp']);
+        $params['otp'] = SensitiveParamsFilter::FILTERED;   // this app's own credential-shaped key
 
-        return new FilteredParams($params, replayable: false); // this key was domain input
+        return new FilteredParams($params, replayable: $default->replayable && ! $withheld);
     }
 }
 
 $this->bind(ParamsFilterInterface::class)->annotatedWith(Filtered::class)->to(AppParamsFilter::class);
 ```
 
+Bind it in the module that installs the observation wiring, or pass it as `ResourceObservationModule(paramsFilter: …)` / `DevLogModule(paramsFilter: …)`. A binding made *inside* a module that `ResourceObservationModule(module: $app)` wraps is overridden by the default — the wrapping module's own bindings win.
+
 Not every filtered key means the same thing, so the filter returns a `FilteredParams` — the params, and whether the operation is still **replayable** with them:
 
-- **Transport** (a `csrf` substring): a CSRF token is single-use and session-bound. A replay engine mints its own regardless of what was recorded, so withholding it changes nothing about what the recorded params are for — `SensitiveParamsFilter` filters it and leaves `replayable: true`.
-- **Credential** (`password`/`token`/`secret` as a substring): domain input the handler actually reads to complete the operation — a login password, a `deviceToken` a 2FA handler verifies, an API `secret`. Withholding it leaves the recorded params genuinely insufficient to reproduce the operation, so `SensitiveParamsFilter` marks the result `replayable: false`. `token` alone lands here, not with `csrf`, precisely so `deviceToken`/`accessToken` are treated as domain input while `csrfToken` still matches the transport rule first and keeps its request replayable. The flip side: a CSRF field named without `csrf` — Laravel's and Symfony Form's `_token` — contains `token` and is treated as a credential, so an application using that field name binds its own filter.
+- **Transport** (a `csrf` substring): a CSRF token is single-use and session-bound. This presumes a replay engine that mints its own token — the recorded placeholder is not one — so withholding it changes nothing about what the recorded params are for: `SensitiveParamsFilter` filters it and leaves `replayable: true`. A map under a transport-named key is replaced whole, but a credential nested inside it still flips the flag.
+- **Credential** (`password`/`token`/`secret`/`apikey` as a substring): domain input the handler actually reads to complete the operation — a login password, a `deviceToken` a 2FA handler verifies, an `apiKey`. Withholding it leaves the recorded params genuinely insufficient to reproduce the operation, so `SensitiveParamsFilter` marks the result `replayable: false`. `token` alone lands here, not with `csrf`, precisely so `deviceToken`/`accessToken` are treated as domain input while `csrfToken` still matches the transport rule first and keeps its request replayable. Two costs of that substring: a CSRF field named without `csrf` — Laravel's and Symfony Form's `_token` — is treated as a credential, and a pagination cursor (`pageToken`, `nextToken`) is replaced too, so which page was requested is lost from the audit trail. An application with either field name binds its own filter.
 
-The default deliberately stops at those three substrings and does **not** match a generic `key` suffix. An application's own identifiers just as often end in `Key` for reasons that have nothing to do with secrecy: an `idempotencyKey` is exactly the domain input a replay needs to stay deterministic, and filtering it by name pattern alone would make an otherwise-safe write silently non-replayable. A `resetKey`/`authKey`-shaped field an application actually wants redacted is a `#[Filtered] ParamsFilterInterface` it binds itself — this package does not know an arbitrary caller's naming conventions well enough to guess safely.
+The default deliberately does **not** match a generic `key` suffix. An application's own identifiers just as often end in `Key` for reasons that have nothing to do with secrecy: an `idempotencyKey` is exactly the domain input a replay needs to stay deterministic, and filtering it by name pattern alone would make an otherwise-safe write silently non-replayable. `apikey` is the exception — nothing non-secret is named that way. A `resetKey`/`authKey`-shaped field an application actually wants redacted is a `#[Filtered] ParamsFilterInterface` it binds itself — this package does not know an arbitrary caller's naming conventions well enough to guess safely.
 
-`SemanticLogInvoker` records `replayable` as-is on the `resource_request` context — it does not itself decide whether a withheld value matters, only the filter does. `SemanticLogExtractor` does not act on it either: a `replayable: false` request is extracted like any other, so the event stream stays a complete record of what happened, and the placeholder travels into `Event::params` (and `Event::$id`, which is therefore stable across re-extraction). An admin login is still an event — you can see it was attempted, by whom, when — and what a replay engine does with a request it cannot re-execute faithfully (skip it, seed the credential from elsewhere, stop) is that engine's call, not this package's:
+`SemanticLogInvoker` records `replayable` on the `resource_request` context — it does not itself decide whether a withheld value matters, only the filter does. A filter that throws is treated the same way as a body store that throws: the request runs, but nothing the filter failed on is recorded (`params: {}`, `replayable: false`) and a warning is raised. `SemanticLogExtractor` extracts a `replayable: false` request like any other, so the event stream stays a complete record of what happened, and the placeholder travels into `Event::params` (and `Event::$id`, which is therefore stable across re-extraction). The flag travels with it — `Event::$replayable`, excluded from the id, and a column in the SQL store — because the log is transient and the store is what a replay engine reads. An admin login is still an event — you can see it was attempted, by whom, when — and what a replay engine does with an event it cannot re-execute faithfully (skip it, seed the credential from elsewhere, stop) is that engine's call, not this package's:
 
 ```text
 resource_request uri=page://self/shopping/checkout method=POST params={"preOrderId":"O-1","csrfToken":"[FILTERED]"} replayable=true
@@ -140,9 +146,9 @@ resource_request uri=page://self/admin/login method=POST params={"loginId":"admi
   → resource_response code=200
 ```
 
-Both become events. The flag lives on the log entry, not on `Event`; a replay engine that needs it reads the log.
+Both become events; the second carries `replayable: false`.
 
-This is a name-based guard, not a secret-value scanner: a credential shaped differently (a bare `pin` or `otp`, or an `apiKey`/`resetKey`) still needs an application-supplied filter, and the transport/credential split above is a default judgment call an application is free to override per key. It only reaches request `params`: the response body a `BodyStoreInterface` records as `body_ref` is written as-is, and a separate observation pathway (e.g. an application's own domain-level logger) is a different boundary and needs its own redaction.
+This is a name-based guard, not a secret-value scanner: a credential shaped differently (a bare `pin` or `otp`, or a `resetKey`) still needs an application-supplied filter, and the transport/credential split above is a default judgment call an application is free to override per key. It only reaches request `params`: the response body a `BodyStoreInterface` records as `body_ref` is written as-is, the `message` of an exception recorded in the close context is not filtered either, and a separate observation pathway (e.g. an application's own domain-level logger) is a different boundary and needs its own redaction.
 
 ## Filtering and replay
 
@@ -227,7 +233,7 @@ $store->appendAll($events);
 
 Forgetting `MediaQuerySqlModule` (or `AuraSqlModule`) surfaces as an explicit unbound error at injection time — never as a store that fails on first use.
 
-Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store; the bundled SQL uses SQLite dialect (`INSERT OR IGNORE`), so port the two statements when targeting another database. `event_id` is UNIQUE — that constraint is what makes appends idempotent. Timestamps are stored in UTC so the `recorded_at` index sorts in time order. `MediaQueryEventStore` keeps JSON and timestamp database mapping inside the adapter, not on `Event`.
+Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store; the bundled SQL uses SQLite dialect (`INSERT OR IGNORE`), so port the two statements when targeting another database. `event_id` is UNIQUE — that constraint is what makes appends idempotent. Timestamps are stored in UTC so the `recorded_at` index sorts in time order; `replayable` is stored as an integer flag. `MediaQueryEventStore` keeps JSON, timestamp and flag database mapping inside the adapter, not on `Event`.
 
 A few operational notes:
 

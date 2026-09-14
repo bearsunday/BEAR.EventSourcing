@@ -21,8 +21,8 @@ final class ResourceObservationModule extends AbstractModule
         private readonly RecordedMethods|null $methods = null,
         private readonly BodyStoreInterface|null $bodyStore = null,
         private readonly SemanticLoggerInterface|null $logger = null,
-        private readonly ParamsFilterInterface|null $paramsFilter = null,
         AbstractModule|null $module = null,
+        private readonly ParamsFilterInterface|null $paramsFilter = null,
     ) {
         parent::__construct($module);
     }

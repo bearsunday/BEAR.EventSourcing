@@ -20,7 +20,10 @@ use RuntimeException;
 
 use function json_decode;
 use function json_encode;
+use function restore_error_handler;
+use function set_error_handler;
 
+use const E_USER_WARNING;
 use const JSON_THROW_ON_ERROR;
 
 /**
@@ -328,6 +331,51 @@ final class SemanticLogInvokerTest extends TestCase
         $entry = self::flushToArray($logger)['open'][0];
         $this->assertSame(['loginId' => 'admin', 'password' => 'super-secret'], $entry['context']['params']);
         $this->assertTrue($entry['context']['replayable']);
+    }
+
+    public function testAThrowingFilterWithholdsParamsAndStillRunsTheRequest(): void
+    {
+        // An application filter is a boundary that can throw on a shape it did not expect.
+        // Observation must not break the request, and recording the unfiltered params on
+        // failure would turn a logging bug into a leak: fail closed and mark the gap.
+        $logger = new SemanticLogger();
+        $ro = new FakeResourceObject('app://self/admin/login', ['ok' => true], 200);
+        $throwing = new class implements ParamsFilterInterface {
+            public function __invoke(array $params): FilteredParams
+            {
+                throw new RuntimeException('unexpected param shape');
+            }
+        };
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $logger,
+            new NullBodyStore(),
+            paramsFilter: $throwing,
+        );
+
+        $warnings = [];
+        set_error_handler(static function (int $errno, string $errstr) use (&$warnings): bool {
+            $warnings[] = [$errno, $errstr];
+
+            return true;
+        });
+        try {
+            $result = $invoker->invoke(self::request(
+                'app://self/admin/login',
+                Method::POST,
+                ['loginId' => 'admin', 'password' => 'super-secret'],
+            ));
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame($ro, $result);
+        $entry = self::flushToArray($logger)['open'][0];
+        $this->assertSame([], $entry['context']['params'], 'nothing the filter failed on may be recorded');
+        $this->assertFalse($entry['context']['replayable']);
+        $this->assertCount(1, $warnings);
+        $this->assertSame(E_USER_WARNING, $warnings[0][0]);
+        $this->assertStringContainsString('unexpected param shape', $warnings[0][1]);
     }
 
     /** @param array<string, mixed> $query */

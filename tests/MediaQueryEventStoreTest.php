@@ -110,6 +110,29 @@ final class MediaQueryEventStoreTest extends TestCase
         $this->assertSame('+00:00', $restored->timestamp->format('P'));
     }
 
+    public function testReplayableFlagRoundTripsThroughTheDatabase(): void
+    {
+        // The log is transient; the store is what a replay engine reads, so the flag a
+        // filter set at record time has to survive the row and come back as the same bool.
+        $store = $this->store();
+        $withheld = new Event(
+            uri: 'app://self/admin/login',
+            method: 'POST',
+            timestamp: new DateTimeImmutable('2026-06-10T12:34:56.123456+00:00'),
+            params: ['loginId' => 'admin', 'password' => '[FILTERED]'],
+            replayable: false,
+        );
+        $intact = self::event('app://self/products', 'POST', ['name' => 'Ada'], ['id' => 1]);
+
+        $store->append($withheld);
+        $store->append($intact);
+
+        $stored = iterator_to_array($store->all());
+        $this->assertFalse($stored[0]->replayable);
+        $this->assertSame($withheld->id, $stored[0]->id);
+        $this->assertTrue($stored[1]->replayable);
+    }
+
     public function testAppendWrapsAQueryFailureInEventStoreException(): void
     {
         $store = $this->store();
@@ -174,5 +197,6 @@ final class MediaQueryEventStoreTest extends TestCase
         $this->assertEquals($expected->timestamp, $actual->timestamp);
         $this->assertSame($expected->params, $actual->params);
         $this->assertSame($expected->result, $actual->result);
+        $this->assertSame($expected->replayable, $actual->replayable);
     }
 }
