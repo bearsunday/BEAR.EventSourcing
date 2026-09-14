@@ -117,8 +117,10 @@ final class AppParamsFilter implements ParamsFilterInterface
     {
         $default = (new SensitiveParamsFilter())($params); // keep password/token/secret/apikey/csrf covered
         $params = $default->params;
-        $withheld = isset($params['otp']);
-        $params['otp'] = SensitiveParamsFilter::FILTERED;   // this app's own credential-shaped key
+        $withheld = isset($params['otp']);                  // this app's own credential-shaped key
+        if ($withheld) {
+            $params['otp'] = SensitiveParamsFilter::FILTERED;
+        }
 
         return new FilteredParams($params, replayable: $default->replayable && ! $withheld);
     }
@@ -233,7 +235,7 @@ $store->appendAll($events);
 
 Forgetting `MediaQuerySqlModule` (or `AuraSqlModule`) surfaces as an explicit unbound error at injection time — never as a store that fails on first use.
 
-Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store; the bundled SQL uses SQLite dialect (`INSERT OR IGNORE`), so port the two statements when targeting another database. `event_id` is UNIQUE — that constraint is what makes appends idempotent. Timestamps are stored in UTC so the `recorded_at` index sorts in time order; `replayable` is stored as an integer flag. `MediaQueryEventStore` keeps JSON, timestamp and flag database mapping inside the adapter, not on `Event`.
+Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store; the bundled SQL uses SQLite dialect (`INSERT OR IGNORE`), so port the two statements when targeting another database. `event_id` is UNIQUE — that constraint is what makes appends idempotent. Timestamps are stored in UTC so the `recorded_at` index sorts in time order; `replayable` is stored as an integer flag. A table created from the 0.1.0 schema lacks that column and every append fails until it is added: `ALTER TABLE event_store ADD COLUMN replayable INTEGER NOT NULL DEFAULT 1;`. `MediaQueryEventStore` keeps JSON, timestamp and flag database mapping inside the adapter, not on `Event`.
 
 A few operational notes:
 
