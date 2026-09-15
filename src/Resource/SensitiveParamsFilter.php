@@ -8,6 +8,7 @@ use JsonException;
 
 use function array_map;
 use function array_merge;
+use function gettype;
 use function is_array;
 use function is_finite;
 use function is_float;
@@ -179,7 +180,7 @@ final class SensitiveParamsFilter implements ParamsFilterInterface
 
         // A resource or a non-finite float cannot be JSON-encoded, so the log could not record it
         // either; withholding it is the safe side, as for an unencodable object below.
-        if (is_resource($value) || (is_float($value) && ! is_finite($value))) {
+        if (self::isUnencodable($value)) {
             $replayable = false;
 
             return self::FILTERED;
@@ -203,6 +204,21 @@ final class SensitiveParamsFilter implements ParamsFilterInterface
         }
 
         return is_array($value) ? $this->filterMap($value, $replayable, $depth) : $value;
+    }
+
+    /**
+     * A scalar-shaped value with no JSON form at all, as opposed to an object this walks on its
+     * JSON view. `is_resource()` reports false once a handle is closed, but `json_encode()`
+     * refuses it just the same, and the type name is the only thing left to match on — passing
+     * one through would fail the log's own encode, and the logger then replaces the whole
+     * request context with an invalid_context placeholder, losing the uri, the method and every
+     * other param, not just this key.
+     */
+    private static function isUnencodable(mixed $value): bool
+    {
+        return is_resource($value)
+            || gettype($value) === 'resource (closed)'
+            || (is_float($value) && ! is_finite($value));
     }
 
     private static function isTransportKey(string $key): bool

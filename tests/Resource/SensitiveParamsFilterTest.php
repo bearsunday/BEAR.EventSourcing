@@ -12,8 +12,10 @@ use PHPUnit\Framework\TestCase;
 use function fclose;
 use function fopen;
 use function is_array;
+use function json_encode;
 
 use const INF;
+use const JSON_THROW_ON_ERROR;
 use const NAN;
 
 /** @psalm-suppress MixedAssignment,MixedArrayAccess,MixedArgument Filtered params are untyped by design. */
@@ -239,6 +241,26 @@ final class SensitiveParamsFilterTest extends TestCase
         );
         $this->assertFalse($result->replayable);
         fclose($handle);
+    }
+
+    public function testAClosedResourceIsWithheldToo(): void
+    {
+        // is_resource() reports false once the handle is closed, but json_encode refuses it just
+        // the same. Passing one through would fail the logger's own encode, and the logger then
+        // replaces the whole request context with an invalid_context placeholder — losing the
+        // uri, the method and every other param, not just this key.
+        $handle = fopen('php://memory', 'r');
+        if ($handle === false) {
+            $this->fail('php://memory could not be opened');
+        }
+
+        fclose($handle);
+
+        $result = (new SensitiveParamsFilter())(['handle' => $handle, 'id' => 1]);
+
+        $this->assertSame(['handle' => '[FILTERED]', 'id' => 1], $result->params);
+        $this->assertFalse($result->replayable);
+        $this->assertSame('{"handle":"[FILTERED]","id":1}', json_encode($result->params, JSON_THROW_ON_ERROR));
     }
 
     public function testNestingDeeperThanJsonAllowsIsWithheldWholeNotWalkedForever(): void
