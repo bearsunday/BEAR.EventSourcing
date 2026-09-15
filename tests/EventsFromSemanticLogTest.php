@@ -302,6 +302,40 @@ final class EventsFromSemanticLogTest extends TestCase
         $this->assertFalse(iterator_to_array($events)[0]->replayable);
     }
 
+    public function testAnExplicitNullReplayableIsNotReplayableEitherUnlikeAnAbsentOne(): void
+    {
+        // Absent means replayable, because an entry predating the field genuinely was. An
+        // explicit null is a value the schema rejects, so it belongs with 'yes' and 1 rather
+        // than with absence — a distinction `??` cannot make, since it coalesces null too.
+        $semanticLog = new LogJson(
+            schemaUrl: 'https://example.com/semantic-log.schema.json',
+            open: [new OpenCloseEntry(
+                id: 'resource_request_1',
+                type: 'resource_request',
+                schemaUrl: 'https://example.com/resource-request.schema.json',
+                context: [
+                    'uri' => 'app://self/users',
+                    'method' => 'POST',
+                    'params' => ['name' => 'Ada'],
+                    'timestamp' => '2026-06-10T12:34:56.123456+00:00',
+                    'replayable' => null,
+                ],
+            )],
+            close: [new EventEntry(
+                id: 'resource_response_1',
+                type: 'resource_response',
+                schemaUrl: 'https://example.com/resource-response.schema.json',
+                context: ['code' => 201],
+                openId: 'resource_request_1',
+            )],
+        );
+
+        $events = (new SemanticLogExtractor())->extract($semanticLog);
+
+        $this->assertCount(1, $events);
+        $this->assertFalse(iterator_to_array($events)[0]->replayable);
+    }
+
     public function testNonResourceOperationsAreIgnored(): void
     {
         $semanticLog = new LogJson(

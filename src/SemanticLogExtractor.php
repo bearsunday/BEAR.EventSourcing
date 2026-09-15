@@ -9,6 +9,7 @@ use JsonException;
 use Koriym\SemanticLogger\LogJson;
 use Throwable;
 
+use function array_key_exists;
 use function is_array;
 use function is_int;
 use function is_string;
@@ -111,7 +112,8 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
             result: $response['body'] ?? null,
             // Absent means replayable (an entry that predates the field); anything but a
             // literal true is not, the same "uninterpretable is not minted" stance as the code.
-            replayable: ($request['replayable'] ?? true) === true,
+            // `??` would not say that: it coalesces an explicit null to the absent default.
+            replayable: ! array_key_exists('replayable', $request) || $request['replayable'] === true,
         );
     }
 
