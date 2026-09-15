@@ -139,7 +139,7 @@ final class AppParamsFilter implements ParamsFilterInterface
 $this->bind(ParamsFilterInterface::class)->annotatedWith(Filtered::class)->to(AppParamsFilter::class);
 ```
 
-Bind it in the module that installs the observation wiring, or pass it as `ResourceObservationModule(paramsFilter: …)` / `DevLogModule(paramsFilter: …)`. A binding made *inside* a module that `ResourceObservationModule(module: $app)` wraps is overridden by the default — the wrapping module's own bindings win.
+Bind it in the module that installs the observation wiring, or pass it as `ResourceObservationModule(paramsFilter: …)` / `DevLogModule(paramsFilter: …)` — one or the other, not both. Doing both is quiet rather than loud: the installing module's own `#[Filtered]` binding wins in either install order and the constructor argument is dropped without a word, because Ray.Di keeps the binding the installer already holds. Both recorders then agree on the binding, so the result is consistent, just not the one the discarded argument asked for. A binding made *inside* a module that `ResourceObservationModule(module: $app)` wraps loses the opposite way — the wrapping module's own bindings win, so the default overrides it.
 
 Not every filtered key means the same thing, so the filter returns a `FilteredParams` — the params, and whether the operation is still **replayable** with them:
 

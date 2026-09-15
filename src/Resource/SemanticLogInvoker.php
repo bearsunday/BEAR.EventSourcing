@@ -43,7 +43,7 @@ final readonly class SemanticLogInvoker implements InvokerInterface
 
         $filtered = $this->filterParams($request->query);
         $openId = $this->logger->open(new ResourceRequestContext(
-            uri: self::stripQuery($request->toUri()),
+            uri: self::canonicalUri($request),
             method: $method,
             params: $filtered->params,
             timestamp: (new DateTimeImmutable())->format(self::TIMESTAMP_FORMAT),
@@ -151,11 +151,22 @@ final readonly class SemanticLogInvoker implements InvokerInterface
      * `params`, so recording it in the uri too would duplicate it into the event
      * uri and make the stree formatter render the query string twice.
      */
-    private static function stripQuery(string $uri): string
+    /**
+     * The canonical uri: scheme, host and path, with the query left where it belongs, in params.
+     *
+     * Read off the uri object rather than via Request::toUri(), which assembles the query into
+     * the string with http_build_query() only for the caller to cut it off again at the `?`.
+     * That round trip cost the request itself: http_build_query() raises a ValueError on a value
+     * it cannot stringify — an unbacked enum in the query is the shape that does it — and the
+     * call sits ahead of every guard in invoke(), so observation broke a request it is supposed
+     * only to watch. It also assigns the query onto the resource object's uri on the way past,
+     * which is a mutation observation has no business making.
+     */
+    private static function canonicalUri(AbstractRequest $request): string
     {
-        $queryStart = strpos($uri, '?');
+        $uri = $request->resourceObject->uri;
 
-        return $queryStart === false ? $uri : substr($uri, 0, $queryStart);
+        return "{$uri->scheme}://{$uri->host}{$uri->path}";
     }
 
     private static function httpCode(Throwable $e): int

@@ -384,6 +384,30 @@ final class SemanticLogInvokerTest extends TestCase
     }
 
     /** @param array<string, mixed> $query */
+    public function testAQueryValueThatCannotBeStringifiedDoesNotBreakTheRequest(): void
+    {
+        // The uri is read off the uri object, so the query is never serialized for a string that
+        // discards it anyway. Through Request::toUri() an unbacked enum reached
+        // http_build_query(), which raises a ValueError ahead of every guard in invoke() —
+        // observation breaking a request it is supposed only to watch.
+        $logger = new SemanticLogger();
+        $ro = new FakeResourceObject('app://self/user/1', ['id' => 1], 201);
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $logger,
+            new NullBodyStore(),
+        );
+
+        $result = $invoker->invoke(self::request('app://self/user/1', Method::POST, ['suit' => FakeSuit::Hearts]));
+
+        $this->assertSame($ro, $result);
+        $entry = self::flushToArray($logger)['open'][0];
+        $this->assertSame('app://self/user/1', $entry['context']['uri']);
+        // The enum has no JSON form either, so the filter withheld it; the point is the request.
+        $this->assertSame(['suit' => '[FILTERED]'], $entry['context']['params']);
+    }
+
+    /** @param array<string, mixed> $query */
     private static function request(string $uri, Method $method, array $query = []): Request
     {
         $ro = new FakeResourceObject($uri);
