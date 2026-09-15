@@ -19,6 +19,7 @@ interface EventStoreQueryInterface
         string $paramsJson,
         string $resultJson,
         string $timestamp,
+        int $replayable,
     ): AffectedRows;
 
     /**

@@ -119,6 +119,73 @@ final class ObserveHarnessTest extends TestCase
         $this->assertStringContainsString("'cli-dev-hal-app'", $this->read('bin/dev.php'));
     }
 
+    public function testSetupWarnsWhenAnExistingDevModuleAlreadyRebindsBecomingInterface(): void
+    {
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+        $this->write('src/Module/DevModule.php', <<<'PHP'
+            <?php
+
+            declare(strict_types=1);
+
+            namespace MyVendor\MyProject\Module;
+
+            use Be\Framework\BecomingInterface;
+            use Ray\Di\AbstractModule;
+
+            final class DevModule extends AbstractModule
+            {
+                protected function configure(): void
+                {
+                    $this->bind(BecomingInterface::class)->toProvider(DevBecomingProvider::class);
+                }
+            }
+            PHP);
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir);
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString(
+            'warning    src/Module/DevModule.php already exists — confirm whether it',
+            $output,
+        );
+        $this->assertFileExists($this->appDir . '/src/Module/DevModule.php.observe');
+    }
+
+    public function testSetupWarnsEvenWhenTheSharedLoggerIsWiredThroughAnotherClass(): void
+    {
+        // BeMart's actual shape: DevModule itself never mentions BecomingInterface — it
+        // overrides a *different* module that does. A same-file string search for
+        // "BecomingInterface" would miss this exact case, so the warning fires on the merge
+        // path itself, not on a content match.
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+        $this->write('src/Module/DevModule.php', <<<'PHP'
+            <?php
+
+            declare(strict_types=1);
+
+            namespace MyVendor\MyProject\Module;
+
+            use Ray\Di\AbstractModule;
+
+            final class DevModule extends AbstractModule
+            {
+                protected function configure(): void
+                {
+                    $this->override(new DevLoggingModule());
+                }
+            }
+            PHP);
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir);
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString(
+            'warning    src/Module/DevModule.php already exists — confirm whether it',
+            $output,
+        );
+        $this->assertFileExists($this->appDir . '/src/Module/DevModule.php.observe');
+    }
+
     public function testSetupRequiresVendorAutoloadWhenRootAutoloadIsAbsent(): void
     {
         $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");

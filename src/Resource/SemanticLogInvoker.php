@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource;
 
+use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Recorded;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\Resource\AbstractRequest;
@@ -18,14 +19,19 @@ final readonly class SemanticLogInvoker implements InvokerInterface
     private const string TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
 
     private RecordedMethods $recordedMethods;
+    private ParamsFilterInterface $paramsFilter;
 
     public function __construct(
         private InvokerInterface $invoker,
         private SemanticLoggerInterface $logger,
         private BodyStoreInterface $bodyStore,
         #[Recorded] RecordedMethods|null $recordedMethods = null,
+        #[Filtered] ParamsFilterInterface|null $paramsFilter = null,
     ) {
         $this->recordedMethods = $recordedMethods ?? new RecordedMethods();
+        // Secure by default: an application opts out of redaction by binding its own
+        // #[Filtered] ParamsFilterInterface, never opts in to get it.
+        $this->paramsFilter = $paramsFilter ?? new SensitiveParamsFilter();
     }
 
     public function invoke(AbstractRequest $request): ResourceObject
@@ -35,11 +41,13 @@ final readonly class SemanticLogInvoker implements InvokerInterface
             return $this->invoker->invoke($request);
         }
 
+        $filtered = $this->filterParams($request->query);
         $openId = $this->logger->open(new ResourceRequestContext(
-            uri: self::stripQuery($request->toUri()),
+            uri: self::canonicalUri($request),
             method: $method,
-            params: $request->query,
+            params: $filtered->params,
             timestamp: (new DateTimeImmutable())->format(self::TIMESTAMP_FORMAT),
+            replayable: $filtered->replayable,
         ));
 
         $start = hrtime(true);
@@ -77,12 +85,40 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         try {
             $this->logger->close($context, $openId);
         } catch (Throwable $e) {
-            try {
-                trigger_error(sprintf('Semantic log close failed: %s', $e->getMessage()), E_USER_WARNING);
-            } catch (Throwable) {
-                // A strict error handler (e.g. Symfony/Laravel) may turn the warning into
-                // an exception; swallow it too so observation never breaks the request.
-            }
+            self::warn(sprintf('Semantic log close failed: %s', $e->getMessage()));
+        }
+    }
+
+    /**
+     * Filter params without letting a filter failure escape — and without recording what
+     * it failed to filter.
+     *
+     * The filter is an application-supplied boundary, so it can throw on a param shape it did
+     * not expect. Observation must never break the request, but recording the unfiltered
+     * params on failure would turn a logging bug into a credential leak: fail closed, record
+     * nothing, and mark the request non-replayable so the gap is visible.
+     *
+     * @param array<string, mixed> $params
+     */
+    private function filterParams(array $params): FilteredParams
+    {
+        try {
+            return ($this->paramsFilter)($params);
+        } catch (Throwable $e) {
+            // The class only: a filter's message may quote the very values it was handed.
+            self::warn(sprintf('Params filter failed, params withheld: %s', $e::class));
+
+            return new FilteredParams([], replayable: false);
+        }
+    }
+
+    private static function warn(string $message): void
+    {
+        try {
+            trigger_error($message, E_USER_WARNING);
+        } catch (Throwable) {
+            // A strict error handler (e.g. Symfony/Laravel) may turn the warning into
+            // an exception; swallow it too so observation never breaks the request.
         }
     }
 
@@ -115,11 +151,22 @@ final readonly class SemanticLogInvoker implements InvokerInterface
      * `params`, so recording it in the uri too would duplicate it into the event
      * uri and make the stree formatter render the query string twice.
      */
-    private static function stripQuery(string $uri): string
+    /**
+     * The canonical uri: scheme, host and path, with the query left where it belongs, in params.
+     *
+     * Read off the uri object rather than via Request::toUri(), which assembles the query into
+     * the string with http_build_query() only for the caller to cut it off again at the `?`.
+     * That round trip cost the request itself: http_build_query() raises a ValueError on a value
+     * it cannot stringify — an unbacked enum in the query is the shape that does it — and the
+     * call sits ahead of every guard in invoke(), so observation broke a request it is supposed
+     * only to watch. It also assigns the query onto the resource object's uri on the way past,
+     * which is a mutation observation has no business making.
+     */
+    private static function canonicalUri(AbstractRequest $request): string
     {
-        $queryStart = strpos($uri, '?');
+        $uri = $request->resourceObject->uri;
 
-        return $queryStart === false ? $uri : substr($uri, 0, $queryStart);
+        return "{$uri->scheme}://{$uri->host}{$uri->path}";
     }
 
     private static function httpCode(Throwable $e): int

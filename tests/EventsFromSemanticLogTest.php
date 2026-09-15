@@ -21,6 +21,7 @@ use BEAR\EventSourcing\Tests\Fixture\ResourceRequestContext;
 use BEAR\EventSourcing\Tests\Fixture\ResourceResponseContext;
 
 use function array_map;
+use function iterator_to_array;
 
 final class EventsFromSemanticLogTest extends TestCase
 {
@@ -191,6 +192,148 @@ final class EventsFromSemanticLogTest extends TestCase
         $events = (new SemanticLogExtractor())->extract($logger->flush());
 
         $this->assertCount(0, $events);
+    }
+
+    public function testNonReplayableRequestIsStillExtracted(): void
+    {
+        // A filter withheld a credential, so the recorded params cannot re-execute this request
+        // faithfully — but the state change happened, and dropping it would leave every later
+        // event that depends on it unexplained. The flag is recorded on the log entry; what to
+        // do with it is the replay engine's call, not the extractor's.
+        $logger = new SemanticLogger();
+        $openId = $logger->open(new ResourceRequestContext(
+            uri: 'app://self/admin/login',
+            method: 'POST',
+            query: ['loginId' => 'admin', 'password' => '[FILTERED]'],
+            replayable: false,
+        ));
+        $logger->close(new ResourceResponseContext(200, ['ok' => true]), $openId);
+
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
+
+        $this->assertCount(1, $events, 'a non-replayable request is still an event');
+        $event = iterator_to_array($events)[0];
+        $this->assertSame('app://self/admin/login', $event->uri);
+        $this->assertSame(['loginId' => 'admin', 'password' => '[FILTERED]'], $event->params);
+        $this->assertFalse($event->replayable, 'the flag travels onto the Event, not only the log entry');
+    }
+
+    public function testReplayableRequestIsExtractedWhenTheFieldIsExplicitlyTrue(): void
+    {
+        $logger = new SemanticLogger();
+        $openId = $logger->open(new ResourceRequestContext(
+            uri: 'app://self/products',
+            method: 'POST',
+            query: ['nameKeyword' => 'sample'],
+            replayable: true,
+        ));
+        $logger->close(new ResourceResponseContext(201, ['ok' => true]), $openId);
+
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
+
+        $this->assertCount(1, $events);
+        $this->assertTrue(iterator_to_array($events)[0]->replayable);
+    }
+
+    public function testEntryWithoutAReplayableFieldAtAllIsStillExtracted(): void
+    {
+        // A log written before this field existed, or a hand-built resource_request context
+        // that never set it, must not silently stop extracting: absent means replayable, the
+        // same default ResourceRequestContext::$replayable carries.
+        $semanticLog = new LogJson(
+            schemaUrl: 'https://example.com/semantic-log.schema.json',
+            open: [new OpenCloseEntry(
+                id: 'resource_request_1',
+                type: 'resource_request',
+                schemaUrl: 'https://example.com/resource-request.schema.json',
+                context: [
+                    'uri' => 'app://self/users',
+                    'method' => 'POST',
+                    'params' => ['name' => 'Ada'],
+                    'timestamp' => '2026-06-10T12:34:56.123456+00:00',
+                    // deliberately no 'replayable' key
+                ],
+            )],
+            close: [new EventEntry(
+                id: 'resource_response_1',
+                type: 'resource_response',
+                schemaUrl: 'https://example.com/resource-response.schema.json',
+                context: ['code' => 201],
+                openId: 'resource_request_1',
+            )],
+        );
+
+        $events = (new SemanticLogExtractor())->extract($semanticLog);
+
+        $this->assertCount(1, $events);
+        $this->assertTrue(iterator_to_array($events)[0]->replayable, 'absent means replayable');
+    }
+
+    public function testAnUninterpretableReplayableValueIsRecordedAsNotReplayable(): void
+    {
+        // The schema says boolean. A hand-built context carrying "yes" or 1 is not minted as
+        // a replayable fact: the same stance the extractor takes on an uninterpretable code.
+        $semanticLog = new LogJson(
+            schemaUrl: 'https://example.com/semantic-log.schema.json',
+            open: [new OpenCloseEntry(
+                id: 'resource_request_1',
+                type: 'resource_request',
+                schemaUrl: 'https://example.com/resource-request.schema.json',
+                context: [
+                    'uri' => 'app://self/users',
+                    'method' => 'POST',
+                    'params' => ['name' => 'Ada'],
+                    'timestamp' => '2026-06-10T12:34:56.123456+00:00',
+                    'replayable' => 'yes',
+                ],
+            )],
+            close: [new EventEntry(
+                id: 'resource_response_1',
+                type: 'resource_response',
+                schemaUrl: 'https://example.com/resource-response.schema.json',
+                context: ['code' => 201],
+                openId: 'resource_request_1',
+            )],
+        );
+
+        $events = (new SemanticLogExtractor())->extract($semanticLog);
+
+        $this->assertCount(1, $events, 'still an event: only its replay verdict is withheld');
+        $this->assertFalse(iterator_to_array($events)[0]->replayable);
+    }
+
+    public function testAnExplicitNullReplayableIsNotReplayableEitherUnlikeAnAbsentOne(): void
+    {
+        // Absent means replayable, because an entry predating the field genuinely was. An
+        // explicit null is a value the schema rejects, so it belongs with 'yes' and 1 rather
+        // than with absence — a distinction `??` cannot make, since it coalesces null too.
+        $semanticLog = new LogJson(
+            schemaUrl: 'https://example.com/semantic-log.schema.json',
+            open: [new OpenCloseEntry(
+                id: 'resource_request_1',
+                type: 'resource_request',
+                schemaUrl: 'https://example.com/resource-request.schema.json',
+                context: [
+                    'uri' => 'app://self/users',
+                    'method' => 'POST',
+                    'params' => ['name' => 'Ada'],
+                    'timestamp' => '2026-06-10T12:34:56.123456+00:00',
+                    'replayable' => null,
+                ],
+            )],
+            close: [new EventEntry(
+                id: 'resource_response_1',
+                type: 'resource_response',
+                schemaUrl: 'https://example.com/resource-response.schema.json',
+                context: ['code' => 201],
+                openId: 'resource_request_1',
+            )],
+        );
+
+        $events = (new SemanticLogExtractor())->extract($semanticLog);
+
+        $this->assertCount(1, $events);
+        $this->assertFalse(iterator_to_array($events)[0]->replayable);
     }
 
     public function testNonResourceOperationsAreIgnored(): void

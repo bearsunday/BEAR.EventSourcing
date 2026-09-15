@@ -21,6 +21,10 @@
         "timestamp": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}[+-]\\d{2}:\\d{2}$"
+        },
+        "replayable": {
+            "type": "boolean",
+            "description": "False when a ParamsFilterInterface withheld a value from params (a credential, typically). SemanticLogExtractor extracts the request either way and carries the flag onto Event::$replayable for the replay engine to read. Optional and defaults to true — an entry recorded before this field existed, or written by a hand-built context, is treated as replayable; a non-boolean value is treated as not replayable."
         }
     },
     "additionalProperties": false

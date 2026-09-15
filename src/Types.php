@@ -17,7 +17,8 @@ namespace BEAR\EventSourcing;
  *   method: string,
  *   params_json: string,
  *   result_json: string,
- *   recorded_at: string
+ *   recorded_at: string,
+ *   replayable: int|string
  * }
  * @psalm-type SemanticEntry = array<array-key, mixed>
  * @psalm-type SemanticContext = array<array-key, mixed>

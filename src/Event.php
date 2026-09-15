@@ -32,11 +32,23 @@ final readonly class Event
      * observed at the same instant is the same event, so re-extraction and retried
      * appends stay idempotent. `result` is excluded: the same domain operation
      * produces the same event regardless of how its response body was recorded.
+     * `replayable` is excluded for the same reason: whether a filter withheld a
+     * credential is a property of how the request was recorded, not of the operation.
      */
     public string $id;
 
     /**
      * @param EventParams $params
+     * @param bool        $replayable Whether `params` is complete enough to re-execute this
+     *                                operation faithfully. False when a `ParamsFilterInterface`
+     *                                withheld domain input (a credential, typically) at record
+     *                                time; the placeholder is then in `params`. "Complete"
+     *                                excludes transport tokens (a CSRF token) that a replay
+     *                                engine mints itself: a filtered `csrfToken` leaves the
+     *                                flag true, and this package provides no minting seam — that
+     *                                is the replay engine's job. Carried into every
+     *                                `EventStoreInterface` so a replay engine reading the store,
+     *                                not the transient log, can still tell.
      *
      * @throws JsonException When params cannot be represented as JSON.
      */
@@ -47,6 +59,7 @@ final readonly class Event
         public array $params = [],
         public mixed $result = null,
         string|null $id = null,
+        public bool $replayable = true,
     ) {
         $this->method = strtoupper($method);
         $this->id = $id ?? self::deriveId($this->uri, $this->method, $timestamp, $params);
