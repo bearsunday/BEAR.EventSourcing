@@ -227,6 +227,9 @@ final class SensitiveParamsFilterTest extends TestCase
         // Bare INF/NAN and a resource cannot be JSON-encoded either; they are withheld the same way
         // an unencodable object is, instead of being returned as scalars the log cannot record.
         $handle = fopen('php://memory', 'r');
+        if ($handle === false) {
+            $this->fail('php://memory could not be opened');
+        }
 
         $result = (new SensitiveParamsFilter())(['ratio' => INF, 'nan' => NAN, 'handle' => $handle, 'id' => 1]);
 
