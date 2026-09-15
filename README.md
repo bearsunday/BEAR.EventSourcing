@@ -112,17 +112,27 @@ use Override;
 
 final class AppParamsFilter implements ParamsFilterInterface
 {
+    private SensitiveParamsFilter $default;
+
+    public function __construct()
+    {
+        // Composed, never replaced, and `otp` goes through the constructor rather than a
+        // hand-rolled check: the default matches it the way it matches its own set — at every
+        // depth, case and `_`/`-` ignored — where an isset() on the top level would sail past
+        // ['user' => ['otp' => '123456']].
+        $this->default = new SensitiveParamsFilter(['otp']);
+    }
+
     #[Override]
     public function __invoke(array $params): FilteredParams
     {
-        $default = (new SensitiveParamsFilter())($params); // keep the built-in set covered
-        $params = $default->params;
-        $withheld = isset($params['otp']);                  // this app's own credential-shaped key
-        if ($withheld) {
-            $params['otp'] = SensitiveParamsFilter::FILTERED;
-        }
+        $filtered = ($this->default)($params);
 
-        return new FilteredParams($params, replayable: $default->replayable && ! $withheld);
+        // What the constructor cannot express: a verdict this application reaches for the
+        // request as a whole, whatever its params turned out to hold.
+        $replayable = $filtered->replayable && ($params['mode'] ?? null) !== 'sandbox';
+
+        return new FilteredParams($filtered->params, $replayable);
     }
 }
 
@@ -138,7 +148,7 @@ Not every filtered key means the same thing, so the filter returns a `FilteredPa
 
 The default deliberately does **not** match a generic `key` suffix. An application's own identifiers just as often end in `Key` for reasons that have nothing to do with secrecy: an `idempotencyKey` is exactly the domain input a replay needs to stay deterministic, and filtering it by name pattern alone would make an otherwise-safe write silently non-replayable. `apikey` is the exception — nothing non-secret is named that way. A `resetKey`/`authKey`-shaped field an application actually wants redacted is a `#[Filtered] ParamsFilterInterface` it binds itself — this package does not know an arbitrary caller's naming conventions well enough to guess safely.
 
-`SemanticLogInvoker` records `replayable` on the `resource_request` context — it does not itself decide whether a withheld value matters, only the filter does. A filter that throws is treated the same way as a body store that throws: the request runs, but nothing the filter failed on is recorded (`params: {}`, `replayable: false`) and a warning is raised. `SemanticLogExtractor` extracts a `replayable: false` request like any other, so the event stream stays a complete record of what happened, and the placeholder travels into `Event::params` (and `Event::$id`, which is therefore stable across re-extraction). The flag travels with it — `Event::$replayable`, excluded from the id, and a column in the SQL store — because the log is transient and the store is what a replay engine reads. An admin login is still an event — you can see it was attempted, by whom, when — and what a replay engine does with an event it cannot re-execute faithfully (skip it, seed the credential from elsewhere, stop) is that engine's call, not this package's:
+`SemanticLogInvoker` records `replayable` on the `resource_request` context — it does not itself decide whether a withheld value matters, only the filter does. A filter that throws never breaks the request, the way a body store that throws never breaks it: the request runs, nothing the filter failed on is recorded (`params: []`, `replayable: false`) and an `E_USER_WARNING` naming only the exception's class is raised. The parallel stops at the log, though — a body-store failure is recorded in the close context as `exception: {class, message}`, while a filter failure leaves nothing behind in the log at all. `SemanticLogExtractor` extracts a `replayable: false` request like any other, so the event stream stays a complete record of what happened, and the placeholder travels into `Event::params` (and `Event::$id`, which is therefore stable across re-extraction). The flag travels with it — `Event::$replayable`, excluded from the id, and a column in the SQL store — because the log is transient and the store is what a replay engine reads. An admin login is still an event — you can see it was attempted, by whom, when — and what a replay engine does with an event it cannot re-execute faithfully (skip it, seed the credential from elsewhere, stop) is that engine's call, not this package's:
 
 ```text
 resource_request uri=page://self/shopping/checkout method=POST params={"preOrderId":"O-1","csrfToken":"[FILTERED]"} replayable=true
@@ -235,7 +245,7 @@ $store->appendAll($events);
 
 Forgetting `MediaQuerySqlModule` (or `AuraSqlModule`) surfaces as an explicit unbound error at injection time — never as a store that fails on first use.
 
-Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store; the bundled SQL uses SQLite dialect (`INSERT OR IGNORE`), so port the two statements when targeting another database. `event_id` is UNIQUE — that constraint is what makes appends idempotent. Timestamps are stored in UTC so the `recorded_at` index sorts in time order; `replayable` is stored as an integer flag. Because it is excluded from `event_id`, a re-append of an existing id is ignored whole and the stored flag is kept, like every other column: first write wins. A table created from the 0.1.0 schema lacks the column, and both `append()` and `all()` fail until it is added: `ALTER TABLE event_store ADD COLUMN replayable INTEGER NOT NULL DEFAULT 1;`. An application that copied `sql/event_store/*.sql` into its own `sqlDir` (below) must re-copy them too — the 0.1.0 `event_store_list.sql` does not select the column, and `all()` then fails on the missing key. `MediaQueryEventStore` keeps JSON, timestamp and flag database mapping inside the adapter, not on `Event`.
+Apply `sql/event_store/schema.sql` with your application's migration tool before using the SQL store; the bundled SQL uses SQLite dialect (`INSERT OR IGNORE`), so port the two statements when targeting another database. `event_id` is UNIQUE — that constraint is what makes appends idempotent. Timestamps are stored in UTC so the `recorded_at` index sorts in time order; `replayable` is stored as an integer flag. Because it is excluded from `event_id`, a re-append of an existing id is ignored whole and the stored flag is kept, like every other column: first write wins. A table created from the 0.1.0 schema lacks the column, and both `append()` and `all()` fail until it is added: `ALTER TABLE event_store ADD COLUMN replayable INTEGER NOT NULL DEFAULT 1;`. An application that copied `sql/event_store/*.sql` into its own `sqlDir` (below) must re-copy them too, and this is the migration step worth checking twice, because the two stale files fail differently. A stale `event_store_list.sql` does not select the column, and `all()` raises an `EventStoreException` naming the file — loud, and the reason the re-copy is hard to forget for long. A stale `event_store_append.sql` has no `:replayable` placeholder, and Ray.MediaQuery binds only the placeholders a file actually contains: the `INSERT` succeeds, the column takes its `DEFAULT 1`, and an event the filter marked non-replayable is stored as replayable with no error and no warning. Nothing inside this package can catch that one — `INSERT OR IGNORE`, which is what makes appends idempotent, swallows a constraint violation as readily as a duplicate id — so re-copy both files together. `MediaQueryEventStore` keeps JSON, timestamp and flag database mapping inside the adapter, not on `Event`.
 
 A few operational notes:
 
