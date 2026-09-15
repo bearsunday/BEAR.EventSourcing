@@ -9,6 +9,7 @@ use BEAR\EventSourcing\Events;
 use BEAR\EventSourcing\EventStoreInterface;
 use BEAR\EventSourcing\Exception\EventStoreException;
 use BEAR\EventSourcing\Store\MediaQueryEventStore;
+use BEAR\EventSourcing\Tests\Fixture\FakeEventStoreQuery;
 use BEAR\EventSourcing\Tests\Fixture\MediaQueryEventStoreAppModule;
 use Composer\InstalledVersions;
 use DateTimeImmutable;
@@ -157,6 +158,38 @@ final class MediaQueryEventStoreTest extends TestCase
             params: ['x', 'y'],
             result: null,
         ));
+    }
+
+    public function testAStaleListSqlWithoutTheReplayableColumnIsAnErrorNotANonReplayableEvent(): void
+    {
+        // An application that copied sql/event_store/*.sql under 0.1.0 has a list.sql that does
+        // not select the column. Reading the absence as `false` would hand a replay engine a
+        // wrong verdict for every event behind nothing louder than an E_WARNING, so it has to
+        // be the error it is — and the message has to say which file to re-copy.
+        $store = new MediaQueryEventStore(new FakeEventStoreQuery([
+            [
+                'event_id' => 'e1',
+                'uri' => 'app://self/users',
+                'method' => 'POST',
+                'params_json' => '{"name":"Ada"}',
+                'result_json' => 'null',
+                'recorded_at' => '2026-06-10T12:34:56.123456+00:00',
+            ],
+        ]));
+
+        $this->expectException(EventStoreException::class);
+        $this->expectExceptionMessageMatches('/replayable column.*sql\/event_store/s');
+        iterator_to_array($store->all());
+    }
+
+    public function testAllWrapsAQueryFailureInEventStoreExceptionLikeAppendDoes(): void
+    {
+        // append() already promised this contract; all() called the query outside the guard, so
+        // a stale sqlDir surfaced as a raw Ray.MediaQuery exception instead.
+        $store = new MediaQueryEventStore(new FakeEventStoreQuery(null));
+
+        $this->expectException(EventStoreException::class);
+        $store->all();
     }
 
     /**
