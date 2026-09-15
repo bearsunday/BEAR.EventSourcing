@@ -6,8 +6,10 @@ namespace BEAR\EventSourcing\Tests\Resource;
 
 use BEAR\EventSourcing\Resource\SensitiveParamsFilter;
 use JsonSerializable;
+use Override;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 use function fclose;
 use function fopen;
@@ -261,6 +263,38 @@ final class SensitiveParamsFilterTest extends TestCase
         $this->assertSame(['handle' => '[FILTERED]', 'id' => 1], $result->params);
         $this->assertFalse($result->replayable);
         $this->assertSame('{"handle":"[FILTERED]","id":1}', json_encode($result->params, JSON_THROW_ON_ERROR));
+    }
+
+    public function testAByteStringIsWithheldBecauseTheLogCannotEncodeItEither(): void
+    {
+        // A Latin-1 form field is the ordinary way an invalid UTF-8 string arrives, and it is
+        // the likeliest unencodable value by far. Passed through, it fails the logger's own
+        // encode and costs the whole request context — the uri, the method and every other
+        // param — so the observed request produces no event at all.
+        $result = (new SensitiveParamsFilter())(['name' => "Jos\xe9", 'id' => 1]);
+
+        $this->assertSame(['name' => '[FILTERED]', 'id' => 1], $result->params);
+        $this->assertFalse($result->replayable);
+        $this->assertSame('{"name":"[FILTERED]","id":1}', json_encode($result->params, JSON_THROW_ON_ERROR));
+    }
+
+    public function testAnObjectWhoseJsonSerializeThrowsCostsOnlyItsOwnValue(): void
+    {
+        // jsonSerialize() is application code and may throw anything, not only JsonException.
+        // Letting it escape would reach the recorder's fail-closed path, which withholds every
+        // param; withholding it here keeps the siblings.
+        $throwing = new class implements JsonSerializable {
+            #[Override]
+            public function jsonSerialize(): mixed
+            {
+                throw new RuntimeException('a message that may quote the value');
+            }
+        };
+
+        $result = (new SensitiveParamsFilter())(['dto' => $throwing, 'orderId' => 'O-1']);
+
+        $this->assertSame(['dto' => '[FILTERED]', 'orderId' => 'O-1'], $result->params);
+        $this->assertFalse($result->replayable);
     }
 
     public function testNestingDeeperThanJsonAllowsIsWithheldWholeNotWalkedForever(): void

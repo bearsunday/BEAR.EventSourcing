@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource;
 
-use JsonException;
+use Throwable;
 
 use function array_map;
 use function array_merge;
@@ -17,6 +17,7 @@ use function is_resource;
 use function is_string;
 use function json_decode;
 use function json_encode;
+use function preg_match;
 use function str_contains;
 use function str_replace;
 use function strtolower;
@@ -74,8 +75,11 @@ use const JSON_THROW_ON_ERROR;
  * all match the same rule (and `secretary` or `tokenizer` match too — the cost of the
  * coverage). Nested arrays and lists of maps are walked the same way a flat one is; an object
  * value is walked on the JSON view the log will record
- * (`JsonSerializable` and public properties alike), and a value that cannot be encoded as JSON,
- * or nests more than 128 levels deep, is withheld whole rather than guessed at. This is a
+ * (`JsonSerializable` and public properties alike), and a value that cannot be encoded as JSON
+ * — a resource open or closed, a non-finite float, a byte string that is not valid UTF-8 — is
+ * withheld whole rather than guessed at. Nesting past 128 levels is cut rather than withheld:
+ * an over-deep array keeps the levels above the bound and carries the placeholder in place of
+ * the tail, while an object that deep cannot be decoded at all and is withheld entire. This is a
  * name-based guard, not a secret-value scanner — a field shaped differently (a bare `pin` or
  * `otp`) is not matched by default. Such a key is added to the credential set through the
  * constructor (`new SensitiveParamsFilter(['otp'])`); anything beyond that — narrowing the
@@ -88,7 +92,8 @@ final class SensitiveParamsFilter implements ParamsFilterInterface
     public const string FILTERED = '[FILTERED]';
 
     /**
-     * Nesting deeper than this is withheld whole. No request params legitimately nest this
+     * Nesting deeper than this is replaced by the placeholder, so an over-deep array is
+     * recorded down to the bound with the tail cut. No request params legitimately nest this
      * deep; a reference cycle would otherwise walk until the engine's own limit, and the walk
      * stays clear of a debugger's nesting limit (Xdebug: 512 frames) with room to spare.
      */
@@ -195,8 +200,10 @@ final class SensitiveParamsFilter implements ParamsFilterInterface
                     self::MAX_DEPTH,
                     JSON_THROW_ON_ERROR,
                 );
-            } catch (JsonException) {
-                // The log could not record this value either; withholding it is the safe side.
+            } catch (Throwable) {
+                // Throwable, not JsonException: jsonSerialize() is application code and may throw
+                // anything at all. Letting it escape would cost the caller every other param,
+                // because the recorder's own fail-closed path withholds the whole set.
                 $replayable = false;
 
                 return self::FILTERED;
@@ -208,17 +215,23 @@ final class SensitiveParamsFilter implements ParamsFilterInterface
 
     /**
      * A scalar-shaped value with no JSON form at all, as opposed to an object this walks on its
-     * JSON view. `is_resource()` reports false once a handle is closed, but `json_encode()`
-     * refuses it just the same, and the type name is the only thing left to match on — passing
-     * one through would fail the log's own encode, and the logger then replaces the whole
-     * request context with an invalid_context placeholder, losing the uri, the method and every
-     * other param, not just this key.
+     * JSON view. Passing one through would fail the log's own encode, and the logger then
+     * replaces the whole request context with an invalid_context placeholder, losing the uri,
+     * the method and every other param, not just this key.
+     *
+     * `is_resource()` reports false once a handle is closed, but `json_encode()` refuses it just
+     * the same, and the type name is the only thing left to match on. A string is checked for
+     * being valid UTF-8 because a byte string — a Latin-1 form field is the ordinary way one
+     * arrives — has no JSON form either, and is far likelier than any of the rest. It is
+     * withheld rather than base64-encoded the way SemanticLogMediaQueryLogger encodes its bind
+     * values: this is the filter, and recording a value it was not asked to keep is not its job.
      */
     private static function isUnencodable(mixed $value): bool
     {
         return is_resource($value)
             || gettype($value) === 'resource (closed)'
-            || (is_float($value) && ! is_finite($value));
+            || (is_float($value) && ! is_finite($value))
+            || (is_string($value) && preg_match('//u', $value) !== 1);
     }
 
     private static function isTransportKey(string $key): bool
