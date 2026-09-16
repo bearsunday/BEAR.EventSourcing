@@ -47,7 +47,10 @@ final class DevModule extends AbstractAppModule
         // reads visible in the tree.
         $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)
             ->toInstance(new RecordedMethods(RecordedMethods::WITH_READS));
-        $this->bind(BodyStoreInterface::class)->toInstance(new FileBodyStore($bodyDir));
+        $this->bind()->annotatedWith('es_body_dir')->toInstance($bodyDir);
+        $this->bind(BodyStoreInterface::class)
+            ->toConstructor(FileBodyStore::class, ['dir' => 'es_body_dir'])
+            ->in(Scope::SINGLETON);
         $this->install(new EventSourcingModule());
 
         // The cache log module owns the writer and the shutdown flush, so the application
