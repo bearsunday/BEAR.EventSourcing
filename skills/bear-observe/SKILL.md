@@ -1,7 +1,7 @@
 ---
 user-invocable: true
 name: bear-observe
-description: BEAR.Sunday アプリに観測用の dev 文脈を設置し、1 リクエストが何をしたか(リソースの入れ子・キャッシュの hit/miss・保存と無効化)を木で読む。宣言した意図と照合し、食い違えばアプリかライブラリかを切り分けて報告する。決着しなければ xstep に降りる。Use when user says "ログを見て", "キャッシュログ", "cache log", "何が起きたか", "observe", "リソースの動きを追って", "デバッグして", "遅い", "キャッシュが効いてない", "キャッシュが古い", "purge が効かない", "304 が返らない", "アプリかライブラリか切り分けて", or asks what a BEAR.Sunday request actually did.
+description: BEAR.Sunday アプリに観測用の dev 文脈を設置し、1 リクエストが何をしたか(リソースの入れ子・キャッシュの hit/miss・保存と無効化)を木で読む。宣言した意図と照合し、食い違えばアプリかライブラリかを切り分けて報告する。決着しなければ xstep に降りる。Use when user says "ログを見て", "何が起きたか", "observe", "リソースの動きを追って", "デバッグして", "遅い", "アプリかライブラリか切り分けて", or asks what a BEAR.Sunday request actually did across its resources — not for cache-log specifics alone, which is skill://bear-cache-log.
 ---
 
 # bear-observe — 1 リクエストが何をしたかを木で読む
