@@ -147,11 +147,6 @@ final readonly class SemanticLogInvoker implements InvokerInterface
     }
 
     /**
-     * Keep the resource uri canonical (path only). The query already lives in
-     * `params`, so recording it in the uri too would duplicate it into the event
-     * uri and make the stree formatter render the query string twice.
-     */
-    /**
      * The canonical uri: scheme, host and path, with the query left where it belongs, in params.
      *
      * Read off the uri object rather than via Request::toUri(), which assembles the query into
