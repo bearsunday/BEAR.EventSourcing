@@ -25,6 +25,9 @@
         "koriym/semantic-logger": "^0.9",
         "ray/di": "^2.19"
     },
+    "conflict": {
+        "bear/resource": "<1.31"
+    },
     "require-dev": {
         "bear/query-repository": "1.x-dev",
         "bear/resource": "^1.32",
