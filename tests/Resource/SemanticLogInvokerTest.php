@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\Tests\Resource;
 
 use BEAR\EventSourcing\RecordedMethods;
+use BEAR\EventSourcing\Resource\FilteredParams;
 use BEAR\EventSourcing\Resource\NullBodyStore;
+use BEAR\EventSourcing\Resource\ParamsFilterInterface;
 use BEAR\EventSourcing\Resource\ResourceRequestContext;
 use BEAR\EventSourcing\Resource\SemanticLogInvoker;
 use BEAR\EventSourcing\Resource\BodyStoreException;
@@ -18,7 +20,10 @@ use RuntimeException;
 
 use function json_decode;
 use function json_encode;
+use function restore_error_handler;
+use function set_error_handler;
 
+use const E_USER_WARNING;
 use const JSON_THROW_ON_ERROR;
 
 /**
@@ -45,8 +50,7 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertSame(['id' => 1], $entry['context']['params']);
         $close = self::closeContext($entry);
         $durationMs = $close['durationMs'] ?? null;
-        $this->assertIsFloat($durationMs);
-        $this->assertGreaterThanOrEqual(0.0, $durationMs);
+        self::assertRecordedDuration($durationMs);
         unset($close['durationMs']);
         $this->assertSame(['code' => 201], $close);
     }
@@ -100,7 +104,7 @@ final class SemanticLogInvokerTest extends TestCase
         $entry = self::flushToArray($logger)['open'][0];
         $this->assertSame(1, $store->calls);
         $close = self::closeContext($entry);
-        $this->assertIsFloat($close['durationMs'] ?? null);
+        self::assertRecordedDuration($close['durationMs'] ?? null);
         unset($close['durationMs']);
         $this->assertSame(
             ['code' => 200, 'body_ref' => 'file://var/es/bodies/000001.json'],
@@ -156,7 +160,7 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertIsArray($exceptionContext);
         /** @var array{class: string, message: string} $exceptionContext */
         $this->assertSame(500, $context['code']);
-        $this->assertIsFloat($context['durationMs'] ?? null);
+        self::assertRecordedDuration($context['durationMs'] ?? null);
         $this->assertSame(RuntimeException::class, $exceptionContext['class']);
         $this->assertSame('boom', $exceptionContext['message']);
     }
@@ -240,6 +244,169 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertSame('app://self/inner', self::firstChildContext($outerEntry)['uri']);
     }
 
+    public function testFiltersSensitiveParamsByDefaultAndMarksNonReplayable(): void
+    {
+        $logger = new SemanticLogger();
+        $ro = new FakeResourceObject('app://self/admin/login', ['ok' => true], 200);
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $logger,
+            new NullBodyStore(),
+        );
+
+        $invoker->invoke(self::request(
+            'app://self/admin/login',
+            Method::POST,
+            ['loginId' => 'admin', 'password' => 'super-secret'],
+        ));
+
+        $entry = self::flushToArray($logger)['open'][0];
+        $this->assertSame(['loginId' => 'admin', 'password' => '[FILTERED]'], $entry['context']['params']);
+        $this->assertFalse($entry['context']['replayable']);
+    }
+
+    public function testKeepsReplayableTrueWhenNothingIsFiltered(): void
+    {
+        $logger = new SemanticLogger();
+        $ro = new FakeResourceObject('app://self/products', ['ok' => true], 200);
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $logger,
+            new NullBodyStore(),
+        );
+
+        $invoker->invoke(self::request('app://self/products', Method::POST, ['nameKeyword' => 'sample']));
+
+        $entry = self::flushToArray($logger)['open'][0];
+        $this->assertSame(['nameKeyword' => 'sample'], $entry['context']['params']);
+        $this->assertTrue($entry['context']['replayable']);
+    }
+
+    public function testFiltersCsrfTokenByDefaultButKeepsReplayableTrue(): void
+    {
+        // Transport, not domain input: a replay always mints its own CSRF token regardless of
+        // what was recorded, so withholding it does not make the recorded params insufficient.
+        $logger = new SemanticLogger();
+        $ro = new FakeResourceObject('app://self/shopping/checkout', ['ok' => true], 201);
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $logger,
+            new NullBodyStore(),
+        );
+
+        $invoker->invoke(self::request(
+            'app://self/shopping/checkout',
+            Method::POST,
+            ['preOrderId' => 'aaaa', 'csrfToken' => 'a-token'],
+        ));
+
+        $entry = self::flushToArray($logger)['open'][0];
+        $this->assertSame(['preOrderId' => 'aaaa', 'csrfToken' => '[FILTERED]'], $entry['context']['params']);
+        $this->assertTrue($entry['context']['replayable']);
+    }
+
+    public function testCustomParamsFilterOverridesTheDefault(): void
+    {
+        $logger = new SemanticLogger();
+        $ro = new FakeResourceObject('app://self/admin/login', ['ok' => true], 200);
+        $passthrough = new class implements ParamsFilterInterface {
+            public function __invoke(array $params): FilteredParams
+            {
+                return new FilteredParams($params);
+            }
+        };
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $logger,
+            new NullBodyStore(),
+            paramsFilter: $passthrough,
+        );
+
+        $invoker->invoke(self::request(
+            'app://self/admin/login',
+            Method::POST,
+            ['loginId' => 'admin', 'password' => 'super-secret'],
+        ));
+
+        $entry = self::flushToArray($logger)['open'][0];
+        $this->assertSame(['loginId' => 'admin', 'password' => 'super-secret'], $entry['context']['params']);
+        $this->assertTrue($entry['context']['replayable']);
+    }
+
+    public function testAThrowingFilterWithholdsParamsAndStillRunsTheRequest(): void
+    {
+        // An application filter is a boundary that can throw on a shape it did not expect.
+        // Observation must not break the request, and recording the unfiltered params on
+        // failure would turn a logging bug into a leak: fail closed and mark the gap.
+        $logger = new SemanticLogger();
+        $ro = new FakeResourceObject('app://self/admin/login', ['ok' => true], 200);
+        $throwing = new class implements ParamsFilterInterface {
+            public function __invoke(array $params): FilteredParams
+            {
+                throw new RuntimeException('unexpected param shape');
+            }
+        };
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $logger,
+            new NullBodyStore(),
+            paramsFilter: $throwing,
+        );
+
+        $warnings = [];
+        set_error_handler(static function (int $errno, string $errstr) use (&$warnings): bool {
+            $warnings[] = [$errno, $errstr];
+
+            return true;
+        });
+        try {
+            $result = $invoker->invoke(self::request(
+                'app://self/admin/login',
+                Method::POST,
+                ['loginId' => 'admin', 'password' => 'super-secret'],
+            ));
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame($ro, $result);
+        $entry = self::flushToArray($logger)['open'][0];
+        $this->assertSame([], $entry['context']['params'], 'nothing the filter failed on may be recorded');
+        $this->assertFalse($entry['context']['replayable']);
+        $this->assertCount(1, $warnings);
+        $this->assertSame(E_USER_WARNING, $warnings[0][0]);
+        $this->assertStringContainsString(RuntimeException::class, $warnings[0][1]);
+        $this->assertStringNotContainsString(
+            'unexpected param shape',
+            $warnings[0][1],
+            'a filter message may quote the values it was handed; only the class is reported',
+        );
+    }
+
+    /** @param array<string, mixed> $query */
+    public function testAQueryValueThatCannotBeStringifiedDoesNotBreakTheRequest(): void
+    {
+        // The uri is read off the uri object, so the query is never serialized for a string that
+        // discards it anyway. Through Request::toUri() an unbacked enum reached
+        // http_build_query(), which raises a ValueError ahead of every guard in invoke() —
+        // observation breaking a request it is supposed only to watch.
+        $logger = new SemanticLogger();
+        $ro = new FakeResourceObject('app://self/user/1', ['id' => 1], 201);
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $logger,
+            new NullBodyStore(),
+        );
+
+        $result = $invoker->invoke(self::request('app://self/user/1', Method::POST, ['suit' => FakeSuit::Hearts]));
+
+        $this->assertSame($ro, $result);
+        $entry = self::flushToArray($logger)['open'][0];
+        $this->assertSame('app://self/user/1', $entry['context']['uri']);
+        // The enum has no JSON form either, so the filter withheld it; the point is the request.
+        $this->assertSame(['suit' => '[FILTERED]'], $entry['context']['params']);
+    }
+
     /** @param array<string, mixed> $query */
     private static function request(string $uri, Method $method, array $query = []): Request
     {
@@ -254,15 +421,31 @@ final class SemanticLogInvokerTest extends TestCase
     }
 
     /**
-     * The canonical JSON view of the flushed log: frozen context values arrive
-     * as objects, and the assoc-array decode is what the extractor reads too.
+     * The canonical JSON view of the flushed log: frozen context values arrive as objects, and
+     * the assoc-array decode is what the extractor reads too. A durationMs that rounds to
+     * exactly 0.0 may already be int(0) here — koriym/semantic-logger's ContextFreezer
+     * round-trips every context through its own unflagged json_encode at record time, before
+     * this method ever runs. assertRecordedDuration(), not assertIsFloat(), is what a
+     * durationMs assertion in this file must use.
      *
      * @return array<string, mixed>
      */
     private static function flushToArray(SemanticLogger $logger): array
     {
         /** @var array<string, mixed> */
-        return json_decode(json_encode($logger->flush(), JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        return json_decode(
+            json_encode($logger->flush(), JSON_THROW_ON_ERROR),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+    }
+
+    /** durationMs may be int or float — see flushToArray() for why. */
+    private static function assertRecordedDuration(mixed $value): void
+    {
+        self::assertTrue(is_int($value) || is_float($value), 'durationMs must be numeric');
+        self::assertGreaterThanOrEqual(0, $value);
     }
 
     /**

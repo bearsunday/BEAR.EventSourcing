@@ -145,6 +145,11 @@ final class MediaQueryObservationIntegrationTest extends TestCase
     private static function toArray(LogJson $log): array
     {
         /** @var array<string, mixed> */
-        return json_decode(json_encode($log, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        return json_decode(
+            json_encode($log, JSON_THROW_ON_ERROR),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
     }
 }

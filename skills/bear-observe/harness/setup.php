@@ -97,6 +97,7 @@ $literal = $contextOption
         : 'app');
 $context = 'cli-dev-' . $stripPrefixes($literal);
 
+$becomingWarning = '';
 $written = [];
 $kept = [];
 $merge = [];
@@ -120,6 +121,21 @@ foreach ($markers as $class => $required) {
         if (array_filter($required, static fn (string $m): bool => ! str_contains($existing, $m)) !== []) {
             file_put_contents($target . '.observe', $source);
             $merge[] = 'src/Module/' . $class . '.php';
+            // Be Framework's BecomingInterface flushes the semantic logger after every becoming;
+            // folding this template's logger binding into an app's own DevModule risks that
+            // flush cutting a request's tree in two. Warned unconditionally, not only when this
+            // file mentions BecomingInterface, because the shared logger is often wired through
+            // a different class (e.g. override(new DevLoggingModule())) a same-file string
+            // search would never see.
+            if ($class === 'DevModule') {
+                $becomingWarning = 'src/Module/DevModule.php already exists — confirm whether it '
+                    . '(directly or through another module it installs/overrides) shares its '
+                    . 'SemanticLoggerInterface with something that flushes mid-request (Be '
+                    . 'Framework\'s BecomingInterface is the common case); if so, give the fold '
+                    . 'its own context word instead of `dev` (see the "Wiring inside a '
+                    . 'BEAR.Sunday context" section of the README)';
+            }
+
             continue;
         }
 
@@ -180,4 +196,5 @@ $written === [] || print('written    ' . implode(' ', $written) . "\n");
 $kept === [] || print('kept       ' . implode(' ', $kept) . " (--force to overwrite)\n");
 $notes === [] || print('note       ' . implode('; ', $notes) . "\n");
 $merge === [] || print("merge      " . implode(' ', $merge) . " already exist — the observation bindings are in the sibling .observe file; fold them in by hand\n");
+$becomingWarning === '' || print("warning    {$becomingWarning}\n");
 echo 'next       php ' . dirname(__DIR__) . "/harness/check.php {$appDir} {$context}\n";

@@ -9,6 +9,7 @@ use JsonException;
 use Koriym\SemanticLogger\LogJson;
 use Throwable;
 
+use function array_key_exists;
 use function is_array;
 use function is_int;
 use function is_string;
@@ -54,10 +55,18 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
     public function extract(LogJson $semanticLog): EventsInterface
     {
         $events = [];
-        // Canonicalize to associative arrays: frozen context values arrive as
-        // objects, and the same JSON view is what the schema validates.
+        // Canonicalize to associative arrays: frozen context values arrive as objects, and the
+        // same JSON view is what the schema validates. A whole-number float (durationMs, a
+        // price) may already be an int by the time it gets here — koriym/semantic-logger's
+        // ContextFreezer froze the context through its own unflagged json_encode at record
+        // time, before this method ever runs, so this round trip cannot recover it either.
         /** @var array<array-key, mixed> $log */
-        $log = json_decode(json_encode($semanticLog, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        $log = json_decode(
+            json_encode($semanticLog, JSON_THROW_ON_ERROR),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
         $roots = $log['open'] ?? [];
         if (! is_array($roots)) {
             return new Events($events);
@@ -101,6 +110,10 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
             timestamp: $timestamp,
             params: self::params($request),
             result: $response['body'] ?? null,
+            // Absent means replayable (an entry that predates the field); anything but a
+            // literal true is not, the same "uninterpretable is not minted" stance as the code.
+            // `??` would not say that: it coalesces an explicit null to the absent default.
+            replayable: ! array_key_exists('replayable', $request) || $request['replayable'] === true,
         );
     }
 

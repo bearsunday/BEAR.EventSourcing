@@ -50,7 +50,12 @@ final class UnifiedLogTest extends TestCase
 
         $log = $logger->flush();
         /** @var array{open: list<array<string, mixed>>} $tree */
-        $tree = json_decode(json_encode($log, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        $tree = json_decode(
+            json_encode($log, JSON_THROW_ON_ERROR),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
         $roots = $tree['open'];
         $this->assertNotSame([], $roots);
         foreach ($roots as $root) {

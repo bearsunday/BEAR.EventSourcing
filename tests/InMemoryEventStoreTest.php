@@ -55,6 +55,20 @@ final class InMemoryEventStoreTest extends TestCase
         $this->assertCount(1, $store->all());
     }
 
+    public function testReplayableFlagSurvivesTheStore(): void
+    {
+        $store = new InMemoryEventStore();
+        $store->append(new Event(
+            'app://self/admin/login',
+            'POST',
+            new DateTimeImmutable('2026-06-10T12:34:56.123456+00:00'),
+            ['loginId' => 'admin', 'password' => '[FILTERED]'],
+            replayable: false,
+        ));
+
+        $this->assertFalse(iterator_to_array($store->all())[0]->replayable);
+    }
+
     private static function event(string $uri, string $method): Event
     {
         return new Event($uri, $method, new DateTimeImmutable('2026-06-10T12:34:56.123456+00:00'));

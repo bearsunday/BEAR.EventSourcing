@@ -16,6 +16,7 @@ use DateTimeZone;
 use JsonException;
 use Throwable;
 
+use function array_key_exists;
 use function is_array;
 use function is_string;
 use function json_decode;
@@ -56,6 +57,7 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
                 paramsJson: $paramsJson,
                 resultJson: $resultJson,
                 timestamp: $timestamp,
+                replayable: $event->replayable ? 1 : 0,
             );
         } catch (Throwable $e) {
             throw new EventStoreException('Failed to append event.', 0, $e);
@@ -71,8 +73,16 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
 
     public function all(): EventsInterface
     {
+        try {
+            $rows = $this->query->list();
+        } catch (Throwable $e) {
+            // append() already promises this contract; reading broke it by calling the query
+            // outside the guard, so a stale sqlDir surfaced as a raw Ray.MediaQuery exception.
+            throw new EventStoreException('Failed to list stored events.', 0, $e);
+        }
+
         $events = [];
-        foreach ($this->query->list() as $row) {
+        foreach ($rows as $row) {
             $events[] = self::event($row);
         }
 
@@ -109,6 +119,20 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
     /** @param EventStoreRow $row */
     private static function event(array $row): Event
     {
+        // Outside the try: a row without the column is an application whose copied sqlDir still
+        // holds the 0.1.0 event_store_list.sql, and saying so is more use than the generic
+        // restore failure this method wraps everything else in. Reading the absence as `false`
+        // would instead hand a replay engine a wrong verdict for every event behind nothing
+        // louder than an E_WARNING.
+        if (! array_key_exists('replayable', $row)) {
+            throw new EventStoreException(
+                'Stored row has no replayable column: re-copy sql/event_store/*.sql into the '
+                . 'application sqlDir, and add the column with '
+                . '"ALTER TABLE event_store ADD COLUMN replayable INTEGER NOT NULL DEFAULT 1;" '
+                . 'if the table predates it.',
+            );
+        }
+
         try {
             return new Event(
                 uri: $row['uri'],
@@ -117,6 +141,8 @@ final readonly class MediaQueryEventStore implements EventStoreInterface
                 params: self::params($row['params_json']),
                 result: self::decode($row['result_json']),
                 id: $row['event_id'],
+                // SQLite hands the INTEGER flag back as int or string depending on the driver.
+                replayable: (int) $row['replayable'] === 1,
             );
         } catch (Throwable $e) {
             throw new EventStoreException('Failed to restore event from stored row.', 0, $e);

@@ -4,6 +4,7 @@ SELECT
     method,
     params_json,
     result_json,
-    recorded_at
+    recorded_at,
+    replayable
 FROM event_store
 ORDER BY id ASC
