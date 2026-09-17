@@ -6,6 +6,11 @@
 
 - `skills/bear-observe/`: a Claude Code skill that installs the observation wiring, proves it from the bindings, and reads one request as a tree; absorbs the retired `bear-cache-log` skill from BEAR.QueryRepository
 - `skills/bear-observe/`: `setup.php` takes the entry point whose context to observe, both harness scripts fall back to `vendor/autoload.php`, and SKILL.md says which declaration records a dependency and where
+- `skills/bear-observe/`: `setup.php` accepts `--context=<literal>` to name the context literal directly when an entry point holds more than one, and notes (without failing) when the value has no matching quoted literal in the entry point or when `{namespace}\Bootstrap` is missing at `src/Bootstrap.php`
+
+### Changed
+
+- `composer.json`: `bear/resource` below 1.31.0 now conflicts, since `SemanticLogInvoker` reads `AbstractRequest::$method` as the `Method` enum introduced in that release
 
 ## 0.1.0 - 2026-09-06
 
