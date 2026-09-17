@@ -109,6 +109,7 @@ final class ObserveHarnessTest extends TestCase
     {
         $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
         $this->write('bin/admin.php', "<?php\nexit((new Bootstrap())('admin-app', \$GLOBALS, \$_SERVER));\n");
+        $this->write('src/Bootstrap.php', "<?php\nnamespace MyVendor\\MyProject;\nfinal class Bootstrap {}\n");
         $this->runHarness('setup.php', $this->appDir);
 
         [$status, $output] = $this->runHarness('setup.php', $this->appDir, 'bin/admin.php');
@@ -117,6 +118,154 @@ final class ObserveHarnessTest extends TestCase
         $this->assertStringContainsString('bin/dev.php (--force to overwrite)', $output);
         $this->assertStringContainsString('note       bin/dev.php runs another context', $output);
         $this->assertStringContainsString("'cli-dev-hal-app'", $this->read('bin/dev.php'));
+    }
+
+    public function testSetupCombinesMultipleNotesOnOneLine(): void
+    {
+        // Two independent conditions (kept-another-context, missing Bootstrap) must both
+        // surface — neither may silently overwrite the other's message.
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+        $this->write('bin/admin.php', "<?php\nexit((new Bootstrap())('admin-app', \$GLOBALS, \$_SERVER));\n");
+        $this->runHarness('setup.php', $this->appDir);
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir, 'bin/admin.php');
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString('bin/dev.php runs another context', $output);
+        $this->assertStringContainsString('Bootstrap not found at src/Bootstrap.php', $output);
+        $this->assertMatchesRegularExpression('/^note\s+.*runs another context.*; .*Bootstrap not found/m', $output);
+    }
+
+    public function testSetupNotesAMissingBootstrapClass(): void
+    {
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir);
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString(
+            'note       MyVendor\\MyProject\\Bootstrap not found at src/Bootstrap.php',
+            $output,
+        );
+    }
+
+    public function testSetupNotesAMissingBootstrapWhenDevPhpIsKept(): void
+    {
+        // A kept bin/dev.php (unchanged context, no --force) can still outlive the Bootstrap
+        // class it references; the check must not be scoped to the write branch alone.
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+        $this->runHarness('setup.php', $this->appDir);
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir);
+
+        $this->assertSame(0, $status, $output);
+        $this->assertMatchesRegularExpression('/^kept\s+.*bin\/dev\.php/m', $output);
+        $this->assertStringContainsString('Bootstrap not found at src/Bootstrap.php', $output);
+    }
+
+    public function testSetupOmitsTheBootstrapNoteWhenTheClassFileExists(): void
+    {
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+        $this->write('src/Bootstrap.php', "<?php\nnamespace MyVendor\\MyProject;\nfinal class Bootstrap {}\n");
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir);
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringNotContainsString('note', $output);
+    }
+
+    public function testSetupNotesAWrongNamespaceBootstrapFile(): void
+    {
+        // A file at src/Bootstrap.php is not enough: it must declare the class in the
+        // namespace this app's psr-4 prefix maps to, or bin/dev.php's `use` still fails.
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+        $this->write('src/Bootstrap.php', "<?php\nnamespace SomeOther\\Namespace;\nfinal class Bootstrap {}\n");
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir);
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString('Bootstrap not found at src/Bootstrap.php', $output);
+    }
+
+    public function testSetupContextOptionOverridesTheDetectedLiteral(): void
+    {
+        // Two context literals in one entry point (e.g. a path-based branch): the regex only
+        // ever finds the first, so --context names the one to observe directly.
+        $this->write(
+            'public/index.php',
+            "<?php\nif (str_starts_with(\$_SERVER['REQUEST_URI'] ?? '', '/api/')) {\n"
+                . "    exit((new Bootstrap())('prod-api-hal-app', \$GLOBALS, \$_SERVER));\n}\n"
+                . "exit((new Bootstrap())('prod-html-app', \$GLOBALS, \$_SERVER));\n",
+        );
+
+        [$status, $output] = $this->runHarness(
+            'setup.php',
+            $this->appDir,
+            'public/index.php',
+            '--context=prod-html-app',
+        );
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString('context    cli-dev-html-app', $output);
+        $this->assertStringContainsString("'cli-dev-html-app'", $this->read('bin/dev.php'));
+    }
+
+    public function testSetupContextOptionMatchesAPrefixedEntryLiteral(): void
+    {
+        // --context normalizes the same way a scraped literal does, so the short form from
+        // SKILL.md's example matches a source literal that still carries its cli/prod/dev prefix.
+        $this->write(
+            'public/index.php',
+            "<?php\nif (str_starts_with(\$_SERVER['REQUEST_URI'] ?? '', '/api/')) {\n"
+                . "    exit((new Bootstrap())('prod-api-hal-app', \$GLOBALS, \$_SERVER));\n}\n"
+                . "exit((new Bootstrap())('prod-html-app', \$GLOBALS, \$_SERVER));\n",
+        );
+
+        [$status, $output] = $this->runHarness(
+            'setup.php',
+            $this->appDir,
+            'public/index.php',
+            '--context=html-app',
+        );
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString('context    cli-dev-html-app', $output);
+        $this->assertStringNotContainsString('not found as a literal', $output);
+    }
+
+    public function testSetupRejectsAMalformedContextOption(): void
+    {
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir, 'public/index.php', '--context=Not_Valid');
+
+        $this->assertSame(1, $status, $output);
+        $this->assertStringContainsString('does not match', $output);
+        $this->assertFileDoesNotExist($this->appDir . '/bin/dev.php');
+    }
+
+    public function testSetupRejectsALeadingHyphenInContextOption(): void
+    {
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir, 'public/index.php', '--context=-app');
+
+        $this->assertSame(1, $status, $output);
+        $this->assertStringContainsString('does not match', $output);
+    }
+
+    public function testSetupNotesAContextOptionAbsentFromTheEntryPoint(): void
+    {
+        // A --context value absent from the entry point is usually a typo, but the entry may
+        // build its context dynamically (env, const) with no literal at all — a note, not a
+        // fail, keeps the escape hatch working for exactly those apps.
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir, 'public/index.php', '--context=xml-app');
+
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString('note       --context=xml-app not found as a literal', $output);
+        $this->assertFileExists($this->appDir . '/bin/dev.php');
     }
 
     public function testSetupRequiresVendorAutoloadWhenRootAutoloadIsAbsent(): void
