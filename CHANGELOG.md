@@ -13,6 +13,10 @@
 - `skills/bear-observe/templates/*.php`: `#[Override]` on every generated method that overrides a parent class method or implements an interface method, so a strict downstream Psalm config (`ensureOverrideAttribute=true`) accepts the generated files. The README's own DevModule/AppModule wiring examples were updated to match
 - `skills/bear-observe/harness/setup.php`: warns whenever an existing `DevModule` is merged rather than replaced (never on a fresh write or `--force`), because the shared-logger flush this warns about is as often wired through a different class the app's `DevModule` installs or overrides as it is named in the file itself
 
+### Fixed
+
+- `skills/bear-observe/harness/tree.php`: a `false` context value (e.g. `replayable`) rendered as an empty string, indistinguishable from a missing field, because `(string) false === ''`; booleans now render as the literal `true`/`false`. The hardcoded 60-character truncation was silent and had no way to confirm a value ended there rather than being cut — sensitive JSON below a `[FILTERED]` boundary could go unnoticed as a result — so a truncated value now reads `...(+N)` with the count of characters dropped, and a new `--full` flag disables truncation entirely. A fully-qualified class name value (e.g. `MyVendor\BeMart\Be\Input\AdminLoginInput`) now renders as its short class name instead of repeating the same namespace on every line
+
 ### Changed
 
 - `composer.json`: `bear/resource` below 1.31.0 now conflicts, since `SemanticLogInvoker` reads `AbstractRequest::$method` as the `Method` enum introduced in that release
