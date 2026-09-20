@@ -37,7 +37,8 @@ final class EventTest extends TestCase
         $this->assertTrue($event->replayable);
         $this->assertFalse($withheld->replayable);
         // Whether a filter withheld a credential is how the request was recorded, not which
-        // operation it was: re-extracting the same log with a different filter keeps the id.
+        // operation it was: the same params under either verdict are the same event. A
+        // different filter that changes params does change the id — params are hashed.
         $this->assertSame($event->id, $withheld->id);
     }
 
