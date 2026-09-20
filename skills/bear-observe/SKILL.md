@@ -69,6 +69,22 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 
 ## 1. 設置 — 要るかどうかを先に決める
 
+**先にホストを分類する。** この手順は 1 プロセス 1 リクエストのホスト(PHP-FPM / CLI 実行)を前提にする。
+分類できないホストには**推奨せず、ユーザーに問う**:
+
+| ホスト | すること |
+|---|---|
+| PHP-FPM / CLI 実行 | そのまま下へ |
+| RoadRunner(`RR_MODE`)、Swoole コルーチン内 | 入れても記録されない。sink が arm を拒否し、理由は `error_log` に出る |
+| FrankenPHP worker mode、ReactPHP、Amp、常駐 CLI consumer、boot 時に logger を作る Swoole worker | **検出されないので入れない。** 上の保護が効かず、リクエスト境界が 1 本の木に混ざる(同じ logger 上で処理が実際に重なれば、LIFO 違反で close が落ちる) |
+| 分からない | 入れる前に問う |
+
+それでも観測するなら、ホスト側で request context をキーにした `SessionStoreInterface` と、request end で
+flush する `LogSinkInterface` を**両方**束縛する(片方だけだとセッションを共有するか、排出されずに溜まる)。
+根拠は BEAR.QueryRepository の
+[docs/what-the-log-proves.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/what-the-log-proves.md)
+"Concurrent sessions"。`setup.php` が書く `DevModule` はそれを書かない。
+
 観測はもう動いているかもしれない。動いているなら**アプリに 1 文字も書かない**。
 `src/Module/DevModule.php` を見て 3 つに分ける:
 
