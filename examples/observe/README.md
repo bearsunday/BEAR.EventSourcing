@@ -61,7 +61,7 @@ php examples/observe/observe.php
 ## 他 AI 向けメモ
 
 - 公開スキーマの正典はこの repo の `docs/schemas/`（project pages で `https://bearsunday.github.io/BEAR.EventSourcing/schemas/` に公開）。
-- 一時ディレクトリ（`sys_get_temp_dir()`）で body / sqlite を作り、終了時に `FileBodyStore::clearDirectory` で後始末。リポジトリを汚さない。
+- 一時ディレクトリ（`sys_get_temp_dir()`）で body / sqlite を作り、終了時に再帰的に削除して後始末（`FileBodyStore` は世代ディレクトリごとに所有権を持つため、ルート一括の `clearDirectory` は使わない）。リポジトリを汚さない。
 - `RenderConfig` は `TreeRenderer` の**コンストラクタ**に渡す（semantic-logger 0.9: `new TreeRenderer($config)->render($log)`）。`render()` に第 2 引数を渡しても黙って無視される。
 - CI 固定: `tests/ExamplesTest.php` が本デモを exec し、exit code（[10] のスキーマ検証込み）と出力アンカー（実測ネスト行・抽出イベント数 1・`inventory events: 0`・冪等 append・replay 1 件・検証成功行）を assert する。
 - `examples/` は `.gitattributes` で `export-ignore` のため、デモは repo に残るが dist パッケージには入らない（既存 examples と同じ扱い）。

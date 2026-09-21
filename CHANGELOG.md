@@ -25,6 +25,7 @@
 ### Changed
 
 - `composer.json`: `bear/resource` below 1.31.0 now conflicts, since `SemanticLogInvoker` reads `AbstractRequest::$method` as the `Method` enum introduced in that release
+- Breaking: `FileBodyStore::clearDirectory()` no longer works against a `FileBodyStore`'s own root directory. `createGeneration()` never marks the root itself — only the generation subdirectories it creates under it — so a host that paired `new FileBodyStore($dir)` with a `clearDirectory($dir)` teardown now gets `UnownedDirectoryException` on that call. Retention (`keep`) replaces the need for that teardown; a host that still wants to wipe everything under a root should recursively delete the directory itself rather than call `clearDirectory()` on it
 
 ### Note
 

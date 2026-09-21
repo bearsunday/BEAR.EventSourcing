@@ -13,9 +13,9 @@ use SplFileInfo;
 
 use function bin2hex;
 use function count;
-use function date;
 use function explode;
 use function file_put_contents;
+use function gmdate;
 use function is_dir;
 use function is_file;
 use function is_link;
@@ -38,17 +38,28 @@ use const SORT_STRING;
 /**
  * Development-time body store: one numbered file per recorded operation.
  *
- * Construction touches nothing — the first stored body creates a fresh,
- * uniquely named generation directory under `$dir` and marks it owned; every
- * later call in the same instance's lifetime reuses that generation. Because
- * a generation is never named twice, one root directory can be shared across
- * sessions/processes without their sequences colliding. After creating a
- * generation, the store prunes sibling generations (directories it marked
- * itself) down to `$keep`, oldest first; anything under `$dir` without the
- * marker is left alone and never counted toward that cap.
+ * Construction writes nothing to disk — the first stored body creates a
+ * fresh, uniquely named generation directory under `$dir` and marks it
+ * owned; every later call in the same instance's lifetime reuses that
+ * generation. Because a generation is never named twice, one root directory
+ * can be shared across sessions/processes without their sequences
+ * colliding. After creating a generation, the store prunes sibling
+ * generations (directories it marked itself) down to `$keep`, oldest
+ * first; anything under `$dir` without the marker is left alone and never
+ * counted toward that cap.
  *
- * Use it for single-process dev/debug observation (DevLogModule); production
- * body stores belong to the application.
+ * Retention counts marked generations, not active sessions: if more than
+ * `$keep` other sessions create generations under the same root while an
+ * earlier session is still writing, that session's generation can be
+ * pruned out from under it — its already-written `body_ref`s stop
+ * resolving and its next write throws. Size `$keep` above the number of
+ * sessions you expect to overlap. A generation that cannot be deleted
+ * (permissions, a held file handle) also fails the write that triggered
+ * the prune, since pruning runs before the new generation's first file is
+ * written.
+ *
+ * Use it for dev/debug observation (DevLogModule); production body stores
+ * belong to the application.
  */
 final class FileBodyStore implements BodyStoreInterface
 {
@@ -136,7 +147,7 @@ final class FileBodyStore implements BodyStoreInterface
         }
 
         $generationDir = $rootDir . DIRECTORY_SEPARATOR . self::generationName();
-        if (! mkdir($generationDir, 0775, true) && ! is_dir($generationDir)) {
+        if (! mkdir($generationDir, 0775)) {
             throw new BodyStoreException(
                 sprintf('Failed to create body store generation directory: %s', $generationDir),
             );
@@ -164,7 +175,7 @@ final class FileBodyStore implements BodyStoreInterface
             $micros -= 1_000_000;
         }
 
-        return date('Ymd-His', $seconds) . '-' . sprintf('%06d', $micros) . '-' . bin2hex(random_bytes(4));
+        return gmdate('Ymd-His', $seconds) . '-' . sprintf('%06d', $micros) . '-' . bin2hex(random_bytes(4));
     }
 
     /** Remove owned generations beyond $keep, oldest first; foreign entries are never touched or counted. */
@@ -191,9 +202,16 @@ final class FileBodyStore implements BodyStoreInterface
     {
         self::clearContents($dir);
         self::removeMarker($dir);
-        if (! rmdir($dir)) {
-            throw new BodyStoreException(sprintf('Failed to remove body store generation directory: %s', $dir));
+        if (rmdir($dir)) {
+            return;
         }
+
+        // rmdir raced with something (e.g. a concurrent writer recreating a file)
+        // after the marker was already dropped. Re-mark so the directory stays
+        // part of the owned set and this removal is retried on the next prune,
+        // instead of leaking as an invisible, permanently unpruned husk.
+        self::markOwned($dir);
+        throw new BodyStoreException(sprintf('Failed to remove body store generation directory: %s', $dir));
     }
 
     private static function ensureDirectory(string $dir): void

@@ -201,7 +201,11 @@ $bodiesTree = new RecursiveIteratorIterator(
     RecursiveIteratorIterator::CHILD_FIRST,
 );
 foreach ($bodiesTree as $entry) {
-    $entry->isDir() ? rmdir($entry->getPathname()) : unlink($entry->getPathname());
+    if ($entry->isDir()) {
+        rmdir($entry->getPathname());
+    } else {
+        unlink($entry->getPathname());
+    }
 }
 
 rmdir($tmp . '/bodies');

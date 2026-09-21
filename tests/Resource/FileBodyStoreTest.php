@@ -182,6 +182,56 @@ final class FileBodyStoreTest extends TestCase
         self::removeTree($dir);
     }
 
+    public function testKeepOneRetainsOnlyTheNewestGeneration(): void
+    {
+        $dir = self::newBodyDir();
+        $ro = new FakeResourceObject(body: ['id' => 1]);
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
+
+        $first = (new FileBodyStore($dir, keep: 1))($request, $ro);
+        usleep(1_000);
+        $second = (new FileBodyStore($dir, keep: 1))($request, $ro);
+
+        assert($first !== null && $second !== null);
+        $this->assertCount(1, self::subdirectories($dir), 'keep: 1 retains a single generation');
+        $this->assertFalse(is_dir(dirname(self::pathFromRef($first))), 'the first generation is pruned');
+        $this->assertTrue(is_dir(dirname(self::pathFromRef($second))), 'the newest generation survives');
+
+        self::removeTree($dir);
+    }
+
+    public function testPruningRunsOnlyOnceWhenAGenerationIsCreated(): void
+    {
+        $dir = self::newBodyDir();
+        $ro = new FakeResourceObject(body: ['id' => 1]);
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
+
+        $store = new FileBodyStore($dir, keep: 1);
+        $store($request, $ro); // creates this instance's generation; prune runs once, here
+
+        // A generation that sorts before any real one and would be evicted by a
+        // fresh prune pass (keep: 1, two owned generations, oldest-first).
+        $stale = $dir . '/00000101-000000-000000-00000000';
+        mkdir($stale);
+        file_put_contents($stale . '/' . FileBodyStore::MARKER, '');
+
+        $store($request, $ro); // second store on the *same* instance
+
+        $this->assertTrue(is_dir($stale), 'a store on an existing instance must not prune again');
+
+        unlink($stale . '/' . FileBodyStore::MARKER);
+        rmdir($stale);
+        self::removeTree($dir);
+    }
+
     public function testForeignDirectoryUnderRootIsNeverPrunedOrCounted(): void
     {
         $dir = self::newBodyDir();
