@@ -22,6 +22,14 @@ Semantic Logger observations -> Events -> optional EventStore
 - If Semantic Logger behavior must be changed temporarily, isolate it with `cweagans/composer-patches` and files under `patches/`.
 - Upstream Semantic Logger changes later as a separate PR.
 
+## Concurrency
+
+The observation stack assumes one request per process (PHP-FPM, mod_php, CLI). Recording is not supported on a host where one process serves multiple requests (RoadRunner, a Swoole coroutine or worker, FrankenPHP worker mode, ReactPHP, Amp, a resident CLI consumer): BEAR.QueryRepository ships no product `SessionStoreInterface` implementation keyed by request context (only `ProcessSession`, one session per process) and no request-scoped `LogSinkInterface` (only `ShutdownFlush`, which arms once per process and never re-checks). Adopting `SafeSemanticLogger` as the default binding is blocked by the dependency policy above until such implementations exist, since it lives in `bear/query-repository`, not `koriym/semantic-logger`.
+
+`MediaQueryObservationModule` binds `SemanticLogMediaQueryLogger` as `Scope::SINGLETON`, but the class holds per-call mutable state (`$start`, `$lines`). This is a defect independent of session-store readiness: any host that reuses the instance across overlapping or interleaved calls corrupts it. Fixing it means making the adapter's state per-request/context-keyed, and is worth doing regardless of concurrent-host support work.
+
+See issue #23 for the full investigation.
+
 ## Implementation discipline
 
 - Keep each commit focused on one concept.

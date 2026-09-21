@@ -69,6 +69,33 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 
 ## 1. 設置 — 要るかどうかを先に決める
 
+**並行ホスト(1 プロセスが複数リクエストを跨いで生き続ける実行モデル全般)は現時点で非対応。**
+差し込み口(`SessionStoreInterface` / `LogSinkInterface`)は BEAR.QueryRepository 側にあるが、動く実装は
+同梱されていない(`ProcessSession` はプロセスに 1 本、sink は `ShutdownFlush` のみ)。先にホストを分類し、
+分類できなければ**推奨せずユーザーに問う**:
+
+| ホスト | すること |
+|---|---|
+| PHP-FPM / CLI 実行 | そのまま下へ |
+| RoadRunner(`RR_MODE`)、Swoole コルーチン内 | 入れても記録されない。sink が arm を拒否し、理由は `error_log` に出る |
+| FrankenPHP worker mode、ReactPHP、Amp、常駐 CLI consumer、boot 時に logger を作る Swoole worker | **検出されないので入れない。** 上の拒否が働かず、リクエスト境界が 1 本の木に混ざる(同じ logger 上で処理が実際に重なれば LIFO 違反で `close` が落ちる) |
+| 分からない | 入れる前に問う |
+
+それでも観測するなら、ホスト側で request context をキーにした `SessionStoreInterface` と、request end で
+flush する `LogSinkInterface` を**両方**束縛する(片方だけだとセッションを共有するか、排出されずに溜まる)。
+根拠は BEAR.QueryRepository の
+[docs/what-the-log-proves.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/what-the-log-proves.md)
+"Concurrent sessions"。`setup.php` が書く `DevModule` はそれを書かない。`SafeSemanticLogger` の "Safe" は
+「記録に失敗してもリクエストを壊さない」の意味で、並行実行時にセッションを分離する保証ではない。
+
+ホストが通っても、束縛の形で無音のまま欠ける配線が 2 つある。`check.php`(§2)は束縛の中身を見るが
+スコープと writer の種類までは見ないので、ここで目視する:
+
+| 点検 | 落ちると起きること |
+|---|---|
+| `SemanticLoggerInterface` が別の場所で `Scope::SINGLETON` 無しに束縛されていないか | §2 の `check.php` の `one logger for both keys` が拾う(無印と `#[CacheLog]` が同一インスタンスでなければ FAIL)。それでも見逃す形は sink 側が拾い、`error_log` に `a second logger armed an already-armed sink` と出す — 読みに行かなければ気づかない |
+| injector を直列化する文脈(コンパイル済みアプリ)に `PsrLogWriter` が無いか | ホストの logger(Monolog はクロージャを持つ)を抱えるので、コンパイルしたグラフが unserialize できなくなる。その文脈は `LogFileWriter` / `LogStreamWriter` で書く |
+
 観測はもう動いているかもしれない。動いているなら**アプリに 1 文字も書かない**。
 `src/Module/DevModule.php` を見て 3 つに分ける:
 
