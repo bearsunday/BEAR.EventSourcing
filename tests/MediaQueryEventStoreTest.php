@@ -19,9 +19,13 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\Injector;
 
 use function file_get_contents;
+use function file_put_contents;
 use function iterator_to_array;
+use function mkdir;
+use function rmdir;
 use function sys_get_temp_dir;
 use function tempnam;
+use function uniqid;
 use function unlink;
 use function version_compare;
 
@@ -31,6 +35,7 @@ use const PHP_VERSION_ID;
 final class MediaQueryEventStoreTest extends TestCase
 {
     private string|null $databaseFile = null;
+    private string|null $staleSqlDir = null;
 
     protected function setUp(): void
     {
@@ -46,6 +51,15 @@ final class MediaQueryEventStoreTest extends TestCase
         if ($this->databaseFile !== null) {
             @unlink($this->databaseFile);
         }
+
+        if ($this->staleSqlDir === null) {
+            return;
+        }
+
+        // The two files staleSqlDir() writes, by name: nothing else is ever put there.
+        @unlink($this->staleSqlDir . '/event_store_list.sql');
+        @unlink($this->staleSqlDir . '/event_store_append.sql');
+        @rmdir($this->staleSqlDir);
     }
 
     public function testAppendStoresAndRestoresEventsInInsertionOrder(): void
@@ -182,6 +196,65 @@ final class MediaQueryEventStoreTest extends TestCase
         iterator_to_array($store->all());
     }
 
+    public function testAStaleAppendSqlSilentlyStoresANonReplayableEventAsReplayable(): void
+    {
+        // The other half of the 0.1.0 sqlDir migration, and the dangerous half: a stale
+        // append.sql has no :replayable placeholder, Ray.MediaQuery binds only the placeholders
+        // a file contains, so the INSERT succeeds and the column takes its DEFAULT 1. README
+        // warns that this one is silent — no exception, no warning — because INSERT OR IGNORE
+        // swallows a constraint violation as readily as a duplicate id. Pinned here so the
+        // warning stops being true out loud rather than quietly.
+        $sqlDir = $this->staleSqlDir();
+        $store = $this->store($sqlDir);
+
+        $store->append(new Event(
+            uri: 'app://self/admin/login',
+            method: 'POST',
+            timestamp: new DateTimeImmutable('2026-06-10T12:34:56.123456+00:00'),
+            params: ['loginId' => 'admin', 'password' => '[FILTERED]'],
+            replayable: false,
+        ));
+
+        $restored = iterator_to_array($store->all());
+        $this->assertCount(1, $restored);
+        $this->assertTrue(
+            $restored[0]->replayable,
+            'the stale append.sql loses the verdict to DEFAULT 1 — silently, which is why the '
+            . 'README tells applications to re-copy both SQL files together',
+        );
+    }
+
+    /** A sqlDir whose append.sql predates the replayable column; list.sql is the current one. */
+    private function staleSqlDir(): string
+    {
+        $dir = sys_get_temp_dir() . '/bear_es_stale_' . uniqid();
+        mkdir($dir);
+        $this->staleSqlDir = $dir;
+
+        $list = file_get_contents(__DIR__ . '/../sql/event_store/event_store_list.sql');
+        $this->assertIsString($list);
+        file_put_contents($dir . '/event_store_list.sql', $list);
+        file_put_contents($dir . '/event_store_append.sql', <<<'SQL'
+        INSERT OR IGNORE INTO event_store (
+            event_id,
+            uri,
+            method,
+            params_json,
+            result_json,
+            recorded_at
+        ) VALUES (
+            :eventId,
+            :uri,
+            :method,
+            :paramsJson,
+            :resultJson,
+            :timestamp
+        )
+        SQL);
+
+        return $dir;
+    }
+
     public function testAllWrapsAQueryFailureInEventStoreExceptionLikeAppendDoes(): void
     {
         // append() already promised this contract; all() called the query outside the guard, so
@@ -206,7 +279,7 @@ final class MediaQueryEventStoreTest extends TestCase
         );
     }
 
-    private function store(): EventStoreInterface
+    private function store(string|null $sqlDir = null): EventStoreInterface
     {
         $databaseFile = tempnam(sys_get_temp_dir(), 'bear_es_');
         $this->assertIsString($databaseFile);
@@ -216,7 +289,7 @@ final class MediaQueryEventStoreTest extends TestCase
         $this->assertIsString($schema);
         (new PDO('sqlite:' . $this->databaseFile))->exec($schema);
 
-        $injector = new Injector(new MediaQueryEventStoreAppModule($this->databaseFile));
+        $injector = new Injector(new MediaQueryEventStoreAppModule($this->databaseFile, $sqlDir));
         $store = $injector->getInstance(EventStoreInterface::class);
         $this->assertInstanceOf(MediaQueryEventStore::class, $store);
 

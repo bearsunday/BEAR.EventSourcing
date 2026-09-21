@@ -14,6 +14,7 @@ final class MediaQueryEventStoreAppModule extends AbstractModule
 {
     public function __construct(
         private readonly string $databaseFile,
+        private readonly string|null $sqlDir = null,
     ) {
         parent::__construct();
     }
@@ -24,7 +25,7 @@ final class MediaQueryEventStoreAppModule extends AbstractModule
         $this->install(new AuraSqlModule('sqlite:' . $this->databaseFile));
         $this->install(new MediaQuerySqlModule(
             interfaceDir: $projectDir . '/src/Query',
-            sqlDir: $projectDir . '/sql/event_store',
+            sqlDir: $this->sqlDir ?? $projectDir . '/sql/event_store',
         ));
         $this->install(new EventSourcingModule());
         $this->install(new MediaQueryEventStoreModule());
