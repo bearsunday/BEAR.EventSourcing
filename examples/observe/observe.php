@@ -20,7 +20,6 @@ declare(strict_types=1);
 use BEAR\EventSourcing\Event;
 use BEAR\EventSourcing\EventStoreInterface;
 use BEAR\EventSourcing\Resource\DevLogModule;
-use BEAR\EventSourcing\Resource\FileBodyStore;
 use BEAR\EventSourcing\Resource\Stree\ResourceNodeFormatter;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\Store\InMemoryEventStore;
@@ -80,7 +79,7 @@ echo (new TreeRenderer($config))->render($log);
 // ---------------------------------------------------------------------------
 // 3. Bodies externalized by FileBodyStore, pointed to by body_ref.
 // ---------------------------------------------------------------------------
-$bodyFiles = glob($tmp . '/bodies/*.json');
+$bodyFiles = glob($tmp . '/bodies/*/*.json');
 echo "\n[3] Bodies behind body_ref (" . count($bodyFiles) . " file(s))\n";
 foreach ($bodyFiles as $file) {
     printf("  %s  %s\n", basename((string) $file), str_replace("\n", ' ', trim((string) file_get_contents($file))));
@@ -189,12 +188,25 @@ $logFile = $tmp . '/semantic-log.json';
 file_put_contents($logFile, json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 (new SemanticLogValidator())->validate($logFile, $projectDir . '/docs/schemas');
 
-// Clean up the scratch directory (clearDirectory removes the ownership marker too).
+// Clean up the scratch directory. FileBodyStore owns each generation
+// subdirectory under bodies/ individually, not bodies/ itself, so tearing
+// the whole tree down here is a plain recursive delete.
 unlink($logFile);
 if ($sqlSupported) {
     unlink($dbFile);
 }
 
-FileBodyStore::clearDirectory($tmp . '/bodies');
+$bodiesTree = new RecursiveIteratorIterator(
+    new RecursiveDirectoryIterator($tmp . '/bodies', FilesystemIterator::SKIP_DOTS),
+    RecursiveIteratorIterator::CHILD_FIRST,
+);
+foreach ($bodiesTree as $entry) {
+    if ($entry->isDir()) {
+        rmdir($entry->getPathname());
+    } else {
+        unlink($entry->getPathname());
+    }
+}
+
 rmdir($tmp . '/bodies');
 rmdir($tmp);

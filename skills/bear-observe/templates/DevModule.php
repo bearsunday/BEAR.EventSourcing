@@ -37,7 +37,6 @@ final class DevModule extends AbstractAppModule
     protected function configure(): void
     {
         $bodyDir = $this->appMeta->logDir . '/es-bodies';
-        FileBodyStore::clearDirectory($bodyDir);
 
         $this->rename(InvokerInterface::class, self::ORIGINAL_INVOKER);
         $this->bind(InvokerInterface::class)

@@ -27,7 +27,7 @@ Do:
 - Keep `Event`, `EventsInterface`, and `Events` minimal.
 - Use `CallbackFilterIterator` or other iterators for method, URI, parameter, and timestamp selection.
 - Use `BodyStoreInterface` when a response body must be stored out of line; keep only `body_ref` in the Semantic Log.
-- Use `DevLogModule` for local AI/debug runs that should clear a body directory and store `FileBodyStore` refs.
+- Use `DevLogModule` for local AI/debug runs that store `FileBodyStore` refs; the store owns its own generation retention, no manual clearing needed.
 - Keep Ray.MediaQuery and database installation in the application.
 - Use `InMemoryEventStore` for examples and tests.
 
@@ -56,7 +56,7 @@ Typical split — `DevModule`: rename+decorate + `EventSourcingModule()` (observ
 
 `DevLogModule` produces two artifacts for inspection:
 
-- **Body files** under `bodyDir`, numbered in invocation order (`000001.json`, `000002.json`, …), each holding the rendered body `(string) $ro`. The directory is cleared when `DevLogModule` is constructed.
+- **Body files** under `bodyDir`, numbered in invocation order (`000001.json`, `000002.json`, …) within a generation subdirectory `FileBodyStore` creates on first store, each holding the rendered body `(string) $ro`. Nothing is created until the first body is stored, and `FileBodyStore` prunes its own old generations to a `keep` count — no manual clearing needed.
 - **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. It is a nested open/close **tree** (`LogJson`): child operations sit under their parent's `open`, each node has a request `context` (`uri`/`method`/`params`/`timestamp`) and a `close` whose `context` carries `code` and a `body_ref` to the matching body file. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk.
 
 Read the log as a tree — far fewer tokens than raw JSON, so prefer it for both human and AI inspection. `Resource\Stree\ResourceNodeFormatter` renders each node as one resource operation (intent in, result out):
