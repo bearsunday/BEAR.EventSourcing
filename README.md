@@ -313,7 +313,7 @@ $events = $extractor->extract($log);              // the facts
 
 Note that the bundled `ResourceResponseContext` records `code`, `body_ref`, and `durationMs` — it never inlines the body. Events extracted from a bridge log therefore always carry a `null` `result`; the payload lives behind the `body_ref` pointer (see below). Record your own close context with a `body` field when the event itself must carry the result.
 
-For local AI/debug work, use `DevLogModule`. It clears the body directory when the module is constructed, stores rendered bodies as files through `FileBodyStore`, and records `GET` as well as write methods:
+For local AI/debug work, use `DevLogModule`. Constructing it touches nothing on disk; the first stored body creates a uniquely named generation directory under `bodyDir` and stores rendered bodies as files through `FileBodyStore`, keeping `GET` as well as write methods:
 
 ```php
 use BEAR\EventSourcing\Resource\DevLogModule;
@@ -326,6 +326,8 @@ $injector = new Injector(new DevLogModule(
 ));
 ```
 
+One `bodyDir` can be shared across sessions or processes: each `FileBodyStore` instance names its own generation, so their sequences never collide. After creating a generation, the store prunes sibling generations it marked itself down to `keep` (default 5, oldest first) — pass `keep:` to `DevLogModule` to change it. Anything under `bodyDir` without `FileBodyStore::MARKER` is left alone and never counted toward that cap.
+
 ### Wiring inside a BEAR.Sunday context
 
 Passing `module:` is for a standalone injector, where the bridge's wrapped module is the only provider of `InvokerInterface`. A BEAR.Sunday context module (a `dev-` prefix such as `dev-hal-app`) inherits the whole inner chain instead, so it renames the chain's own binding and decorates it in place:
@@ -337,7 +339,6 @@ final class DevModule extends AbstractAppModule
     protected function configure(): void
     {
         $bodyDir = $this->appMeta->logDir . '/es-bodies';
-        FileBodyStore::clearDirectory($bodyDir);
 
         $this->rename(InvokerInterface::class, 'original_invoker');
         $this->bind(InvokerInterface::class)
@@ -363,7 +364,7 @@ Recording and extraction stay separate policies (`#[Recorded]` / `#[Extracted]`)
 A `BodyStoreInterface` records a `body_ref` in the close context:
 
 ```json
-{"code": 200, "body_ref": "file:///path/to/var/es/bodies/000001.json", "durationMs": 0.42}
+{"code": 200, "body_ref": "file:///path/to/var/es/bodies/20260922-143059-482913-a1b2c3d4/000001.json", "durationMs": 0.42}
 ```
 
 `body_ref` is a reference to a stored rendered body. It stays in the Semantic Log for inspection and is **not** extracted into `Event::$result` — the event's `result` comes from `close.context.body`. A bridge log that records only `body_ref` therefore yields an event with a `null` result; the payload lives in the externalized body, not in the event. The same domain operation produces the same event regardless of which `BodyStoreInterface` the bridge uses.

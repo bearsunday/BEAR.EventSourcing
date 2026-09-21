@@ -18,10 +18,8 @@ final class DevLogModule extends AbstractModule
         private readonly SemanticLoggerInterface|null $logger = null,
         private readonly AbstractModule|null $module = null,
         private readonly ParamsFilterInterface|null $paramsFilter = null,
+        private readonly int $keep = 5,
     ) {
-        // Clear at module construction, not at configure(), to avoid side effects during DI graph merges.
-        FileBodyStore::clearDirectory($bodyDir);
-
         $this->methods = $methods ?? new RecordedMethods(RecordedMethods::WITH_READS);
         parent::__construct(null);
     }
@@ -30,7 +28,7 @@ final class DevLogModule extends AbstractModule
     {
         $this->install(new ResourceObservationModule(
             methods: $this->methods,
-            bodyStore: new FileBodyStore($this->bodyDir),
+            bodyStore: new FileBodyStore($this->bodyDir, $this->keep),
             logger: $this->logger,
             module: $this->module,
             paramsFilter: $this->paramsFilter,
