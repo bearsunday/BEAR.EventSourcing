@@ -52,11 +52,14 @@ use const SORT_STRING;
  * `$keep` other sessions create generations under the same root while an
  * earlier session is still writing, that session's generation can be
  * pruned out from under it — its already-written `body_ref`s stop
- * resolving and its next write throws. Size `$keep` above the number of
- * sessions you expect to overlap. A generation that cannot be deleted
- * (permissions, a held file handle) also fails the write that triggered
- * the prune, since pruning runs before the new generation's first file is
- * written.
+ * resolving and its next write throws. `SemanticLogInvoker` catches a
+ * `BodyStoreInterface` failure and records it in the close context rather
+ * than propagating it, so this degrades one entry to a missing `body_ref`
+ * rather than breaking the request; size `$keep` above the number of
+ * sessions you expect to overlap to avoid it. A generation that cannot be
+ * deleted (permissions, a held file handle) also fails the write that
+ * triggered the prune, since pruning runs before the new generation's
+ * first file is written.
  *
  * Use it for dev/debug observation (DevLogModule); production body stores
  * belong to the application.
@@ -202,16 +205,14 @@ final class FileBodyStore implements BodyStoreInterface
     {
         self::clearContents($dir);
         self::removeMarker($dir);
-        if (rmdir($dir)) {
-            return;
+        if (! rmdir($dir)) {
+            // Left unmarked: an empty husk here is inert clutter, invisible to a later
+            // prune pass. Re-marking it would make a *persistent* rmdir failure (a
+            // stuck permission, a held handle) retried by every future session's
+            // createGeneration() — turning one bad directory into a permanent block
+            // on all observation, which is worse than the leak.
+            throw new BodyStoreException(sprintf('Failed to remove body store generation directory: %s', $dir));
         }
-
-        // rmdir raced with something (e.g. a concurrent writer recreating a file)
-        // after the marker was already dropped. Re-mark so the directory stays
-        // part of the owned set and this removal is retried on the next prune,
-        // instead of leaking as an invisible, permanently unpruned husk.
-        self::markOwned($dir);
-        throw new BodyStoreException(sprintf('Failed to remove body store generation directory: %s', $dir));
     }
 
     private static function ensureDirectory(string $dir): void
