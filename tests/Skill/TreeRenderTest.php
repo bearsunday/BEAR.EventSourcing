@@ -6,26 +6,28 @@ namespace BEAR\EventSourcing\Tests\Skill;
 
 use PHPUnit\Framework\TestCase;
 
-use function array_reverse;
+use function basename;
 use function dirname;
 use function escapeshellarg;
 use function exec;
 use function file_get_contents;
 use function file_put_contents;
-use function is_array;
+use function glob;
 use function is_dir;
 use function is_file;
-use function is_string;
-use function json_decode;
+use function is_link;
 use function json_encode;
 use function mkdir;
+use function realpath;
 use function rmdir;
+use function symlink;
 use function sys_get_temp_dir;
 use function time;
 use function touch;
 use function unlink;
 use function uniqid;
 
+use const GLOB_BRACE;
 use const PHP_BINARY;
 
 /**
@@ -43,7 +45,7 @@ final class TreeRenderTest extends TestCase
     private array $logFiles = [];
 
     /** @var list<string> */
-    private array $cleanupDirs = [];
+    private array $tmpDirs = [];
 
     protected function tearDown(): void
     {
@@ -53,11 +55,8 @@ final class TreeRenderTest extends TestCase
             }
         }
 
-        // Deepest first, so each directory is empty when rmdir() reaches it.
-        foreach (array_reverse($this->cleanupDirs) as $dir) {
-            if (is_dir($dir)) {
-                rmdir($dir);
-            }
+        foreach ($this->tmpDirs as $dir) {
+            $this->removeRecursively($dir);
         }
     }
 
@@ -76,7 +75,7 @@ final class TreeRenderTest extends TestCase
             ],
         ]);
 
-        [$status, $output] = $this->runTree($logFile);
+        [$status, $output] = $this->runTree(dirname(__DIR__, 2), $logFile);
 
         $this->assertSame(0, $status, $output);
         $this->assertStringStartsWith($logFile . "\n", $output);
@@ -88,7 +87,7 @@ final class TreeRenderTest extends TestCase
 
     public function testBasenamesBodyRefWithoutTouchingTheFileOnDisk(): void
     {
-        $logFile = $this->writeLog([
+        $written = (string) json_encode([
             '$schema' => 'https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json',
             'entries' => [
                 [
@@ -106,17 +105,18 @@ final class TreeRenderTest extends TestCase
                 ],
             ],
         ]);
+        $logFile = sys_get_temp_dir() . '/tree-render-' . uniqid() . '.json';
+        $this->logFiles[] = $logFile;
+        file_put_contents($logFile, $written);
 
-        [$status, $output] = $this->runTree($logFile);
+        [$status, $output] = $this->runTree(dirname(__DIR__, 2), $logFile);
 
         $this->assertSame(0, $status, $output);
         $this->assertStringContainsString('body_ref=000001.json', $output);
         $this->assertStringNotContainsString('file:///', $output);
 
-        $this->assertSame(
-            'file:///var/log/ctx/es-bodies/20260101-000000-000000/000001.json',
-            $this->readBodyRefFromDisk($logFile),
-        );
+        // Byte-for-byte: the source file was never touched, not merely "still has this one field".
+        $this->assertSame($written, file_get_contents($logFile));
     }
 
     public function testForwardsFlagsAfterTheLogPathToStreeVerbatim(): void
@@ -130,7 +130,7 @@ final class TreeRenderTest extends TestCase
 
         // --json is a stree flag with no analogue in tree.php's own argument handling; seeing
         // it take effect proves args placed after the log path reach StreeCommand unmodified.
-        [$status, $output] = $this->runTree($logFile, '--json');
+        [$status, $output] = $this->runTree(dirname(__DIR__, 2), $logFile, '--json');
 
         $this->assertSame(0, $status, $output);
         $this->assertStringContainsString('"entries"', $output);
@@ -138,24 +138,26 @@ final class TreeRenderTest extends TestCase
 
     public function testAutoDiscoversTheNewestLatestJsonWhenNoPathIsGiven(): void
     {
-        $root = dirname(__DIR__, 2);
-        $contextDir = $root . '/var/log/tree-render-test-' . uniqid() . '/observe';
-        $this->makeDir($root . '/var');
-        $this->makeDir($root . '/var/log');
-        $this->makeDir(dirname($contextDir));
-        $this->makeDir($contextDir);
+        // Runs with an isolated cwd (a temp dir with vendor/ symlinked in, so
+        // vendor/autoload.php still resolves) rather than this repo's own working tree: the
+        // discovery glob is var/log/*/observe/latest.json relative to cwd, and this repo has
+        // no var/ of its own to seed safely.
+        $cwd = sys_get_temp_dir() . '/tree-render-cwd-' . uniqid();
+        $this->tmpDirs[] = $cwd;
+        mkdir($cwd);
+        symlink(dirname(__DIR__, 2) . '/vendor', $cwd . '/vendor');
+
+        $contextDir = $cwd . '/var/log/ctx/observe';
+        mkdir($contextDir, 0777, true);
 
         $older = $contextDir . '/older.json';
-        $newer = $contextDir . '/newer.json';
-        $this->logFiles[] = $older;
-        $this->logFiles[] = $newer;
-
         file_put_contents($older, (string) json_encode([
             '$schema' => 'https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json',
             'entries' => [['kind' => 'open', 'id' => 'o1', 'type' => 'older_marker', 'context' => []]],
         ]));
         touch($older, time() - 60);
 
+        $newer = $contextDir . '/newer.json';
         file_put_contents($newer, (string) json_encode([
             '$schema' => 'https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json',
             'entries' => [['kind' => 'open', 'id' => 'n1', 'type' => 'newer_marker', 'context' => []]],
@@ -166,18 +168,22 @@ final class TreeRenderTest extends TestCase
         // glob rather than a loosened stand-in for it.
         $latest = $contextDir . '/latest.json';
         file_put_contents($latest, (string) file_get_contents($newer));
-        $this->logFiles[] = $latest;
 
-        [$status, $output] = $this->runTree(null);
+        [$status, $output] = $this->runTree($cwd, null);
 
         $this->assertSame(0, $status, $output);
-        $this->assertStringStartsWith($latest . "\n", $output);
+        $resolvedLatest = realpath($latest);
+        $this->assertIsString($resolvedLatest);
+        $this->assertStringStartsWith($resolvedLatest . "\n", $output);
         $this->assertStringContainsString('newer_marker', $output);
     }
 
     public function testFailsCleanlyOnAMissingFile(): void
     {
-        [$status, $output] = $this->runTree(sys_get_temp_dir() . '/does-not-exist-' . uniqid() . '.json');
+        [$status, $output] = $this->runTree(
+            dirname(__DIR__, 2),
+            sys_get_temp_dir() . '/does-not-exist-' . uniqid() . '.json',
+        );
 
         $this->assertSame(1, $status, $output);
         $this->assertStringContainsString('FAIL', $output);
@@ -194,45 +200,42 @@ final class TreeRenderTest extends TestCase
         return $logFile;
     }
 
-    private function readBodyRefFromDisk(string $logFile): string|null
+    private function removeRecursively(string $dir): void
     {
-        $decoded = json_decode((string) file_get_contents($logFile), true);
-        if (! is_array($decoded) || ! is_array($decoded['entries'] ?? null)) {
-            return null;
-        }
+        if (is_link($dir)) {
+            unlink($dir);
 
-        $entry = $decoded['entries'][0] ?? null;
-        if (! is_array($entry) || ! is_array($entry['close'] ?? null)) {
-            return null;
-        }
-
-        $context = $entry['close']['context'] ?? null;
-        if (! is_array($context)) {
-            return null;
-        }
-
-        /** @psalm-suppress MixedAssignment reading a decoded JSON tree */
-        $bodyRef = $context['body_ref'] ?? null;
-
-        return is_string($bodyRef) ? $bodyRef : null;
-    }
-
-    private function makeDir(string $dir): void
-    {
-        if (is_dir($dir)) {
             return;
         }
 
-        mkdir($dir);
-        $this->cleanupDirs[] = $dir;
+        if (is_file($dir)) {
+            unlink($dir);
+
+            return;
+        }
+
+        if (! is_dir($dir)) {
+            return;
+        }
+
+        $entries = glob($dir . '/{,.}*', GLOB_BRACE);
+        foreach ($entries === false ? [] : $entries as $entry) {
+            $base = basename($entry);
+            if ($base === '.' || $base === '..') {
+                continue;
+            }
+
+            $this->removeRecursively($entry);
+        }
+
+        rmdir($dir);
     }
 
     /** @return array{0: int, 1: string} */
-    private function runTree(string|null $logFile, string ...$args): array
+    private function runTree(string $cwd, string|null $logFile, string ...$args): array
     {
-        $root = dirname(__DIR__, 2);
-        $command = 'cd ' . escapeshellarg($root) . ' && ' . PHP_BINARY . ' ' . escapeshellarg(
-            $root . '/skills/bear-observe/harness/tree.php',
+        $command = 'cd ' . escapeshellarg($cwd) . ' && ' . PHP_BINARY . ' ' . escapeshellarg(
+            dirname(__DIR__, 2) . '/skills/bear-observe/harness/tree.php',
         );
         if ($logFile !== null) {
             $command .= ' ' . escapeshellarg($logFile);
