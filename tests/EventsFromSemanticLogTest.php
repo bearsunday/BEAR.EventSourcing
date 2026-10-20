@@ -79,7 +79,7 @@ final class EventsFromSemanticLogTest extends TestCase
     {
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
+            records: [new OpenCloseEntry(
                 id: 'resource_request_1',
                 type: 'resource_request',
                 schemaUrl: 'https://example.com/resource-request.schema.json',
@@ -89,7 +89,7 @@ final class EventsFromSemanticLogTest extends TestCase
                     'timestamp' => '2026-06-10T12:34:56.123456+00:00',
                 ],
             )],
-            close: [new EventEntry(
+            closes: [new EventEntry(
                 id: 'resource_response_1',
                 type: 'resource_response',
                 schemaUrl: 'https://example.com/resource-response.schema.json',
@@ -242,7 +242,7 @@ final class EventsFromSemanticLogTest extends TestCase
         // same default ResourceRequestContext::$replayable carries.
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
+            records: [new OpenCloseEntry(
                 id: 'resource_request_1',
                 type: 'resource_request',
                 schemaUrl: 'https://example.com/resource-request.schema.json',
@@ -254,7 +254,7 @@ final class EventsFromSemanticLogTest extends TestCase
                     // deliberately no 'replayable' key
                 ],
             )],
-            close: [new EventEntry(
+            closes: [new EventEntry(
                 id: 'resource_response_1',
                 type: 'resource_response',
                 schemaUrl: 'https://example.com/resource-response.schema.json',
@@ -275,7 +275,7 @@ final class EventsFromSemanticLogTest extends TestCase
         // a replayable fact: the same stance the extractor takes on an uninterpretable code.
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
+            records: [new OpenCloseEntry(
                 id: 'resource_request_1',
                 type: 'resource_request',
                 schemaUrl: 'https://example.com/resource-request.schema.json',
@@ -287,7 +287,7 @@ final class EventsFromSemanticLogTest extends TestCase
                     'replayable' => 'yes',
                 ],
             )],
-            close: [new EventEntry(
+            closes: [new EventEntry(
                 id: 'resource_response_1',
                 type: 'resource_response',
                 schemaUrl: 'https://example.com/resource-response.schema.json',
@@ -309,7 +309,7 @@ final class EventsFromSemanticLogTest extends TestCase
         // than with absence — a distinction `??` cannot make, since it coalesces null too.
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
+            records: [new OpenCloseEntry(
                 id: 'resource_request_1',
                 type: 'resource_request',
                 schemaUrl: 'https://example.com/resource-request.schema.json',
@@ -321,7 +321,7 @@ final class EventsFromSemanticLogTest extends TestCase
                     'replayable' => null,
                 ],
             )],
-            close: [new EventEntry(
+            closes: [new EventEntry(
                 id: 'resource_response_1',
                 type: 'resource_response',
                 schemaUrl: 'https://example.com/resource-response.schema.json',
@@ -340,13 +340,13 @@ final class EventsFromSemanticLogTest extends TestCase
     {
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
+            records: [new OpenCloseEntry(
                 id: 'operation_1',
                 type: 'operation',
                 schemaUrl: 'https://example.com/operation.schema.json',
                 context: ['name' => 'not-a-resource-request'],
             )],
-            close: [new EventEntry(
+            closes: [new EventEntry(
                 id: 'operation_response_1',
                 type: 'operation_response',
                 schemaUrl: 'https://example.com/operation-response.schema.json',
@@ -366,7 +366,7 @@ final class EventsFromSemanticLogTest extends TestCase
         // resource_request type may become an event.
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
+            records: [new OpenCloseEntry(
                 id: 'http_client_1',
                 type: 'http_client',
                 schemaUrl: 'https://example.com/http-client.schema.json',
@@ -376,7 +376,7 @@ final class EventsFromSemanticLogTest extends TestCase
                     'timestamp' => '2026-06-10T12:34:56.123456+00:00',
                 ],
             )],
-            close: [new EventEntry(
+            closes: [new EventEntry(
                 id: 'http_client_response_1',
                 type: 'http_client_response',
                 schemaUrl: 'https://example.com/http-client-response.schema.json',

@@ -64,7 +64,7 @@ final class MediaQueryObservationIntegrationTest extends TestCase
         $logger->close(new ResourceResponseContext(201), $openId);
 
         $tree = self::toArray($logger->flush());
-        $event = $tree['open'][0]['events'][0];
+        $event = $tree['entries'][0]['children'][0];
         $this->assertSame('media_query', $event['type']);
         $this->assertSame('event_store_append', $event['context']['name']);
         // An integral millisecond value degrades to int in the JSON roundtrip.
@@ -86,7 +86,11 @@ final class MediaQueryObservationIntegrationTest extends TestCase
         ));
         $logger->close(new ResourceResponseContext(201), $openId);
         $requestSession = self::toArray($logger->flush());
-        $this->assertArrayNotHasKey('events', $requestSession);
+        $this->assertSame(
+            [],
+            $requestSession['entries'][0]['children'] ?? [],
+            'no event was recorded inside the request scope',
+        );
 
         // The EventCollector path: persistence runs after the flush, so its
         // observation cannot belong to the request's session.
@@ -101,8 +105,8 @@ final class MediaQueryObservationIntegrationTest extends TestCase
         $logger->close(new ResourceResponseContext(200), $nextId);
 
         $nextSession = self::toArray($logger->flush());
-        $this->assertSame('media_query', $nextSession['events'][0]['type']);
-        $this->assertSame('event_store_append', $nextSession['events'][0]['context']['name']);
+        $this->assertSame('media_query', $nextSession['entries'][0]['type']);
+        $this->assertSame('event_store_append', $nextSession['entries'][0]['context']['name']);
     }
 
     private function injector(): InjectorInterface
