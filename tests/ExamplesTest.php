@@ -84,7 +84,10 @@ final class ExamplesTest extends TestCase
         // the close line keeps the body_ref pointer for drilling into detail.
         // No timestamp noise.
         $this->assertStringContainsString('request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"', $output);
-        $this->assertStringContainsString('└── code=201 body_ref=file://var/es/bodies/000002.json', $output);
+        $this->assertStringContainsString(
+            '└── resource_response code=201 body_ref=file://var/es/bodies/000002.json',
+            $output,
+        );
         $this->assertStringNotContainsString('timestamp=', $output);
 
         // An embedded non-resource operation (a media query) is a leaf event:

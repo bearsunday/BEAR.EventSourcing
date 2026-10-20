@@ -57,9 +57,10 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
         $events = [];
         // Canonicalize to associative arrays: frozen context values arrive as objects, and the
         // same JSON view is what the schema validates. A whole-number float (durationMs, a
-        // price) may already be an int by the time it gets here — koriym/semantic-logger's
-        // ContextFreezer froze the context through its own unflagged json_encode at record
-        // time, before this method ever runs, so this round trip cannot recover it either.
+        // price) can still degrade to an int here even on koriym/semantic-logger 1.x+, where
+        // ContextFreezer itself now preserves it (semantic-logger#45, JSON_PRESERVE_ZERO_FRACTION):
+        // the json_encode() below has no such flag, so this canonicalization round trip
+        // reintroduces the same degradation one step later, regardless of the freezer fix.
         /** @var array<array-key, mixed> $log */
         $log = json_decode(
             json_encode($semanticLog, JSON_THROW_ON_ERROR),
@@ -67,19 +68,23 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
             512,
             JSON_THROW_ON_ERROR,
         );
-        $roots = $log['open'] ?? [];
+        // The root entries list mixes opens and events in record order (semantic-logger#50); a
+        // resource request is always a root-level open, so this filters to that kind rather than
+        // assuming every root entry qualifies.
+        $roots = $log['entries'] ?? [];
         if (! is_array($roots)) {
             return new Events($events);
         }
 
         foreach ($roots as $entry) {
-            if (is_array($entry)) {
+            if (is_array($entry) && ($entry['kind'] ?? null) === 'open') {
                 $this->appendEvent($entry, $events);
             }
         }
 
         return new Events($events);
     }
+
 
     /**
      * @param SemanticEntry $entry

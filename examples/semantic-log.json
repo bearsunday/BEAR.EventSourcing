@@ -1,7 +1,8 @@
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "entries": [
         {
+            "kind": "open",
             "id": "resource_request_1",
             "type": "resource_request",
             "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json",
@@ -14,6 +15,7 @@
                 },
                 "timestamp": "2026-06-10T12:34:56.123456+00:00"
             },
+            "children": [],
             "close": {
                 "id": "resource_response_1",
                 "type": "resource_response",
@@ -28,6 +30,7 @@
             }
         },
         {
+            "kind": "open",
             "id": "resource_request_2",
             "type": "resource_request",
             "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json",
@@ -39,6 +42,7 @@
                 },
                 "timestamp": "2026-06-10T12:35:00.000000+00:00"
             },
+            "children": [],
             "close": {
                 "id": "resource_response_2",
                 "type": "resource_response",
@@ -53,6 +57,7 @@
             }
         },
         {
+            "kind": "open",
             "id": "resource_request_3",
             "type": "resource_request",
             "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json",
@@ -64,8 +69,9 @@
                 },
                 "timestamp": "2026-06-10T12:36:00.000000+00:00"
             },
-            "open": [
+            "children": [
                 {
+                    "kind": "open",
                     "id": "resource_request_4",
                     "type": "resource_request",
                     "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json",
@@ -78,6 +84,7 @@
                         },
                         "timestamp": "2026-06-10T12:36:01.000000+00:00"
                     },
+                    "children": [],
                     "close": {
                         "id": "resource_response_3",
                         "type": "resource_response",
@@ -106,6 +113,7 @@
             }
         },
         {
+            "kind": "open",
             "id": "resource_request_5",
             "type": "resource_request",
             "schemaUrl": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json",
@@ -117,6 +125,7 @@
                 },
                 "timestamp": "2026-06-10T12:37:00.000000+00:00"
             },
+            "children": [],
             "close": {
                 "id": "resource_response_5",
                 "type": "resource_response",
