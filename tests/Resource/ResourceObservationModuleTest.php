@@ -133,14 +133,14 @@ final class ResourceObservationModuleTest extends TestCase
             ['otp' => '123456'],
         ));
 
-        /** @var array{entries: list<array<string, mixed>>} $tree */
+        /** @var array{log: list<array<string, mixed>>} $tree */
         $tree = json_decode(json_encode($logger->flush(), JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
-        $params = $tree['entries'][0]['context']['params'];
+        $params = $tree['log'][0]['context']['params'];
         $this->assertArrayNotHasKey(
             'otp',
             $params,
             'a filter bound via ResourceObservationModule(paramsFilter: ...) must reach SemanticLogInvoker',
         );
-        $this->assertFalse($tree['entries'][0]['context']['replayable']);
+        $this->assertFalse($tree['log'][0]['context']['replayable']);
     }
 }

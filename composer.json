@@ -22,14 +22,14 @@
     },
     "require": {
         "php": "^8.3",
-        "koriym/semantic-logger": "^0.10",
+        "koriym/semantic-logger": "dev-log-format",
         "ray/di": "^2.19"
     },
     "conflict": {
         "bear/resource": "<1.31"
     },
     "require-dev": {
-        "bear/query-repository": "1.x-dev",
+        "bear/query-repository": "dev-semantic-logger-log-format",
         "bear/resource": "^1.32",
         "maglnet/composer-require-checker": "^4.14",
         "phpunit/phpunit": "^11.5",
@@ -42,6 +42,12 @@
         "bear/resource": "To observe BEAR.Resource execution with the InvokerInterface bridge (^1.32)",
         "ray/media-query": "To back EventStoreInterface with SQL and to observe media queries as semantic log events (^1.1)"
     },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/koriym/BEAR.QueryRepository.git"
+        }
+    ],
     "autoload": {
         "psr-4": {
             "BEAR\\EventSourcing\\": "src/"

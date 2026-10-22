@@ -49,14 +49,14 @@ final class UnifiedLogTest extends TestCase
         $resource->get->uri('app://self/greeting')(['name' => 'koriym']); // hit
 
         $log = $logger->flush();
-        /** @var array{entries: list<array<string, mixed>>} $tree */
+        /** @var array{log: list<array<string, mixed>>} $tree */
         $tree = json_decode(
             json_encode($log, JSON_THROW_ON_ERROR),
             true,
             512,
             JSON_THROW_ON_ERROR,
         );
-        $roots = $tree['entries'];
+        $roots = $tree['log'];
         $this->assertNotSame([], $roots);
         foreach ($roots as $root) {
             $this->assertSame('resource_request', $root['type']);
@@ -86,7 +86,7 @@ final class UnifiedLogTest extends TestCase
                 return true;
             }
 
-            $children = $entry['children'] ?? [];
+            $children = $entry['log'] ?? [];
             if (is_array($children) && self::subtreeHasType($children, $type)) {
                 return true;
             }

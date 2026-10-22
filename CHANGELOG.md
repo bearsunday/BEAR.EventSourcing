@@ -29,6 +29,9 @@
 
 - `composer.json`: `bear/resource` below 1.31.0 now conflicts, since `SemanticLogInvoker` reads `AbstractRequest::$method` as the `Method` enum introduced in that release
 - `composer.json`: `koriym/semantic-logger` moved from `^0.9` to `1.x-dev as 0.9.0`, tracking the library's unreleased default branch (no tagged `1.x` exists yet). `examples/semantic-log.json` and `examples/semantic-tree.txt` regenerated against it; the tree example's close line now carries its type (`resource_response code=201 ...`, not bare `code=201 ...`), matching the renderer's own `entries`/`children` update
+- `composer.json`: `koriym/semantic-logger` moved to `dev-log-format`, tracking the library's `log-format` branch, which replaces the root `entries`/`children`/`kind` shape with a single `log` key at every level and drops `kind` (a record's kind is read structurally from whether it carries `close`, `log`, or `openId`). `bear/query-repository` (require-dev) moved to `dev-semantic-logger-log-format` with a temporary `repositories` VCS entry pointing at `koriym/BEAR.QueryRepository`, tracking its own migration to the same shape (bearsunday/BEAR.QueryRepository#225) — both are temporary pins pending tagged releases; see the PR body for the exact revert.
+- `SemanticLogExtractor::extract()`: reads the root `log` key instead of `entries`, and filters to a record carrying `close` or `log` (a structural interval) instead of `kind === 'open'`, since `kind` no longer exists.
+- `tests/`, `examples/semantic-log.json`: every hand-built `OpenCloseEntry`/`closes:` `LogJson` fixture, `['entries']`/`['children']` test helper, and the committed example fixture migrated to `OpenEntry`/`CloseEntry` records and the `log`/`close` shape.
 
 ### Note
 
