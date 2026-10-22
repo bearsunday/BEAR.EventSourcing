@@ -20,7 +20,7 @@ final class ResourceResponseContext extends AbstractContext implements JsonSeria
      * @param array{class: class-string, message: string}|null $exception
      */
     public function __construct(
-        public readonly int $code,
+        public readonly int|null $code,
         public readonly string|null $bodyRef = null,
         public readonly array|null $exception = null,
         public readonly float|null $durationMs = null,
@@ -30,7 +30,11 @@ final class ResourceResponseContext extends AbstractContext implements JsonSeria
     /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
-        $context = ['code' => $this->code];
+        $context = [];
+        if ($this->code !== null) {
+            $context['code'] = $this->code;
+        }
+
         if ($this->bodyRef !== null) {
             $context['body_ref'] = $this->bodyRef;
         }

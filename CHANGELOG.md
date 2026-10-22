@@ -15,6 +15,8 @@
 
 ### Fixed
 
+- `SemanticLogInvoker` / `ResourceResponseContext`: a resource invocation that throws no longer closes with a guessed `code: 500`. `code` is now omitted entirely unless the exception's own `getCode()` is itself a valid HTTP status (`400`-`599`); the invoker runs ahead of the application's error handler, so it previously asserted a status (`500`) the client was often never actually sent — BEAR.Sunday/Be apps routinely map a domain exception to `404`, `401`, etc. after the observation bridge has already recorded it. `exception: {class, message}` is still always recorded. `SemanticLogExtractor` now reads a missing `code` paired with a present `exception` as a confirmed failure (it used to extract it as an event regardless); a missing `code` with no `exception` — a close context that never set the field at all — keeps the extractor's older "no failure signal" default unchanged. `docs/schemas/resource-response.json` drops `code` from `required` and now requires at least one of `code`/`exception`
+
 - `SemanticLogExtractor`: read the removed root `open` key after
   koriym/semantic-logger#50 replaced the `open`/`events` split with a single
   ordered `entries` list (`kind: open|event`, nested children under

@@ -164,11 +164,14 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         return "{$uri->scheme}://{$uri->host}{$uri->path}";
     }
 
-    private static function httpCode(Throwable $e): int
+    private static function httpCode(Throwable $e): int|null
     {
         $code = $e->getCode();
 
-        return is_int($code) && $code >= 400 && $code < 600 ? $code : 500;
+        // Only a status the exception itself declares (400-599) is reported: the invoker runs
+        // before the application's error handler maps the exception to a real HTTP status, so a
+        // fallback here would assert a code the client was never actually sent.
+        return is_int($code) && $code >= 400 && $code < 600 ? $code : null;
     }
 
     /** @return array{class: class-string, message: string} */

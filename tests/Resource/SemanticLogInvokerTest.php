@@ -135,7 +135,7 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertSame('The body store failed.', $exceptionContext['message']);
     }
 
-    public function testClosesAndRethrowsOnException(): void
+    public function testClosesWithoutAGuessedCodeAndRethrowsOnException(): void
     {
         $logger = new SemanticLogger();
         $exception = new RuntimeException('boom');
@@ -159,10 +159,39 @@ final class SemanticLogInvokerTest extends TestCase
         $exceptionContext = $context['exception'] ?? null;
         $this->assertIsArray($exceptionContext);
         /** @var array{class: string, message: string} $exceptionContext */
-        $this->assertSame(500, $context['code']);
+        // RuntimeException's default code is 0 — not a valid HTTP status, so the invoker never
+        // records a guessed one here: the application's error handler, which runs after this
+        // invoker, decides the real status (e.g. ProductNotFoundException -> 404).
+        $this->assertArrayNotHasKey('code', $context);
         self::assertRecordedDuration($context['durationMs'] ?? null);
         $this->assertSame(RuntimeException::class, $exceptionContext['class']);
         $this->assertSame('boom', $exceptionContext['message']);
+    }
+
+    public function testKeepsAnExceptionsOwnDeclaredHttpStatus(): void
+    {
+        $logger = new SemanticLogger();
+        $exception = new RuntimeException('not found', 404);
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static function () use ($exception): never {
+                throw $exception;
+            }),
+            $logger,
+            new NullBodyStore(),
+        );
+
+        try {
+            $invoker->invoke(self::request('app://self/user/1', Method::POST));
+            $this->fail('Exception was not thrown.');
+        } catch (RuntimeException $e) {
+            $this->assertSame($exception, $e);
+        }
+
+        $entry = self::flushToArray($logger)['entries'][0];
+        $context = self::closeContext($entry);
+        // The exception's own code is itself a valid HTTP status, so unlike the 0-code case
+        // above it is known and kept — the invoker reports it, it does not guess it.
+        $this->assertSame(404, $context['code']);
     }
 
     public function testLeakedOpenContextDoesNotBreakRequest(): void

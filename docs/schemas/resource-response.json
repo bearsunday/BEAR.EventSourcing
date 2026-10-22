@@ -2,9 +2,9 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-response.json",
     "title": "Resource response observation",
-    "description": "Close context written by the BEAR.EventSourcing observation bridge. The body is never inlined: body_ref points at an externalized rendered body and is not extracted into Event::result. A code of 400 or greater marks a failed operation, which is never extracted as an event.",
+    "description": "Close context written by the BEAR.EventSourcing observation bridge. The body is never inlined: body_ref points at an externalized rendered body and is not extracted into Event::result. A code of 400 or greater marks a failed operation, which is never extracted as an event. code is omitted when a resource invocation threw and the exception's own code is not itself a valid HTTP status (400-599): the real status is decided later by the application's error handler, which the observation bridge runs ahead of, so it is never guessed here; exception.class and exception.message are recorded instead. A missing code paired with a present exception is read as a confirmed failure and is never extracted as an event, exactly like code >= 400.",
     "type": "object",
-    "required": ["code"],
+    "anyOf": [{"required": ["code"]}, {"required": ["exception"]}],
     "properties": {
         "code": {
             "type": "integer",

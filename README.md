@@ -78,7 +78,7 @@ Recorded methods by default — `GET` is observation data, not a state change, s
 
 Include `GET` explicitly for development-time read tracing by injecting `new RecordedMethods(RecordedMethods::WITH_READS)`.
 
-A response `code` of `400` or greater marks a failed operation, which is ignored; a string of digits such as `"404"` is read the same way. A missing code is treated as success (no failure signal). A code that is present but cannot be read as a status — a non-digit string, a float, a boolean — is treated as a failure too, so only confirmed successes become events.
+A response `code` of `400` or greater marks a failed operation, which is ignored; a string of digits such as `"404"` is read the same way. A code that is present but cannot be read as a status — a non-digit string, a float, a boolean — is treated as a failure too. A *missing* code with no `exception` alongside it is still read as no failure signal at all — the same default a close context that never set `code` (predating the field, or hand-written) relies on. A missing code *together with* an `exception`, though, is a confirmed failure: `SemanticLogInvoker` omits `code` entirely when a resource invocation throws and the exception's own `getCode()` is not itself a valid HTTP status, because the real status is decided later by the application's error handler — which the observation bridge runs ahead of — and asserting a guessed `500` there would log a status the client was never actually sent. The `exception` it records instead (see [BEAR.Resource observation bridge](#bearresource-observation-bridge-optional) below) is what the extractor reads as the failure signal in `code`'s place. Only a confirmed status below `400`, or an absent code with no exception, becomes an event.
 
 ### Event identity
 
@@ -312,6 +312,8 @@ $events = $extractor->extract($log);              // the facts
 ```
 
 Note that the bundled `ResourceResponseContext` records `code`, `body_ref`, and `durationMs` — it never inlines the body. Events extracted from a bridge log therefore always carry a `null` `result`; the payload lives behind the `body_ref` pointer (see below). Record your own close context with a `body` field when the event itself must carry the result.
+
+When a resource invocation throws, `SemanticLogInvoker` still closes the observation — with `exception: {class, message}` and, unless the exception's own `getCode()` is a valid HTTP status (`400`-`599`), no `code` at all. The invoker runs ahead of the application's error handler, so it does not know the status the client will actually receive (a `ProductNotFoundException` an application maps to `404` still has `getCode() === 0` here); recording a guessed `500` would log a status nobody sent. `SemanticLogExtractor` reads a missing `code` paired with a present `exception` as a confirmed failure — exactly as it would read `code: 500` — so this close is excluded from the event stream either way; the difference is that the log no longer asserts a specific wrong status.
 
 For local AI/debug work, use `DevLogModule`. It clears the body directory when the module is constructed, stores rendered bodies as files through `FileBodyStore`, and records `GET` as well as write methods:
 

@@ -162,7 +162,18 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
     {
         $code = $context['code'] ?? null;
         if ($code === null) {
-            return true; // No code means no failure signal.
+            // No code and no exception: the producer never set a code field at all — a hand-
+            // written close context, or a log that predates the field. Keep the historical
+            // "no failure signal" default; nothing here says this was a failure.
+            //
+            // No code but an exception: SemanticLogInvoker's own escaped-exception close. The
+            // invoker runs ahead of the application's error handler, so it never learned the
+            // real status (see ResourceResponseContext) and omitted `code` rather than guess
+            // one — but the exception alone is proof enough that this was a failure. A body-
+            // store failure (a request that itself succeeded) is not mistaken for this: it
+            // always keeps the real `$ro->code` alongside its own `exception`, so it never
+            // lands here with a null code.
+            return ! array_key_exists('exception', $context);
         }
 
         if (is_int($code)) {
