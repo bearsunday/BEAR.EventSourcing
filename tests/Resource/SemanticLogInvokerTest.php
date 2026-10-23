@@ -261,33 +261,36 @@ final class SemanticLogInvokerTest extends TestCase
     {
         $ro = new FakeResourceObject('app://self/order', ['ok' => true], 200);
         $invoked = false;
+        $fakeLogger = new class implements SemanticLoggerInterface {
+            public bool $closeCalled = false;
+
+            public function open(AbstractContext $context): string
+            {
+                throw new RuntimeException('sink down');
+            }
+
+            public function event(AbstractContext $context): void
+            {
+            }
+
+            public function close(AbstractContext $context, string $openId): void
+            {
+                $this->closeCalled = true;
+            }
+
+            /** @param list<array{href: string, rel: string, title?: string, type?: string}> $links */
+            public function flush(array $links = []): LogJson
+            {
+                throw new RuntimeException('unused');
+            }
+        };
         $invoker = new SemanticLogInvoker(
             new CallbackInvoker(static function () use ($ro, &$invoked): FakeResourceObject {
                 $invoked = true;
 
                 return $ro;
             }),
-            new class implements SemanticLoggerInterface {
-                public function open(AbstractContext $context): string
-                {
-                    throw new RuntimeException('sink down');
-                }
-
-                public function event(AbstractContext $context): void
-                {
-                }
-
-                public function close(AbstractContext $context, string $openId): void
-                {
-                    throw new RuntimeException('unreachable: open never returned an id to close');
-                }
-
-                /** @param list<array{href: string, rel: string, title?: string, type?: string}> $links */
-                public function flush(array $links = []): LogJson
-                {
-                    throw new RuntimeException('unused');
-                }
-            },
+            $fakeLogger,
             new NullBodyStore(),
         );
 
@@ -307,6 +310,9 @@ final class SemanticLogInvokerTest extends TestCase
         // open() degrades observation, it does not skip the request or mask its result.
         $this->assertTrue($invoked);
         $this->assertSame($ro, $result);
+        // The other half of the invariant: no close() is attempted for an id open()
+        // never issued.
+        $this->assertFalse($fakeLogger->closeCalled);
         $this->assertCount(1, $warnings);
         $this->assertSame(E_USER_WARNING, $warnings[0][0]);
         $this->assertStringContainsString('sink down', $warnings[0][1]);
