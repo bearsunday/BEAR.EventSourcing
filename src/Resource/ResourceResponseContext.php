@@ -25,6 +25,9 @@ final class ResourceResponseContext extends AbstractContext implements JsonSeria
         public readonly array|null $exception = null,
         public readonly float|null $durationMs = null,
     ) {
+        if ($this->code === null && $this->exception === null) {
+            throw new ResourceResponseContextException('ResourceResponseContext requires a code or an exception.');
+        }
     }
 
     /** @return array<string, mixed> */
