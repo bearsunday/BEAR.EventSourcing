@@ -61,10 +61,10 @@ final class MediaQueryObservationIntegrationTest extends TestCase
         // A real Ray.MediaQuery execution: SqlQuery::perform() runs the
         // event_store_append query through the observed logger seam.
         $store->append(self::event());
-        $logger->close(new ResourceResponseContext(201), $openId);
+        $logger->close(ResourceResponseContext::success(201), $openId);
 
         $tree = self::toArray($logger->flush());
-        $event = $tree['entries'][0]['children'][0];
+        $event = $tree['log'][0]['log'][0];
         $this->assertSame('media_query', $event['type']);
         $this->assertSame('event_store_append', $event['context']['name']);
         // An integral millisecond value degrades to int in the JSON roundtrip.
@@ -84,11 +84,11 @@ final class MediaQueryObservationIntegrationTest extends TestCase
             params: ['order_id' => 'O-1000'],
             timestamp: '2026-06-10T12:36:00.000000+00:00',
         ));
-        $logger->close(new ResourceResponseContext(201), $openId);
+        $logger->close(ResourceResponseContext::success(201), $openId);
         $requestSession = self::toArray($logger->flush());
         $this->assertSame(
             [],
-            $requestSession['entries'][0]['children'] ?? [],
+            $requestSession['log'][0]['log'] ?? [],
             'no event was recorded inside the request scope',
         );
 
@@ -102,11 +102,11 @@ final class MediaQueryObservationIntegrationTest extends TestCase
             params: [],
             timestamp: '2026-06-10T12:37:00.000000+00:00',
         ));
-        $logger->close(new ResourceResponseContext(200), $nextId);
+        $logger->close(ResourceResponseContext::success(200), $nextId);
 
         $nextSession = self::toArray($logger->flush());
-        $this->assertSame('media_query', $nextSession['entries'][0]['type']);
-        $this->assertSame('event_store_append', $nextSession['entries'][0]['context']['name']);
+        $this->assertSame('media_query', $nextSession['log'][0]['type']);
+        $this->assertSame('event_store_append', $nextSession['log'][0]['context']['name']);
     }
 
     private function injector(): InjectorInterface

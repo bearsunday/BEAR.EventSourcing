@@ -14,7 +14,10 @@ use BEAR\EventSourcing\Resource\BodyStoreException;
 use BEAR\Resource\Method;
 use BEAR\Resource\Request;
 use DomainException;
+use Koriym\SemanticLogger\AbstractContext;
+use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -43,7 +46,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/user/1', Method::POST, ['id' => 1]));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         // The uri stays canonical (path only); the query lives in params, not the uri.
         $this->assertSame('app://self/user/1', $entry['context']['uri']);
         $this->assertSame('POST', $entry['context']['method']);
@@ -68,7 +71,7 @@ final class SemanticLogInvokerTest extends TestCase
         $invoker->invoke(self::request('app://self/user/1', Method::GET));
 
         // Nothing was recorded: the session flushes to an empty log.
-        $this->assertSame([], self::flushToArray($logger)['entries']);
+        $this->assertSame([], self::flushToArray($logger)['log']);
     }
 
     public function testRecordsGetWhenConfigured(): void
@@ -84,7 +87,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/user/1', Method::GET));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame('GET', $entry['context']['method']);
     }
 
@@ -101,7 +104,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/user/1', Method::POST));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame(1, $store->calls);
         $close = self::closeContext($entry);
         self::assertRecordedDuration($close['durationMs'] ?? null);
@@ -125,7 +128,7 @@ final class SemanticLogInvokerTest extends TestCase
         $result = $invoker->invoke(self::request('app://self/user/1', Method::POST));
 
         $this->assertSame($ro, $result);
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $context = self::closeContext($entry);
         $exceptionContext = $context['exception'] ?? null;
         $this->assertIsArray($exceptionContext);
@@ -135,7 +138,7 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertSame('The body store failed.', $exceptionContext['message']);
     }
 
-    public function testClosesAndRethrowsOnException(): void
+    public function testClosesWithoutAGuessedCodeAndRethrowsOnException(): void
     {
         $logger = new SemanticLogger();
         $exception = new RuntimeException('boom');
@@ -154,15 +157,44 @@ final class SemanticLogInvokerTest extends TestCase
             $this->assertSame($exception, $e);
         }
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $context = self::closeContext($entry);
         $exceptionContext = $context['exception'] ?? null;
         $this->assertIsArray($exceptionContext);
         /** @var array{class: string, message: string} $exceptionContext */
-        $this->assertSame(500, $context['code']);
+        // RuntimeException's default code is 0 — not a valid HTTP status, so the invoker never
+        // records a guessed one here: the application's error handler, which runs after this
+        // invoker, decides the real status (e.g. ProductNotFoundException -> 404).
+        $this->assertArrayNotHasKey('code', $context);
         self::assertRecordedDuration($context['durationMs'] ?? null);
         $this->assertSame(RuntimeException::class, $exceptionContext['class']);
         $this->assertSame('boom', $exceptionContext['message']);
+    }
+
+    public function testKeepsAnExceptionsOwnDeclaredHttpStatus(): void
+    {
+        $logger = new SemanticLogger();
+        $exception = new RuntimeException('not found', 404);
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static function () use ($exception): never {
+                throw $exception;
+            }),
+            $logger,
+            new NullBodyStore(),
+        );
+
+        try {
+            $invoker->invoke(self::request('app://self/user/1', Method::POST));
+            $this->fail('Exception was not thrown.');
+        } catch (RuntimeException $e) {
+            $this->assertSame($exception, $e);
+        }
+
+        $entry = self::flushToArray($logger)['log'][0];
+        $context = self::closeContext($entry);
+        // The exception's own code is itself a valid HTTP status, so unlike the 0-code case
+        // above it is known and kept — the invoker reports it, it does not guess it.
+        $this->assertSame(404, $context['code']);
     }
 
     public function testLeakedOpenContextDoesNotBreakRequest(): void
@@ -187,6 +219,103 @@ final class SemanticLogInvokerTest extends TestCase
         // Observation must never break the request, whether the logger rejects
         // the out-of-order close silently or by throwing.
         $this->assertSame($ro, $result);
+    }
+
+    public function testMalformedResourceObjectCodeStillClosesTheScope(): void
+    {
+        $logger = new SemanticLogger();
+        // A ResourceObject misbehaving beyond its own type hint (BEAR\Resource\ResourceObject::$code
+        // is untyped at @var int only): building the close context for it fails, but the open
+        // scope must still close, with the build failure recorded, rather than being left
+        // dangling open.
+        $ro = new FakeResourceObject('app://self/order', ['ok' => true], 999);
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $logger,
+            new NullBodyStore(),
+        );
+
+        $warnings = [];
+        set_error_handler(static function (int $errno, string $errstr) use (&$warnings): bool {
+            $warnings[] = [$errno, $errstr];
+
+            return true;
+        });
+        try {
+            $result = $invoker->invoke(self::request('app://self/order', Method::POST));
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame($ro, $result);
+        $entry = self::flushToArray($logger)['log'][0];
+        $context = self::closeContext($entry);
+        $this->assertArrayNotHasKey('code', $context);
+        $this->assertSame('InvalidArgumentException', $context['exception']['class']);
+        $this->assertCount(1, $warnings);
+        $this->assertSame(E_USER_WARNING, $warnings[0][0]);
+        $this->assertStringContainsString('999', $warnings[0][1]);
+    }
+
+    public function testThrowingOpenStillInvokesAndReturnsUnchanged(): void
+    {
+        $ro = new FakeResourceObject('app://self/order', ['ok' => true], 200);
+        $invoked = false;
+        $fakeLogger = new class implements SemanticLoggerInterface {
+            public bool $closeCalled = false;
+
+            public function open(AbstractContext $context): string
+            {
+                throw new RuntimeException('sink down');
+            }
+
+            public function event(AbstractContext $context): void
+            {
+            }
+
+            public function close(AbstractContext $context, string $openId): void
+            {
+                $this->closeCalled = true;
+            }
+
+            /** @param list<array{href: string, rel: string, title?: string, type?: string}> $links */
+            public function flush(array $links = []): LogJson
+            {
+                throw new RuntimeException('unused');
+            }
+        };
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static function () use ($ro, &$invoked): FakeResourceObject {
+                $invoked = true;
+
+                return $ro;
+            }),
+            $fakeLogger,
+            new NullBodyStore(),
+        );
+
+        $warnings = [];
+        set_error_handler(static function (int $errno, string $errstr) use (&$warnings): bool {
+            $warnings[] = [$errno, $errstr];
+
+            return true;
+        });
+        try {
+            $result = $invoker->invoke(self::request('app://self/order', Method::POST));
+        } finally {
+            restore_error_handler();
+        }
+
+        // The inner invoker still ran and its result is returned unchanged: a broken
+        // open() degrades observation, it does not skip the request or mask its result.
+        $this->assertTrue($invoked);
+        $this->assertSame($ro, $result);
+        // The other half of the invariant: no close() is attempted for an id open()
+        // never issued.
+        $this->assertFalse($fakeLogger->closeCalled);
+        $this->assertCount(1, $warnings);
+        $this->assertSame(E_USER_WARNING, $warnings[0][0]);
+        $this->assertStringContainsString('sink down', $warnings[0][1]);
     }
 
     public function testLeakedOpenContextPreservesDomainException(): void
@@ -239,7 +368,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $outer->invoke(self::request('app://self/outer', Method::POST));
 
-        $outerEntry = self::flushToArray($logger)['entries'][0];
+        $outerEntry = self::flushToArray($logger)['log'][0];
         $this->assertSame('app://self/outer', $outerEntry['context']['uri']);
         $this->assertSame('app://self/inner', self::firstChildContext($outerEntry)['uri']);
     }
@@ -260,7 +389,7 @@ final class SemanticLogInvokerTest extends TestCase
             ['loginId' => 'admin', 'password' => 'super-secret'],
         ));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame(['loginId' => 'admin', 'password' => '[FILTERED]'], $entry['context']['params']);
         $this->assertFalse($entry['context']['replayable']);
     }
@@ -277,7 +406,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/products', Method::POST, ['nameKeyword' => 'sample']));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame(['nameKeyword' => 'sample'], $entry['context']['params']);
         $this->assertTrue($entry['context']['replayable']);
     }
@@ -300,7 +429,7 @@ final class SemanticLogInvokerTest extends TestCase
             ['preOrderId' => 'aaaa', 'csrfToken' => 'a-token'],
         ));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame(['preOrderId' => 'aaaa', 'csrfToken' => '[FILTERED]'], $entry['context']['params']);
         $this->assertTrue($entry['context']['replayable']);
     }
@@ -328,7 +457,7 @@ final class SemanticLogInvokerTest extends TestCase
             ['loginId' => 'admin', 'password' => 'super-secret'],
         ));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame(['loginId' => 'admin', 'password' => 'super-secret'], $entry['context']['params']);
         $this->assertTrue($entry['context']['replayable']);
     }
@@ -370,7 +499,7 @@ final class SemanticLogInvokerTest extends TestCase
         }
 
         $this->assertSame($ro, $result);
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame([], $entry['context']['params'], 'nothing the filter failed on may be recorded');
         $this->assertFalse($entry['context']['replayable']);
         $this->assertCount(1, $warnings);
@@ -401,7 +530,7 @@ final class SemanticLogInvokerTest extends TestCase
         $result = $invoker->invoke(self::request('app://self/user/1', Method::POST, ['suit' => FakeSuit::Hearts]));
 
         $this->assertSame($ro, $result);
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame('app://self/user/1', $entry['context']['uri']);
         // The enum has no JSON form either, so the filter withheld it; the point is the request.
         $this->assertSame(['suit' => '[FILTERED]'], $entry['context']['params']);
@@ -471,7 +600,7 @@ final class SemanticLogInvokerTest extends TestCase
      */
     private static function firstChildContext(array $entry): array
     {
-        $children = $entry['children'] ?? null;
+        $children = $entry['log'] ?? null;
         self::assertIsArray($children);
         $child = $children[0] ?? null;
         self::assertIsArray($child);
