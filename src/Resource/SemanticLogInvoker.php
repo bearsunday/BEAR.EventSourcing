@@ -42,7 +42,7 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         }
 
         $filtered = $this->filterParams($request->query);
-        $openId = $this->logger->open(new ResourceRequestContext(
+        $openId = $this->safeOpen(fn (): ResourceRequestContext => new ResourceRequestContext(
             uri: self::canonicalUri($request),
             method: $method,
             params: $filtered->params,
@@ -54,24 +54,53 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         try {
             $ro = $this->invoker->invoke($request);
         } catch (Throwable $e) {
-            $this->safeClose(
-                static fn (): ResourceResponseContext => ResourceResponseContext::failure(
-                    $e,
-                    code: self::httpCode($e),
-                    durationMs: self::elapsedMs($start),
-                ),
-                $openId,
-            );
+            if ($openId !== null) {
+                $this->safeClose(
+                    static fn (): ResourceResponseContext => ResourceResponseContext::failure(
+                        $e,
+                        code: self::httpCode($e),
+                        durationMs: self::elapsedMs($start),
+                    ),
+                    $openId,
+                );
+            }
 
             throw $e;
         }
 
-        $this->safeClose(
-            fn (): ResourceResponseContext => $this->responseContext($request, $ro, self::elapsedMs($start)),
-            $openId,
-        );
+        if ($openId !== null) {
+            $this->safeClose(
+                fn (): ResourceResponseContext => $this->responseContext($request, $ro, self::elapsedMs($start)),
+                $openId,
+            );
+        }
 
         return $ro;
+    }
+
+    /**
+     * Open the observation scope without letting a logging failure escape.
+     *
+     * Mirrors safeClose(): the logger is an interface, and open() throwing here must
+     * not break a request it is only meant to watch — the inner invoker still has to
+     * run either way. $contextFactory is called inside the guard for the same reason
+     * it is in safeClose(): building the request context could in principle fail too.
+     * On failure this returns null instead of an openId, so invoke() skips the
+     * matching safeClose() at the end of the request rather than closing an id the
+     * logger never issued — the logger stays consistent because every close() it
+     * receives still pairs with an open() it actually returned an id for.
+     *
+     * @param callable(): ResourceRequestContext $contextFactory
+     */
+    private function safeOpen(callable $contextFactory): string|null
+    {
+        try {
+            return $this->logger->open($contextFactory());
+        } catch (Throwable $e) {
+            self::warn(sprintf('Semantic log open failed: %s', $e->getMessage()));
+
+            return null;
+        }
     }
 
     /**

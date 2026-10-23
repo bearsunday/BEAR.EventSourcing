@@ -14,7 +14,10 @@ use BEAR\EventSourcing\Resource\BodyStoreException;
 use BEAR\Resource\Method;
 use BEAR\Resource\Request;
 use DomainException;
+use Koriym\SemanticLogger\AbstractContext;
+use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\SemanticLogger;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -252,6 +255,61 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertCount(1, $warnings);
         $this->assertSame(E_USER_WARNING, $warnings[0][0]);
         $this->assertStringContainsString('999', $warnings[0][1]);
+    }
+
+    public function testThrowingOpenStillInvokesAndReturnsUnchanged(): void
+    {
+        $ro = new FakeResourceObject('app://self/order', ['ok' => true], 200);
+        $invoked = false;
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static function () use ($ro, &$invoked): FakeResourceObject {
+                $invoked = true;
+
+                return $ro;
+            }),
+            new class implements SemanticLoggerInterface {
+                public function open(AbstractContext $context): string
+                {
+                    throw new RuntimeException('sink down');
+                }
+
+                public function event(AbstractContext $context): void
+                {
+                }
+
+                public function close(AbstractContext $context, string $openId): void
+                {
+                    throw new RuntimeException('unreachable: open never returned an id to close');
+                }
+
+                /** @param list<array{href: string, rel: string, title?: string, type?: string}> $links */
+                public function flush(array $links = []): LogJson
+                {
+                    throw new RuntimeException('unused');
+                }
+            },
+            new NullBodyStore(),
+        );
+
+        $warnings = [];
+        set_error_handler(static function (int $errno, string $errstr) use (&$warnings): bool {
+            $warnings[] = [$errno, $errstr];
+
+            return true;
+        });
+        try {
+            $result = $invoker->invoke(self::request('app://self/order', Method::POST));
+        } finally {
+            restore_error_handler();
+        }
+
+        // The inner invoker still ran and its result is returned unchanged: a broken
+        // open() degrades observation, it does not skip the request or mask its result.
+        $this->assertTrue($invoked);
+        $this->assertSame($ro, $result);
+        $this->assertCount(1, $warnings);
+        $this->assertSame(E_USER_WARNING, $warnings[0][0]);
+        $this->assertStringContainsString('sink down', $warnings[0][1]);
     }
 
     public function testLeakedOpenContextPreservesDomainException(): void
