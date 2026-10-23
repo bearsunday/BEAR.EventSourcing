@@ -15,7 +15,7 @@
 
 ### Fixed
 
-- `SemanticLogExtractor` now reads semantic-logger's `log` key and treats a record carrying `close` or `log` as an interval, replacing the removed `entries`/`kind` read. Across both shape changes `extract()` had silently returned zero events, with no exception or warning, once a consumer picked up the semantic-logger version past the change.
+- `SemanticLogExtractor` reads semantic-logger's `log` document (was `entries`/`kind`); with the old reader, `extract()` returned no events.
 - `skills/bear-observe/harness/tree.php`: a `false` context value (e.g. `replayable`) rendered as an empty string, indistinguishable from a missing field, because `(string) false === ''`; booleans now render as the literal `true`/`false`. The hardcoded 60-character truncation was silent and had no way to confirm a value ended there rather than being cut — sensitive JSON below a `[FILTERED]` boundary could go unnoticed as a result — so a truncated value now reads `...(+N)` with the count of characters dropped, and a new `--full` flag disables truncation entirely. A fully-qualified class name value (e.g. `MyVendor\BeMart\Be\Input\AdminLoginInput`) now renders as its short class name instead of repeating the same namespace on every line
 - Redaction documentation corrected against the code it describes: the per-key guarantee is bounded by `SensitiveParamsFilter::MAX_DEPTH` (past it the subtree is replaced whole, keys included), a filter failure leaves the entry in the log with an empty `params` rather than nothing at all, and the empty `params` serializes as `[]`, not `{}`. `EventTest` no longer claims a different filter keeps the event id — a filter that changes `params` changes the id, since params are hashed
 - `MediaQueryEventStoreTest`: the stale-`event_store_append.sql` half of the 0.1.0 sqlDir migration is now pinned by a test. Only the `event_store_list.sql` half was covered, and that one is the loud failure; the append half silently stores a non-replayable event as replayable via the column's `DEFAULT 1`, which is the half worth a regression test
@@ -23,7 +23,7 @@
 ### Changed
 
 - `composer.json`: `bear/resource` below 1.31.0 now conflicts, since `SemanticLogInvoker` reads `AbstractRequest::$method` as the `Method` enum introduced in that release
-- `composer.json`: `koriym/semantic-logger` now requires `dev-log-format` and `bear/query-repository` (require-dev) requires `dev-semantic-logger-log-format` via a temporary `repositories` VCS entry, tracking the library's `log` shape migration (bearsunday/BEAR.QueryRepository#225) pending tagged releases of both; see the PR body for the exact revert. `examples/semantic-log.json`/`examples/semantic-tree.txt` regenerated and `tests/` migrated to `OpenEntry`/`CloseEntry` records and the `log`/`close` shape.
+- `koriym/semantic-logger` and `bear/query-repository` (require-dev) temporarily track their unreleased log-format branches; examples and tests use the `log`/`close` shape.
 
 ### Note
 
