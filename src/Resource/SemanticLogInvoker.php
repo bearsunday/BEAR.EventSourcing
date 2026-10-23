@@ -55,9 +55,9 @@ final readonly class SemanticLogInvoker implements InvokerInterface
             $ro = $this->invoker->invoke($request);
         } catch (Throwable $e) {
             $this->safeClose(
-                new ResourceResponseContext(
+                static fn (): ResourceResponseContext => ResourceResponseContext::failure(
+                    $e,
                     code: self::httpCode($e),
-                    exception: self::exceptionContext($e),
                     durationMs: self::elapsedMs($start),
                 ),
                 $openId,
@@ -66,7 +66,10 @@ final readonly class SemanticLogInvoker implements InvokerInterface
             throw $e;
         }
 
-        $this->safeClose($this->responseContext($request, $ro, self::elapsedMs($start)), $openId);
+        $this->safeClose(
+            fn (): ResourceResponseContext => $this->responseContext($request, $ro, self::elapsedMs($start)),
+            $openId,
+        );
 
         return $ro;
     }
@@ -74,16 +77,22 @@ final readonly class SemanticLogInvoker implements InvokerInterface
     /**
      * Close the open observation without letting a logging failure escape.
      *
-     * The bundled SemanticLogger records an out-of-order close as a diagnostic,
-     * but the binding is an interface: an implementation that throws would, on
-     * the success path, destroy a completed response and, on the error path,
-     * mask the real domain exception. Observation must never break the request,
-     * so a close failure is downgraded to a warning.
+     * $contextFactory is called inside the guard, not before it: building a
+     * ResourceResponseContext can itself throw (a malformed $ro->code from an
+     * ill-behaved ResourceObject, for one), and that failure must degrade
+     * observation the same way a close failure does, not escape into the
+     * request. The bundled SemanticLogger records an out-of-order close as a
+     * diagnostic, but the binding is an interface: an implementation that
+     * throws would, on the success path, destroy a completed response and, on
+     * the error path, mask the real domain exception. Observation must never
+     * break the request, so either failure is downgraded to a warning.
+     *
+     * @param callable(): ResourceResponseContext $contextFactory
      */
-    private function safeClose(ResourceResponseContext $context, string $openId): void
+    private function safeClose(callable $contextFactory, string $openId): void
     {
         try {
-            $this->logger->close($context, $openId);
+            $this->logger->close($contextFactory(), $openId);
         } catch (Throwable $e) {
             self::warn(sprintf('Semantic log close failed: %s', $e->getMessage()));
         }
@@ -131,14 +140,10 @@ final readonly class SemanticLogInvoker implements InvokerInterface
             $bodyRef = ($this->bodyStore)($request, $ro);
         } catch (Throwable $e) {
             // Observation must not break a completed request: keep the real code and record the failure.
-            return new ResourceResponseContext(
-                code: $ro->code,
-                exception: self::exceptionContext($e),
-                durationMs: $durationMs,
-            );
+            return ResourceResponseContext::failure($e, code: $ro->code, durationMs: $durationMs);
         }
 
-        return new ResourceResponseContext($ro->code, $bodyRef, durationMs: $durationMs);
+        return ResourceResponseContext::success($ro->code, $bodyRef, durationMs: $durationMs);
     }
 
     private static function elapsedMs(int|float $start): float
@@ -172,14 +177,5 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         // before the application's error handler maps the exception to a real HTTP status, so a
         // fallback here would assert a code the client was never actually sent.
         return is_int($code) && $code >= 400 && $code < 600 ? $code : null;
-    }
-
-    /** @return array{class: class-string, message: string} */
-    private static function exceptionContext(Throwable $e): array
-    {
-        return [
-            'class' => $e::class,
-            'message' => $e->getMessage(),
-        ];
     }
 }
