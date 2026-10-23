@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "51ce983af799086a28b224b9258f477c",
+    "content-hash": "051e7b8be9b36be601ac86857ad62118",
     "packages": [
         {
             "name": "justinrainbow/json-schema",
@@ -127,16 +127,16 @@
         },
         {
             "name": "koriym/semantic-logger",
-            "version": "dev-log-format",
+            "version": "0.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/koriym/Koriym.SemanticLogger.git",
-                "reference": "a1757002ad69f49422f63648a6b8e0599960de6c"
+                "reference": "54fa16b28c45461fc380e41d92f6bbd12afad345"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/koriym/Koriym.SemanticLogger/zipball/a1757002ad69f49422f63648a6b8e0599960de6c",
-                "reference": "a1757002ad69f49422f63648a6b8e0599960de6c",
+                "url": "https://api.github.com/repos/koriym/Koriym.SemanticLogger/zipball/54fa16b28c45461fc380e41d92f6bbd12afad345",
+                "reference": "54fa16b28c45461fc380e41d92f6bbd12afad345",
                 "shasum": ""
             },
             "require": {
@@ -177,9 +177,9 @@
             "description": "Type-safe structured logging with schema validation and meaningful context",
             "support": {
                 "issues": "https://github.com/koriym/Koriym.SemanticLogger/issues",
-                "source": "https://github.com/koriym/Koriym.SemanticLogger/tree/log-format"
+                "source": "https://github.com/koriym/Koriym.SemanticLogger/tree/0.11.0"
             },
-            "time": "2026-10-21T23:53:28+00:00"
+            "time": "2026-10-23T01:01:57+00:00"
         },
         {
             "name": "marc-mabe/php-enum",
@@ -1415,22 +1415,22 @@
         },
         {
             "name": "bear/query-repository",
-            "version": "dev-semantic-logger-log-format",
+            "version": "1.x-dev",
             "source": {
                 "type": "git",
-                "url": "https://github.com/koriym/BEAR.QueryRepository.git",
-                "reference": "4c8b0188d21b9fbb441104908d112f75c29bff05"
+                "url": "https://github.com/bearsunday/BEAR.QueryRepository.git",
+                "reference": "3d9c655b328c460178d429e91f9ace99296d61b4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/koriym/BEAR.QueryRepository/zipball/4c8b0188d21b9fbb441104908d112f75c29bff05",
-                "reference": "4c8b0188d21b9fbb441104908d112f75c29bff05",
+                "url": "https://api.github.com/repos/bearsunday/BEAR.QueryRepository/zipball/3d9c655b328c460178d429e91f9ace99296d61b4",
+                "reference": "3d9c655b328c460178d429e91f9ace99296d61b4",
                 "shasum": ""
             },
             "require": {
                 "bear/resource": "^1.16.1",
                 "bear/sunday": "^1.5",
-                "koriym/semantic-logger": "dev-log-format",
+                "koriym/semantic-logger": "^0.11",
                 "php": "^8.2",
                 "psr/cache": "^1.0 || ^2.0 || ^3.0",
                 "psr/log": "^1.1 || ^2.0 || ^3.0",
@@ -1455,6 +1455,7 @@
                 "ext-memcached": "Required for Memcached cache storage backend",
                 "ext-redis": "Required for Redis cache storage backend"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "bamarni-bin": {
@@ -1474,69 +1475,7 @@
                     ]
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "BEAR\\QueryRepository\\": [
-                        "tests/",
-                        "tests-deprecated/",
-                        "tests-pecl-ext/",
-                        "tests/Fake/",
-                        "tests-php8/Fake"
-                    ],
-                    "FakeVendor\\HelloWorld\\": [
-                        "tests/Fake/fake-app/src"
-                    ]
-                },
-                "files": [
-                    "tests/Fake/Memcached.php",
-                    "tests/Fake/Redis.php",
-                    "tests/Fake/RedisException.php",
-                    "tests/syslog.php"
-                ]
-            },
-            "scripts": {
-                "test": [
-                    "./vendor/bin/phpunit"
-                ],
-                "tests": [
-                    "@cs",
-                    "@sa",
-                    "@test"
-                ],
-                "coverage": [
-                    "php -dzend_extension=xdebug.so -dxdebug.mode=coverage ./vendor/bin/phpunit --coverage-text --coverage-html=build/coverage"
-                ],
-                "pcov": [
-                    "php -dextension=pcov.so -d pcov.enabled=1 ./vendor/bin/phpunit --coverage-text --coverage-html=build/coverage  --coverage-clover=coverage.xml"
-                ],
-                "cs": [
-                    "./vendor/bin/phpcs"
-                ],
-                "cs-fix": [
-                    "./vendor/bin/phpcbf src src-annotation tests"
-                ],
-                "clean": [
-                    "./vendor/bin/phpstan clear-result-cache",
-                    "./vendor/bin/psalm --clear-cache",
-                    "rm -rf tests/tmp/*.php"
-                ],
-                "sa": [
-                    "./vendor/bin/psalm --show-info=true",
-                    "./vendor/bin/phpstan analyse -c phpstan.neon"
-                ],
-                "metrics": [
-                    "./vendor/bin/phpmetrics --report-html=build/metrics --exclude=Exception --junit=build/junit.xml src"
-                ],
-                "phpmd": [
-                    "./vendor/bin/phpmd --exclude src/Annotation src text ./phpmd.xml"
-                ],
-                "build": [
-                    "@cs",
-                    "@sa",
-                    "@pcov",
-                    "@metrics"
-                ]
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
@@ -1546,17 +1485,18 @@
                     "email": "akihito.koriyama@gmail.com"
                 }
             ],
-            "description": "About\nResource Query Responsibility Segregation (RQRS) is a caching framework for BEAR.Sunday that optimizes performance by separating query and command responsibilities. It features event-driven cache invalidation, dependency resolution, donut caching, CDN integration, and conditional requests.",
+            "description": "AboutResource Query Responsibility Segregation (RQRS) is a caching framework for BEAR.Sunday that optimizes performance by separating query and command responsibilities. It features event-driven cache invalidation, dependency resolution, donut caching, CDN integration, and conditional requests.",
             "keywords": [
-                "ETag",
+                "Etag",
                 "caching",
                 "donut caching",
                 "event-driven-content"
             ],
             "support": {
-                "source": "https://github.com/koriym/BEAR.QueryRepository/tree/semantic-logger-log-format"
+                "issues": "https://github.com/bearsunday/BEAR.QueryRepository/issues",
+                "source": "https://github.com/bearsunday/BEAR.QueryRepository/tree/1.x"
             },
-            "time": "2026-10-22T00:01:19+00:00"
+            "time": "2026-10-23T16:42:05+00:00"
         },
         {
             "name": "bear/resource",
@@ -7272,8 +7212,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "bear/query-repository": 20,
-        "koriym/semantic-logger": 20
+        "bear/query-repository": 20
     },
     "prefer-stable": false,
     "prefer-lowest": false,

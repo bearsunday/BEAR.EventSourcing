@@ -23,7 +23,7 @@
 ### Changed
 
 - `composer.json`: `bear/resource` below 1.31.0 now conflicts, since `SemanticLogInvoker` reads `AbstractRequest::$method` as the `Method` enum introduced in that release
-- `koriym/semantic-logger` and `bear/query-repository` (require-dev) temporarily track their unreleased log-format branches; examples and tests use the `log`/`close` shape.
+- `koriym/semantic-logger` requires `^0.11`; examples and tests use the `log`/`close` shape.
 
 ### Note
 
