@@ -77,22 +77,33 @@ final readonly class SemanticLogInvoker implements InvokerInterface
     /**
      * Close the open observation without letting a logging failure escape.
      *
-     * $contextFactory is called inside the guard, not before it: building a
-     * ResourceResponseContext can itself throw (a malformed $ro->code from an
-     * ill-behaved ResourceObject, for one), and that failure must degrade
-     * observation the same way a close failure does, not escape into the
-     * request. The bundled SemanticLogger records an out-of-order close as a
+     * $contextFactory is called here, not before safeClose: building a
+     * ResourceResponseContext can itself throw (an out-of-range or malformed
+     * $ro->code from an ill-behaved ResourceObject, for one), and that
+     * failure must still close the open scope — losing the close entirely
+     * would leave the observation dangling open instead of just losing its
+     * detail — so a context-build failure degrades to a bare
+     * ResourceResponseContext::failure() recording the build failure itself.
+     * The bundled SemanticLogger records an out-of-order close as a
      * diagnostic, but the binding is an interface: an implementation that
-     * throws would, on the success path, destroy a completed response and, on
-     * the error path, mask the real domain exception. Observation must never
-     * break the request, so either failure is downgraded to a warning.
+     * throws would, on the success path, destroy a completed response and,
+     * on the error path, mask the real domain exception. Observation must
+     * never break the request, so a close failure is downgraded to a
+     * warning.
      *
      * @param callable(): ResourceResponseContext $contextFactory
      */
     private function safeClose(callable $contextFactory, string $openId): void
     {
         try {
-            $this->logger->close($contextFactory(), $openId);
+            $context = $contextFactory();
+        } catch (Throwable $e) {
+            self::warn(sprintf('Semantic log context build failed: %s', $e::class));
+            $context = ResourceResponseContext::failure($e);
+        }
+
+        try {
+            $this->logger->close($context, $openId);
         } catch (Throwable $e) {
             self::warn(sprintf('Semantic log close failed: %s', $e->getMessage()));
         }
