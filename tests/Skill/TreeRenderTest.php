@@ -64,9 +64,8 @@ final class TreeRenderTest extends TestCase
     {
         $logFile = $this->writeLog([
             '$schema' => 'https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json',
-            'entries' => [
+            'log' => [
                 [
-                    'kind' => 'open',
                     'id' => 'rr1',
                     'type' => 'resource_request',
                     'context' => ['uri' => 'app://self/products'],
@@ -89,9 +88,8 @@ final class TreeRenderTest extends TestCase
     {
         $written = (string) json_encode([
             '$schema' => 'https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json',
-            'entries' => [
+            'log' => [
                 [
-                    'kind' => 'open',
                     'id' => 'rr1',
                     'type' => 'resource_request',
                     'context' => ['uri' => 'app://self/products'],
@@ -123,8 +121,8 @@ final class TreeRenderTest extends TestCase
     {
         $logFile = $this->writeLog([
             '$schema' => 'https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json',
-            'entries' => [
-                ['kind' => 'open', 'id' => 's1', 'type' => 'some_type', 'context' => ['a' => 'b']],
+            'log' => [
+                ['id' => 's1', 'type' => 'some_type', 'context' => ['a' => 'b']],
             ],
         ]);
 
@@ -133,7 +131,7 @@ final class TreeRenderTest extends TestCase
         [$status, $output] = $this->runTree(dirname(__DIR__, 2), $logFile, '--json');
 
         $this->assertSame(0, $status, $output);
-        $this->assertStringContainsString('"entries"', $output);
+        $this->assertStringContainsString('"log"', $output);
     }
 
     public function testAutoDiscoversTheNewestLatestJsonWhenNoPathIsGiven(): void
@@ -153,14 +151,14 @@ final class TreeRenderTest extends TestCase
         $older = $contextDir . '/older.json';
         file_put_contents($older, (string) json_encode([
             '$schema' => 'https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json',
-            'entries' => [['kind' => 'open', 'id' => 'o1', 'type' => 'older_marker', 'context' => []]],
+            'log' => [['id' => 'o1', 'type' => 'older_marker', 'context' => []]],
         ]));
         touch($older, time() - 60);
 
         $newer = $contextDir . '/newer.json';
         file_put_contents($newer, (string) json_encode([
             '$schema' => 'https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json',
-            'entries' => [['kind' => 'open', 'id' => 'n1', 'type' => 'newer_marker', 'context' => []]],
+            'log' => [['id' => 'n1', 'type' => 'newer_marker', 'context' => []]],
         ]));
         touch($newer, time());
 

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0fe61e67357a5022362937fa60e4579f",
+    "content-hash": "051e7b8be9b36be601ac86857ad62118",
     "packages": [
         {
             "name": "justinrainbow/json-schema",
@@ -127,16 +127,16 @@
         },
         {
             "name": "koriym/semantic-logger",
-            "version": "0.10.0",
+            "version": "0.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/koriym/Koriym.SemanticLogger.git",
-                "reference": "b833164b7cffc8f91e5a1071b6b0f007e949d289"
+                "reference": "54fa16b28c45461fc380e41d92f6bbd12afad345"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/koriym/Koriym.SemanticLogger/zipball/b833164b7cffc8f91e5a1071b6b0f007e949d289",
-                "reference": "b833164b7cffc8f91e5a1071b6b0f007e949d289",
+                "url": "https://api.github.com/repos/koriym/Koriym.SemanticLogger/zipball/54fa16b28c45461fc380e41d92f6bbd12afad345",
+                "reference": "54fa16b28c45461fc380e41d92f6bbd12afad345",
                 "shasum": ""
             },
             "require": {
@@ -177,9 +177,9 @@
             "description": "Type-safe structured logging with schema validation and meaningful context",
             "support": {
                 "issues": "https://github.com/koriym/Koriym.SemanticLogger/issues",
-                "source": "https://github.com/koriym/Koriym.SemanticLogger/tree/0.10.0"
+                "source": "https://github.com/koriym/Koriym.SemanticLogger/tree/0.11.0"
             },
-            "time": "2026-10-20T14:33:28+00:00"
+            "time": "2026-10-23T01:01:57+00:00"
         },
         {
             "name": "marc-mabe/php-enum",
@@ -1419,18 +1419,18 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/bearsunday/BEAR.QueryRepository.git",
-                "reference": "7e2340f73b7175ac3fde0b13d3164a85afb0f0e8"
+                "reference": "3d9c655b328c460178d429e91f9ace99296d61b4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/bearsunday/BEAR.QueryRepository/zipball/7e2340f73b7175ac3fde0b13d3164a85afb0f0e8",
-                "reference": "7e2340f73b7175ac3fde0b13d3164a85afb0f0e8",
+                "url": "https://api.github.com/repos/bearsunday/BEAR.QueryRepository/zipball/3d9c655b328c460178d429e91f9ace99296d61b4",
+                "reference": "3d9c655b328c460178d429e91f9ace99296d61b4",
                 "shasum": ""
             },
             "require": {
                 "bear/resource": "^1.16.1",
                 "bear/sunday": "^1.5",
-                "koriym/semantic-logger": "^0.10",
+                "koriym/semantic-logger": "^0.11",
                 "php": "^8.2",
                 "psr/cache": "^1.0 || ^2.0 || ^3.0",
                 "psr/log": "^1.1 || ^2.0 || ^3.0",
@@ -1496,7 +1496,7 @@
                 "issues": "https://github.com/bearsunday/BEAR.QueryRepository/issues",
                 "source": "https://github.com/bearsunday/BEAR.QueryRepository/tree/1.x"
             },
-            "time": "2026-10-20T14:42:45+00:00"
+            "time": "2026-10-23T16:42:05+00:00"
         },
         {
             "name": "bear/resource",
