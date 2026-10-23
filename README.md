@@ -311,7 +311,7 @@ file_put_contents($logFile, json_encode($log));
 $events = $extractor->extract($log);              // the facts
 ```
 
-Note that the bundled `ResourceResponseContext` records `code`, `body_ref`, and `durationMs` — it never inlines the body. Events extracted from a bridge log therefore always carry a `null` `result`; the payload lives behind the `body_ref` pointer (see below). Record your own close context with a `body` field when the event itself must carry the result.
+Note that the bundled `ResourceResponseContext` records `code`, `body_ref`, `exception`, and `durationMs` — it never inlines the body. Events extracted from a bridge log therefore always carry a `null` `result`; the payload lives behind the `body_ref` pointer (see below). Record your own close context with a `body` field when the event itself must carry the result.
 
 When a resource invocation throws, `SemanticLogInvoker` still closes the observation — with `exception: {class, message}` and, unless the exception's own `getCode()` is a valid HTTP status (`400`-`599`), no `code` at all. The invoker runs ahead of the application's error handler, so it does not know the status the client will actually receive (a `ProductNotFoundException` an application maps to `404` still has `getCode() === 0` here); recording a guessed `500` would log a status nobody sent. `SemanticLogExtractor` reads a missing `code` paired with a present `exception` as a confirmed failure — exactly as it would read `code: 500` — so this close is excluded from the event stream either way; the difference is that the log no longer asserts a specific wrong status.
 
