@@ -11,6 +11,7 @@ use BEAR\EventSourcing\Resource\ResourceResponseContext as BodyResponseContext;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\SemanticLogExtractorInterface;
 use DateTimeImmutable;
+use DomainException;
 use Koriym\SemanticLogger\CloseEntry;
 use Koriym\SemanticLogger\LogJson;
 use Koriym\SemanticLogger\OpenEntry;
@@ -109,7 +110,7 @@ final class EventsFromSemanticLogTest extends TestCase
     public static function responseCodeProvider(): array
     {
         return [
-            'explicit null keeps the event' => [null, 1],
+            'explicit null, no exception, keeps the event (no failure signal)' => [null, 1],
             'int success' => [201, 1],
             'int boundary 399' => [399, 1],
             'int boundary 400' => [400, 0],
@@ -143,7 +144,7 @@ final class EventsFromSemanticLogTest extends TestCase
     {
         $logger = new SemanticLogger();
         $openId = $logger->open(new ResourceRequestContext('app://self/users/1', 'POST'));
-        $logger->close(new BodyResponseContext(200, 'file://var/es/bodies/000001.json'), $openId);
+        $logger->close(BodyResponseContext::success(200, 'file://var/es/bodies/000001.json'), $openId);
 
         $events = (new SemanticLogExtractor())->extract($logger->flush());
 
@@ -151,6 +152,26 @@ final class EventsFromSemanticLogTest extends TestCase
         $event = iterator_to_array($events)[0];
         $this->assertSame('app://self/users/1', $event->uri);
         $this->assertNull($event->result);
+    }
+
+    public function testEscapedExceptionWithNoKnownCodeIsNotExtracted(): void
+    {
+        // SemanticLogInvoker omits `code` entirely when a resource invocation throws and the
+        // exception's own getCode() is not itself a valid HTTP status — the application's error
+        // handler decides the real status later, after the observation bridge already closed
+        // the entry. A missing code alone is still "no failure signal" (see
+        // responseCodeProvider's null case), but a missing code together with a present
+        // exception is read as a confirmed failure, so this close must not be extracted.
+        $logger = new SemanticLogger();
+        $openId = $logger->open(new ResourceRequestContext('app://self/checkout', 'POST'));
+        $logger->close(
+            BodyResponseContext::failure(new DomainException('boom')),
+            $openId,
+        );
+
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
+
+        $this->assertCount(0, $events);
     }
 
     public function testRejectsUnsupportedRecordedMethod(): void

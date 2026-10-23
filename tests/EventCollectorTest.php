@@ -70,7 +70,7 @@ final class EventCollectorTest extends TestCase
             params: ['id' => 'koriym'],
             timestamp: '2026-06-10T12:34:56.123456+00:00',
         ));
-        $logger->close(new ResourceResponseContext(201), $openId);
+        $logger->close(ResourceResponseContext::success(201), $openId);
 
         return $logger;
     }
