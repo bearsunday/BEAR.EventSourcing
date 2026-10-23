@@ -49,7 +49,7 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
 
         $adapter->start();
         $adapter->log('inventory_reserve', ['sku' => 'SKU-1']);
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
         $entry = self::flushToArray($logger->flush())['log'][0];
         $event = $entry['log'][0];
@@ -72,7 +72,7 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
 
         $adapter->start();
         $adapter->log('blob_save', ['payload' => "\xB1\x31", 'meta' => ['raw' => "\xB1\x31"]]);
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
         $entry = self::flushToArray($logger->flush())['log'][0];
         $this->assertSame(base64_encode("\xB1\x31"), $entry['log'][0]['context']['params']['payload']);
@@ -89,7 +89,7 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
         );
 
         $adapter->log('unstarted', []);
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
         $entry = self::flushToArray($logger->flush())['log'][0];
         // 0.0 loses its float-ness in the JSON roundtrip; the value is what matters.
@@ -148,7 +148,7 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
 
         $adapter->start();
         $adapter->log('admin_two_factor_enable', ['adminId' => 7, 'secret' => 'JBSWY3DPEHPK3PXP', 'token' => 'r']);
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
         $entry = self::flushToArray($logger->flush())['log'][0];
         $this->assertSame(
@@ -191,7 +191,7 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
 
         $adapter->start();
         $adapter->log('otp_verify', ['otp' => '123456', 'password' => 'kept-by-this-filter']);
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
         $entry = self::flushToArray($logger->flush())['log'][0];
         $this->assertSame(['password' => 'kept-by-this-filter'], $entry['log'][0]['context']['params']);
@@ -225,7 +225,7 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
             restore_error_handler();
         }
 
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
         $entry = self::flushToArray($logger->flush())['log'][0];
         $this->assertSame('orders_add', $entry['log'][0]['context']['name']);

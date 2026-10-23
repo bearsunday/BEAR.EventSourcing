@@ -144,7 +144,7 @@ final class EventsFromSemanticLogTest extends TestCase
     {
         $logger = new SemanticLogger();
         $openId = $logger->open(new ResourceRequestContext('app://self/users/1', 'POST'));
-        $logger->close(new BodyResponseContext(200, 'file://var/es/bodies/000001.json'), $openId);
+        $logger->close(BodyResponseContext::success(200, 'file://var/es/bodies/000001.json'), $openId);
 
         $events = (new SemanticLogExtractor())->extract($logger->flush());
 
@@ -165,7 +165,7 @@ final class EventsFromSemanticLogTest extends TestCase
         $logger = new SemanticLogger();
         $openId = $logger->open(new ResourceRequestContext('app://self/checkout', 'POST'));
         $logger->close(
-            new BodyResponseContext(code: null, exception: ['class' => DomainException::class, 'message' => 'boom']),
+            BodyResponseContext::failure(new DomainException('boom')),
             $openId,
         );
 
