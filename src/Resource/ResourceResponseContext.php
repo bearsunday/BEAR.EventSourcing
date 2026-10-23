@@ -18,6 +18,8 @@ final class ResourceResponseContext extends AbstractContext implements JsonSeria
     /**
      * @param non-empty-string|null                          $bodyRef
      * @param array{class: class-string, message: string}|null $exception
+     *
+     * @throws ResourceResponseContextException if both $code and $exception are null.
      */
     public function __construct(
         public readonly int|null $code,
