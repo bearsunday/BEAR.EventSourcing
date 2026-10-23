@@ -98,7 +98,7 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         try {
             $context = $contextFactory();
         } catch (Throwable $e) {
-            self::warn(sprintf('Semantic log context build failed: %s', $e::class));
+            self::warn(sprintf('Semantic log context build failed: %s', $e->getMessage()));
             $context = ResourceResponseContext::failure($e);
         }
 

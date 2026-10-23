@@ -251,7 +251,7 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertSame('InvalidArgumentException', $context['exception']['class']);
         $this->assertCount(1, $warnings);
         $this->assertSame(E_USER_WARNING, $warnings[0][0]);
-        $this->assertStringContainsString('InvalidArgumentException', $warnings[0][1]);
+        $this->assertStringContainsString('999', $warnings[0][1]);
     }
 
     public function testLeakedOpenContextPreservesDomainException(): void
