@@ -16,7 +16,6 @@
 ### Fixed
 
 - A thrown exception's close no longer guesses `code: 500`: `code` is recorded only when the exception's own code is 400–599, and `SemanticLogExtractor` treats a missing `code` with an `exception` as a failure.
-- **BREAKING — `ResourceResponseContext`'s constructor is private.** Replace `new ResourceResponseContext($code, ...)` with `ResourceResponseContext::success($code, ...)`, or `ResourceResponseContext::failure($e, $code, ...)` for an escaped exception.
 - `SemanticLogExtractor` reads semantic-logger's `log` document (was `entries`/`kind`); with the old reader, `extract()` returned no events.
 - `skills/bear-observe/harness/tree.php`: a `false` context value (e.g. `replayable`) rendered as an empty string, indistinguishable from a missing field, because `(string) false === ''`; booleans now render as the literal `true`/`false`. The hardcoded 60-character truncation was silent and had no way to confirm a value ended there rather than being cut — sensitive JSON below a `[FILTERED]` boundary could go unnoticed as a result — so a truncated value now reads `...(+N)` with the count of characters dropped, and a new `--full` flag disables truncation entirely. A fully-qualified class name value (e.g. `MyVendor\BeMart\Be\Input\AdminLoginInput`) now renders as its short class name instead of repeating the same namespace on every line
 - Redaction documentation corrected against the code it describes: the per-key guarantee is bounded by `SensitiveParamsFilter::MAX_DEPTH` (past it the subtree is replaced whole, keys included), a filter failure leaves the entry in the log with an empty `params` rather than nothing at all, and the empty `params` serializes as `[]`, not `{}`. `EventTest` no longer claims a different filter keeps the event id — a filter that changes `params` changes the id, since params are hashed
@@ -25,6 +24,7 @@
 ### Changed
 
 - `composer.json`: `bear/resource` below 1.31.0 now conflicts, since `SemanticLogInvoker` reads `AbstractRequest::$method` as the `Method` enum introduced in that release
+- **BREAKING — `ResourceResponseContext`'s constructor is private and rejects a `code` outside 100-599.** Replace `new ResourceResponseContext($code, ...)` with `ResourceResponseContext::success($code, ...)`, or `ResourceResponseContext::failure($e, $code, ...)` for an escaped exception.
 - `koriym/semantic-logger` and `bear/query-repository` (require-dev) temporarily track their unreleased log-format branches; examples and tests use the `log`/`close` shape.
 
 ### Note
