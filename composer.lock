@@ -131,12 +131,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/koriym/Koriym.SemanticLogger.git",
-                "reference": "a1757002ad69f49422f63648a6b8e0599960de6c"
+                "reference": "ee0bf3a1a9c020c980c62014abd86ce88f3c99cc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/koriym/Koriym.SemanticLogger/zipball/a1757002ad69f49422f63648a6b8e0599960de6c",
-                "reference": "a1757002ad69f49422f63648a6b8e0599960de6c",
+                "url": "https://api.github.com/repos/koriym/Koriym.SemanticLogger/zipball/ee0bf3a1a9c020c980c62014abd86ce88f3c99cc",
+                "reference": "ee0bf3a1a9c020c980c62014abd86ce88f3c99cc",
                 "shasum": ""
             },
             "require": {
@@ -179,7 +179,7 @@
                 "issues": "https://github.com/koriym/Koriym.SemanticLogger/issues",
                 "source": "https://github.com/koriym/Koriym.SemanticLogger/tree/log-format"
             },
-            "time": "2026-10-21T23:53:28+00:00"
+            "time": "2026-10-22T15:16:42+00:00"
         },
         {
             "name": "marc-mabe/php-enum",
@@ -1419,12 +1419,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/koriym/BEAR.QueryRepository.git",
-                "reference": "4c8b0188d21b9fbb441104908d112f75c29bff05"
+                "reference": "67322506cbaad48ba0b2a506c63b17b395326c72"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/koriym/BEAR.QueryRepository/zipball/4c8b0188d21b9fbb441104908d112f75c29bff05",
-                "reference": "4c8b0188d21b9fbb441104908d112f75c29bff05",
+                "url": "https://api.github.com/repos/koriym/BEAR.QueryRepository/zipball/67322506cbaad48ba0b2a506c63b17b395326c72",
+                "reference": "67322506cbaad48ba0b2a506c63b17b395326c72",
                 "shasum": ""
             },
             "require": {
@@ -1556,7 +1556,7 @@
             "support": {
                 "source": "https://github.com/koriym/BEAR.QueryRepository/tree/semantic-logger-log-format"
             },
-            "time": "2026-10-22T00:01:19+00:00"
+            "time": "2026-10-23T00:15:25+00:00"
         },
         {
             "name": "bear/resource",
