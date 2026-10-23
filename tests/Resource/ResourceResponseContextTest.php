@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\Tests\Resource;
 
 use BEAR\EventSourcing\Resource\ResourceResponseContext;
+use InvalidArgumentException;
 use JsonSchema\Validator;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -46,6 +47,23 @@ final class ResourceResponseContextTest extends TestCase
 
         self::assertSame(500, $serialized['code']);
         self::assertSchemaValid($serialized);
+    }
+
+    public function testSuccessRejectsAnOutOfRangeCode(): void
+    {
+        // A code outside 100-599 can never satisfy docs/schemas/resource-response.json's
+        // `code` bounds; rejecting it here is the one place that keeps that promise instead
+        // of letting a malformed ResourceObject::$code serialize into an invalid log.
+        $this->expectException(InvalidArgumentException::class);
+
+        ResourceResponseContext::success(999);
+    }
+
+    public function testFailureRejectsAnOutOfRangeCode(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        ResourceResponseContext::failure(new RuntimeException('boom'), code: 999);
     }
 
     /** @param array<string, mixed> $context */

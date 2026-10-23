@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource;
 
+use InvalidArgumentException;
 use JsonSerializable;
 use Koriym\SemanticLogger\AbstractContext;
 use Throwable;
@@ -26,6 +27,12 @@ final class ResourceResponseContext extends AbstractContext implements JsonSeria
         public readonly array|null $exception = null,
         public readonly float|null $durationMs = null,
     ) {
+        if ($this->code !== null && ($this->code < 100 || $this->code > 599)) {
+            throw new InvalidArgumentException(sprintf(
+                'Resource response code %d is outside the valid HTTP status range (100-599).',
+                $this->code,
+            ));
+        }
     }
 
     /**

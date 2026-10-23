@@ -218,6 +218,42 @@ final class SemanticLogInvokerTest extends TestCase
         $this->assertSame($ro, $result);
     }
 
+    public function testMalformedResourceObjectCodeStillClosesTheScope(): void
+    {
+        $logger = new SemanticLogger();
+        // A ResourceObject misbehaving beyond its own type hint (BEAR\Resource\ResourceObject::$code
+        // is untyped at @var int only): building the close context for it fails, but the open
+        // scope must still close, with the build failure recorded, rather than being left
+        // dangling open.
+        $ro = new FakeResourceObject('app://self/order', ['ok' => true], 999);
+        $invoker = new SemanticLogInvoker(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $logger,
+            new NullBodyStore(),
+        );
+
+        $warnings = [];
+        set_error_handler(static function (int $errno, string $errstr) use (&$warnings): bool {
+            $warnings[] = [$errno, $errstr];
+
+            return true;
+        });
+        try {
+            $result = $invoker->invoke(self::request('app://self/order', Method::POST));
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame($ro, $result);
+        $entry = self::flushToArray($logger)['log'][0];
+        $context = self::closeContext($entry);
+        $this->assertArrayNotHasKey('code', $context);
+        $this->assertSame('InvalidArgumentException', $context['exception']['class']);
+        $this->assertCount(1, $warnings);
+        $this->assertSame(E_USER_WARNING, $warnings[0][0]);
+        $this->assertStringContainsString('InvalidArgumentException', $warnings[0][1]);
+    }
+
     public function testLeakedOpenContextPreservesDomainException(): void
     {
         $logger = new SemanticLogger();
