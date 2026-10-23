@@ -25,7 +25,7 @@
 
 - `composer.json`: `bear/resource` below 1.31.0 now conflicts, since `SemanticLogInvoker` reads `AbstractRequest::$method` as the `Method` enum introduced in that release
 - **BREAKING — `ResourceResponseContext`'s constructor is private and rejects a `code` outside 100-599.** Replace `new ResourceResponseContext($code, ...)` with `ResourceResponseContext::success($code, ...)`, or `ResourceResponseContext::failure($e, $code, ...)` for an escaped exception.
-- `koriym/semantic-logger` and `bear/query-repository` (require-dev) temporarily track their unreleased log-format branches; examples and tests use the `log`/`close` shape.
+- `koriym/semantic-logger` (require) and `bear/query-repository` (require-dev) temporarily track their unreleased log-format branches; examples and tests use the `log`/`close` shape.
 
 ### Note
 
