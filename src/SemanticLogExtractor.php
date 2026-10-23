@@ -38,8 +38,8 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
     /**
      * The Semantic Logger entry type extracted as events.
      *
-     * Extraction is type-gated: only entries observed as resource requests become
-     * events, so unrelated open/close pairs that happen to carry `method` and
+     * Extraction is type-gated: only records observed as resource requests become
+     * events, so unrelated interval pairs that happen to carry `method` and
      * `uri` fields are never misread as state changes.
      */
     public const string RESOURCE_REQUEST_TYPE = 'resource_request';
@@ -68,16 +68,19 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
             512,
             JSON_THROW_ON_ERROR,
         );
-        // The root entries list mixes opens and events in record order (semantic-logger#50); a
-        // resource request is always a root-level open, so this filters to that kind rather than
-        // assuming every root entry qualifies.
-        $roots = $log['entries'] ?? [];
+        // The root `log` list mixes intervals and points in record order (koriym/semantic-logger
+        // "log replaces entries/children" migration); a resource request is always a root-level
+        // interval (carries `close` once closed, or `log` while open/interrupted), so this filters
+        // to that structural kind rather than assuming every root record qualifies. Orphan closes
+        // (root records carrying `openId`) and points (bare events) carry neither key and are
+        // excluded the same way.
+        $roots = $log['log'] ?? [];
         if (! is_array($roots)) {
             return new Events($events);
         }
 
         foreach ($roots as $entry) {
-            if (is_array($entry) && ($entry['kind'] ?? null) === 'open') {
+            if (is_array($entry) && (isset($entry['close']) || isset($entry['log']))) {
                 $this->appendEvent($entry, $events);
             }
         }

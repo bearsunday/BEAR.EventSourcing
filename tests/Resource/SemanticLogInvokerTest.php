@@ -43,7 +43,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/user/1', Method::POST, ['id' => 1]));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         // The uri stays canonical (path only); the query lives in params, not the uri.
         $this->assertSame('app://self/user/1', $entry['context']['uri']);
         $this->assertSame('POST', $entry['context']['method']);
@@ -68,7 +68,7 @@ final class SemanticLogInvokerTest extends TestCase
         $invoker->invoke(self::request('app://self/user/1', Method::GET));
 
         // Nothing was recorded: the session flushes to an empty log.
-        $this->assertSame([], self::flushToArray($logger)['entries']);
+        $this->assertSame([], self::flushToArray($logger)['log']);
     }
 
     public function testRecordsGetWhenConfigured(): void
@@ -84,7 +84,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/user/1', Method::GET));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame('GET', $entry['context']['method']);
     }
 
@@ -101,7 +101,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/user/1', Method::POST));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame(1, $store->calls);
         $close = self::closeContext($entry);
         self::assertRecordedDuration($close['durationMs'] ?? null);
@@ -125,7 +125,7 @@ final class SemanticLogInvokerTest extends TestCase
         $result = $invoker->invoke(self::request('app://self/user/1', Method::POST));
 
         $this->assertSame($ro, $result);
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $context = self::closeContext($entry);
         $exceptionContext = $context['exception'] ?? null;
         $this->assertIsArray($exceptionContext);
@@ -154,7 +154,7 @@ final class SemanticLogInvokerTest extends TestCase
             $this->assertSame($exception, $e);
         }
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $context = self::closeContext($entry);
         $exceptionContext = $context['exception'] ?? null;
         $this->assertIsArray($exceptionContext);
@@ -187,7 +187,7 @@ final class SemanticLogInvokerTest extends TestCase
             $this->assertSame($exception, $e);
         }
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $context = self::closeContext($entry);
         // The exception's own code is itself a valid HTTP status, so unlike the 0-code case
         // above it is known and kept — the invoker reports it, it does not guess it.
@@ -268,7 +268,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $outer->invoke(self::request('app://self/outer', Method::POST));
 
-        $outerEntry = self::flushToArray($logger)['entries'][0];
+        $outerEntry = self::flushToArray($logger)['log'][0];
         $this->assertSame('app://self/outer', $outerEntry['context']['uri']);
         $this->assertSame('app://self/inner', self::firstChildContext($outerEntry)['uri']);
     }
@@ -289,7 +289,7 @@ final class SemanticLogInvokerTest extends TestCase
             ['loginId' => 'admin', 'password' => 'super-secret'],
         ));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame(['loginId' => 'admin', 'password' => '[FILTERED]'], $entry['context']['params']);
         $this->assertFalse($entry['context']['replayable']);
     }
@@ -306,7 +306,7 @@ final class SemanticLogInvokerTest extends TestCase
 
         $invoker->invoke(self::request('app://self/products', Method::POST, ['nameKeyword' => 'sample']));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame(['nameKeyword' => 'sample'], $entry['context']['params']);
         $this->assertTrue($entry['context']['replayable']);
     }
@@ -329,7 +329,7 @@ final class SemanticLogInvokerTest extends TestCase
             ['preOrderId' => 'aaaa', 'csrfToken' => 'a-token'],
         ));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame(['preOrderId' => 'aaaa', 'csrfToken' => '[FILTERED]'], $entry['context']['params']);
         $this->assertTrue($entry['context']['replayable']);
     }
@@ -357,7 +357,7 @@ final class SemanticLogInvokerTest extends TestCase
             ['loginId' => 'admin', 'password' => 'super-secret'],
         ));
 
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame(['loginId' => 'admin', 'password' => 'super-secret'], $entry['context']['params']);
         $this->assertTrue($entry['context']['replayable']);
     }
@@ -399,7 +399,7 @@ final class SemanticLogInvokerTest extends TestCase
         }
 
         $this->assertSame($ro, $result);
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame([], $entry['context']['params'], 'nothing the filter failed on may be recorded');
         $this->assertFalse($entry['context']['replayable']);
         $this->assertCount(1, $warnings);
@@ -430,7 +430,7 @@ final class SemanticLogInvokerTest extends TestCase
         $result = $invoker->invoke(self::request('app://self/user/1', Method::POST, ['suit' => FakeSuit::Hearts]));
 
         $this->assertSame($ro, $result);
-        $entry = self::flushToArray($logger)['entries'][0];
+        $entry = self::flushToArray($logger)['log'][0];
         $this->assertSame('app://self/user/1', $entry['context']['uri']);
         // The enum has no JSON form either, so the filter withheld it; the point is the request.
         $this->assertSame(['suit' => '[FILTERED]'], $entry['context']['params']);
@@ -500,7 +500,7 @@ final class SemanticLogInvokerTest extends TestCase
      */
     private static function firstChildContext(array $entry): array
     {
-        $children = $entry['children'] ?? null;
+        $children = $entry['log'] ?? null;
         self::assertIsArray($children);
         $child = $children[0] ?? null;
         self::assertIsArray($child);

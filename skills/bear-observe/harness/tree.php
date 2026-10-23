@@ -59,8 +59,8 @@ is_array($log) || fail("not JSON: {$file}");
 
 /**
  * Rewrites every `body_ref` string found anywhere in the tree to its basename, recursively —
- * the shape differs at each level (root `entries`/`close`, nested `children`/`close`), so this
- * walks blindly by key instead of encoding that shape a second time.
+ * every level uses the same `log`/`close` keys, but this walks blindly by key rather than
+ * assuming any one record is a leaf, since a close can itself carry `body_ref`.
  *
  * @param array<array-key, mixed> $value
  *
