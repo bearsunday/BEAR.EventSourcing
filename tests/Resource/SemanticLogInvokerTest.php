@@ -552,7 +552,7 @@ final class SemanticLogInvokerTest extends TestCase
     /**
      * The canonical JSON view of the flushed log: frozen context values arrive as objects, and
      * the assoc-array decode is what the extractor reads too. A durationMs that rounds to
-     * exactly 0.0 may still be int(0) here even on koriym/semantic-logger 1.x+, where
+     * exactly 0.0 may still be int(0) here even on koriym/semantic-logger 0.10.0+, where
      * ContextFreezer itself now preserves it (semantic-logger#45): this helper's own
      * json_encode() below lacks JSON_PRESERVE_ZERO_FRACTION, so the round trip it needs for a
      * plain assoc-array view reintroduces the same degradation one step later.

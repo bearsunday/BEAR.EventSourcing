@@ -55,12 +55,8 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
     public function extract(LogJson $semanticLog): EventsInterface
     {
         $events = [];
-        // Canonicalize to associative arrays: frozen context values arrive as objects, and the
-        // same JSON view is what the schema validates. A whole-number float (durationMs, a
-        // price) can still degrade to an int here even on koriym/semantic-logger 1.x+, where
-        // ContextFreezer itself now preserves it (semantic-logger#45, JSON_PRESERVE_ZERO_FRACTION):
-        // the json_encode() below has no such flag, so this canonicalization round trip
-        // reintroduces the same degradation one step later, regardless of the freezer fix.
+        // json_encode() below lacks JSON_PRESERVE_ZERO_FRACTION, so a whole-number float
+        // (durationMs, a price) decodes as int; a consumer must accept int|float.
         /** @var array<array-key, mixed> $log */
         $log = json_decode(
             json_encode($semanticLog, JSON_THROW_ON_ERROR),

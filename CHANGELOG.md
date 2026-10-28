@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 - 2026-10-28
 
 ### Added
 
@@ -29,8 +29,7 @@
 - `koriym/semantic-logger` requires `^0.11`; examples and tests use the `log`/`close` shape.
 
 ### Note
-
-- `ContextFreezer` itself round-trips with `JSON_PRESERVE_ZERO_FRACTION` as of `koriym/semantic-logger` 1.x (`6139f63`, semantic-logger#45), so `LogJson::toArray()`/`jsonSerialize()` now preserve a whole-number float (`durationMs`, a price) as `float`. That fix does not reach this package's own consumers unchanged: `SemanticLogExtractor::extract()` and this package's test helpers re-encode the log through their own `json_encode()` (without that flag) to get a plain assoc-array view, which reintroduces the same degradation one step later — on 1.x and on `^0.9` alike. A consumer of a context field that may be a whole-number float must still accept `int|float`, not assume `float`
+- `ContextFreezer` itself round-trips with `JSON_PRESERVE_ZERO_FRACTION` as of `koriym/semantic-logger` 0.10.0 (semantic-logger#45), so `LogJson::toArray()`/`jsonSerialize()` preserve a whole-number float (`durationMs`, a price) as `float`. That fix does not reach this package's own consumers unchanged: `SemanticLogExtractor::extract()` and this package's test helpers re-encode the log through their own `json_encode()` (without that flag) to get a plain assoc-array view, which reintroduces the same degradation one step later. A consumer of a context field that may be a whole-number float must still accept `int|float`, not assume `float`
 
 ## 0.1.0 - 2026-09-06
 
