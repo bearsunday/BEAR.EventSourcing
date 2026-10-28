@@ -1,8 +1,8 @@
 # BEAR.EventSourcing
 
-Make your application's state changes a **replayable source of truth** — fold the events back to reconstruct state at any point in time.
+Captures your application's write requests as a deterministic, ordered event stream — ready for a replay engine to fold back into state, and already a readable audit trail of which write happened, when, and to which resource, for people and AI alike.
 
-Every event is a resource operation: a `method` on a `uri`, like `POST app://self/users`. That resource shape keeps replay straightforward, and it lets the same event stream double as an audit history of the recorded state changes: which write occurred, when, and to which resource.
+Every event is a resource operation: a `method` on a `uri`, like `POST app://self/users`. That shape keeps a future replay implementation simple — re-execute `method` on `uri` with the recorded `params` — but this package stops at producing the event stream: the re-execution itself, and the two conditions that make it safe, are the consuming application's own code (see [Recording and observation](#recording-and-observation)).
 
 ## Installation
 
@@ -91,6 +91,21 @@ Identity is what makes the store a source of truth. Re-extraction reproduces the
 The log and the event stream answer different questions. The event stream records what can be **reproduced**: the boundary write requests (root reads only when opted in), the input a replay re-executes. The log observes what **happened**: every node — reads, failures, nested requests, `durationMs` — for transparency, debugging, and checking a replay against the original run.
 
 Extraction therefore takes root entries only. A `POST app://self/orders` whose handler issues `PUT app://self/inventory/SKU-1` yields one event, the POST. Replaying it re-executes the handler, which issues the PUT again; had the PUT been recorded as well, replay would apply it twice. This is the same boundary MySQL statement-based replication draws when it logs a statement but not the writes its triggers perform. The nested PUT is still in the log, as observation.
+
+The mechanism itself is one call, using only `ResourceInterface`'s public, typed surface:
+
+```php
+use BEAR\Resource\Method;
+use LogicException;
+
+if (! $event->replayable) {
+    throw new LogicException('Recorded params are incomplete; this event cannot be replayed faithfully.');
+}
+
+$resource->newRequest(Method::from(strtolower($event->method)), $event->uri, $event->params)();
+```
+
+Building that call is not what this package stops short of. What it does not provide is the judgment the two conditions below require, and a replay engine that applies it — checking `replayable`, as above, is necessary but not sufficient.
 
 Replay by re-execution rests on two conditions the package assumes but does not enforce, the way MySQL flags unsafe statements rather than refusing them:
 
@@ -193,7 +208,7 @@ $orderEvents = new CallbackFilterIterator(
 );
 ```
 
-See `examples/extract.php`, `examples/replay.php`, and `examples/store.php` for runnable end-to-end scripts.
+See `examples/extract.php`, `examples/filter.php`, and `examples/store.php` for runnable end-to-end scripts.
 
 ## Storage (optional)
 

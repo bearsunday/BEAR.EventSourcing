@@ -48,12 +48,12 @@ php examples/observe/observe.php
 
 - **`ResourceObservationModule` / `NullBodyStore`（本番経路）は未演示**。デモは `DevLogModule`（開発）+ `FileBodyStore` のみ。本番は `module:` で BEAR.Resource モジュールを包み、既定で body を保存しない `NullBodyStore`。カスタム `BodyStoreInterface`（SQL / オブジェクトストレージ）も未カバー。
 - **`EventSourcingModule`（`SemanticLogExtractorInterface` 束縛）は未使用**。デモは extractor を直接 `new` している。
-- **EventCollector（request-end ハンドラー統合）は未演示**。空セッションは `flush()` が空ログを返す（semantic-logger 0.9）ので例外処理は不要になった。`EventCollector` の契約は `tests/EventCollectorTest.php` を参照。
+- **EventCollector（request-end ハンドラー統合）は未演示**。空セッションは `flush()` が空ログを返す（semantic-logger 0.11）ので例外処理は不要になった。`EventCollector` の契約は `tests/EventCollectorTest.php` を参照。
 - **例外パスを未演示**。ログに載る失敗は 409 レスポンス（正常 invoke）のみ。リソースが例外を投げた場合の exception context 記録はカバーしていない。
 - **非 `resource_request` ノード（例: Ray.MediaQuery の `media_query` リーフイベント）はデモのツリーに登場しない**。`MediaQueryObservationModule` の配線例は `tree.php` fixture と README の Ray.MediaQuery 節を参照。
 - **`Event::$result` が null になること（`body_ref` はイベントに持ち込まない）を明示表示していない**。[4] は method/uri/params のみ表示。この境界を実例で見たい場合は print を足す。
-- **GET をイベントとして抽出（開発時リード追跡）は未演示**。ログには GET が記録されるが、extract は既定（書き込みのみ）。`replay.php` 例が `includeReads` を示す。
-- **再実行による再生は未演示**。[9] はストリームを反復するだけで、POST orders を handler に再投入して入れ子 PUT が再発行されることは見せていない。再生の前提条件（handler の決定性、リクエスト = トランザクション境界）は README「Recording and observation」を参照。
+- **GET をイベントとして抽出（開発時リード追跡）は未演示**。ログには GET が記録されるが、extract は既定（書き込みのみ）。`filter.php` 例が `includeReads` を示す。
+- **再実行による再生は未演示**。[9] はストリームを反復するだけで（再実行はしない。節名も「iterate」に改めた）、POST orders を handler に再投入して入れ子 PUT が再発行されることは見せていない。再生の前提条件（handler の決定性、リクエスト = トランザクション境界）と、実際の再実行コードの形は README「Recording and observation」を参照。
 - **イベント内容の assert はしない**。[10] でログの形はスキーマ検証される（違反で exit 非ゼロ）が、抽出イベントの値までは assert しない。効果 + ログの両面固定はテストスイートの仕事。
 - **`appendAll` の非アトミック性・トランザクションでの包み方は未演示**（README 本文の運用注意の範囲）。
 - **QueryRepository との統合ツリー（1 リクエスト = 1 本の木）はこのデモに含まれない**。共有 logger の束縛レシピは README「One tree with BEAR.QueryRepository」、証明は `tests/UnifiedLogTest.php`。
@@ -62,6 +62,6 @@ php examples/observe/observe.php
 
 - 公開スキーマの正典はこの repo の `docs/schemas/`（project pages で `https://bearsunday.github.io/BEAR.EventSourcing/schemas/` に公開）。
 - 一時ディレクトリ（`sys_get_temp_dir()`）で body / sqlite を作り、終了時に `FileBodyStore::clearDirectory` で後始末。リポジトリを汚さない。
-- `RenderConfig` は `TreeRenderer` の**コンストラクタ**に渡す（semantic-logger 0.9: `new TreeRenderer($config)->render($log)`）。`render()` に第 2 引数を渡しても黙って無視される。
+- `RenderConfig` は `TreeRenderer` の**コンストラクタ**に渡す（semantic-logger 0.11: `new TreeRenderer($config)->render($log)`）。`render()` に第 2 引数を渡しても黙って無視される。
 - CI 固定: `tests/ExamplesTest.php` が本デモを exec し、exit code（[10] のスキーマ検証込み）と出力アンカー（実測ネスト行・抽出イベント数 1・`inventory events: 0`・冪等 append・replay 1 件・検証成功行）を assert する。
 - `examples/` は `.gitattributes` で `export-ignore` のため、デモは repo に残るが dist パッケージには入らない（既存 examples と同じ扱い）。

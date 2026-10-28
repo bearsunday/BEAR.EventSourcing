@@ -172,12 +172,14 @@ if (! $sqlSupported) {
 }
 
 // ---------------------------------------------------------------------------
-// 9. Replay: iterate the stored stream in time order.
+// 9. Iterate the stored stream in time order. This does not re-execute
+//    anything; see README "Recording and observation" for what re-execution
+//    (the mechanism and the safety conditions) actually looks like.
 // ---------------------------------------------------------------------------
-echo "\n[9] Replay the stored stream\n";
+echo "\n[9] Iterate the stored stream\n";
 $source = $sqlSupported ? iterator_to_array($sqlStore->all(), false) : iterator_to_array($memory->all(), false);
 foreach ($source as $event) {
-    printf("  replay %s %s  id=%.12s...\n", $event->method, $event->uri, $event->id);
+    printf("  item %s %s  id=%.12s...\n", $event->method, $event->uri, $event->id);
 }
 
 // ---------------------------------------------------------------------------

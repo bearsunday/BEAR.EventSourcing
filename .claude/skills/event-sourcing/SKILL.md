@@ -73,4 +73,4 @@ Every node follows one rule: intent inline, heavy detail behind a `*_ref` pointe
 
 ## Examples
 
-Reach for the bundled examples before inventing new integration code: `extract.php`, `store.php`, `replay.php` cover extraction, storage, and replay; `tree.php` renders the log as a resource tree. They share the `examples/semantic-log.json` fixture, built through `SemanticLogger::flush()`.
+Reach for the bundled examples before inventing new integration code: `extract.php`, `store.php` cover extraction and storage; `filter.php` selects a subset of events with PHP's standard iterators; `tree.php` renders the log as a resource tree. None of them re-execute an event — see README "Recording and observation" for the typed one-line re-execution call and the conditions that gate it. They share the `examples/semantic-log.json` fixture, built through `SemanticLogger::flush()`.
