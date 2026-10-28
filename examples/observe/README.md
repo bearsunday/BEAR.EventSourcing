@@ -52,8 +52,8 @@ php examples/observe/observe.php
 - **例外パスを未演示**。ログに載る失敗は 409 レスポンス（正常 invoke）のみ。リソースが例外を投げた場合の exception context 記録はカバーしていない。
 - **非 `resource_request` ノード（例: Ray.MediaQuery の `media_query` リーフイベント）はデモのツリーに登場しない**。`MediaQueryObservationModule` の配線例は `tree.php` fixture と README の Ray.MediaQuery 節を参照。
 - **`Event::$result` が null になること（`body_ref` はイベントに持ち込まない）を明示表示していない**。[4] は method/uri/params のみ表示。この境界を実例で見たい場合は print を足す。
-- **GET をイベントとして抽出（開発時リード追跡）は未演示**。ログには GET が記録されるが、extract は既定（書き込みのみ）。`replay.php` 例が `includeReads` を示す。
-- **再実行による再生は未演示**。[9] はストリームを反復するだけで、POST orders を handler に再投入して入れ子 PUT が再発行されることは見せていない。再生の前提条件（handler の決定性、リクエスト = トランザクション境界）は README「Recording and observation」を参照。
+- **GET をイベントとして抽出（開発時リード追跡）は未演示**。ログには GET が記録されるが、extract は既定（書き込みのみ）。`filter.php` 例が `includeReads` を示す。
+- **再実行による再生は未演示**。[9] はストリームを反復するだけで（再実行はしない。節名も「iterate」に改めた）、POST orders を handler に再投入して入れ子 PUT が再発行されることは見せていない。再生の前提条件（handler の決定性、リクエスト = トランザクション境界）と、実際の再実行コードの形は README「Recording and observation」を参照。
 - **イベント内容の assert はしない**。[10] でログの形はスキーマ検証される（違反で exit 非ゼロ）が、抽出イベントの値までは assert しない。効果 + ログの両面固定はテストスイートの仕事。
 - **`appendAll` の非アトミック性・トランザクションでの包み方は未演示**（README 本文の運用注意の範囲）。
 - **QueryRepository との統合ツリー（1 リクエスト = 1 本の木）はこのデモに含まれない**。共有 logger の束縛レシピは README「One tree with BEAR.QueryRepository」、証明は `tests/UnifiedLogTest.php`。

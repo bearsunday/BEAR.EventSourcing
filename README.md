@@ -207,7 +207,7 @@ $orderEvents = new CallbackFilterIterator(
 );
 ```
 
-See `examples/extract.php`, `examples/replay.php`, and `examples/store.php` for runnable end-to-end scripts.
+See `examples/extract.php`, `examples/filter.php`, and `examples/store.php` for runnable end-to-end scripts.
 
 ## Storage (optional)
 
