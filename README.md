@@ -92,6 +92,20 @@ The log and the event stream answer different questions. The event stream record
 
 Extraction therefore takes root entries only. A `POST app://self/orders` whose handler issues `PUT app://self/inventory/SKU-1` yields one event, the POST. Replaying it re-executes the handler, which issues the PUT again; had the PUT been recorded as well, replay would apply it twice. This is the same boundary MySQL statement-based replication draws when it logs a statement but not the writes its triggers perform. The nested PUT is still in the log, as observation.
 
+The mechanism itself is one call, using only `ResourceInterface`'s public, typed surface:
+
+```php
+use BEAR\Resource\Method;
+
+if (! $event->replayable) {
+    throw new LogicException('Recorded params are incomplete; this event cannot be replayed faithfully.');
+}
+
+$resource->newRequest(Method::from(strtolower($event->method)), $event->uri, $event->params)();
+```
+
+Building that call is not what this package stops short of. What it does not provide is the judgment the two conditions below require, and a replay engine that applies it — checking `replayable`, as above, is necessary but not sufficient.
+
 Replay by re-execution rests on two conditions the package assumes but does not enforce, the way MySQL flags unsafe statements rather than refusing them:
 
 - **Handlers are deterministic.** A replay reproduces the original run only when the handler's outcome depends solely on its recorded `params`. A clock, a random value, or an external read the handler consults on its own makes the request unsafe to replay; pass such values in as params so they are recorded.
