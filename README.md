@@ -96,6 +96,7 @@ The mechanism itself is one call, using only `ResourceInterface`'s public, typed
 
 ```php
 use BEAR\Resource\Method;
+use LogicException;
 
 if (! $event->replayable) {
     throw new LogicException('Recorded params are incomplete; this event cannot be replayed faithfully.');
