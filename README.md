@@ -1,8 +1,8 @@
 # BEAR.EventSourcing
 
-Make your application's state changes a **replayable source of truth** — fold the events back to reconstruct state at any point in time.
+Captures your application's write requests as a deterministic, ordered event stream — ready for a replay engine to fold back into state, and already a readable audit trail of which write happened, when, and to which resource, for people and AI alike.
 
-Every event is a resource operation: a `method` on a `uri`, like `POST app://self/users`. That resource shape keeps replay straightforward, and it lets the same event stream double as an audit history of the recorded state changes: which write occurred, when, and to which resource.
+Every event is a resource operation: a `method` on a `uri`, like `POST app://self/users`. That shape keeps a future replay implementation simple — re-execute `method` on `uri` with the recorded `params` — but this package stops at producing the event stream: the re-execution itself, and the two conditions that make it safe, are the consuming application's own code (see [Recording and observation](#recording-and-observation)).
 
 ## Installation
 
