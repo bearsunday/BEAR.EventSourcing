@@ -32,8 +32,8 @@ $inventory = $logger->open(new ResourceRequestContext(
     timestamp: '2026-06-10T12:36:01.000000+00:00',
 ));
 $logger->event(new MediaQueryContext('inventory_reserve', ['sku' => 'SKU-1'], 0.42));
-$logger->close(new ResourceResponseContext(200, 'file://var/es/bodies/000001.json'), $inventory);
-$logger->close(new ResourceResponseContext(201, 'file://var/es/bodies/000002.json'), $order);
+$logger->close(ResourceResponseContext::success(200, 'file://var/es/bodies/000001.json'), $inventory);
+$logger->close(ResourceResponseContext::success(201, 'file://var/es/bodies/000002.json'), $order);
 
 $formatters = new FormatterRegistry();
 $formatters->register('resource_request', new ResourceNodeFormatter());

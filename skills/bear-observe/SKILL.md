@@ -69,27 +69,35 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 
 ## 1. 設置 — 要るかどうかを先に決める
 
-**並行ホスト(1 プロセスが複数リクエストを跨いで生き続ける実行モデル全般)は現時点で非対応。**
-差し込み口(`SessionStoreInterface` / `LogSinkInterface`)は BEAR.QueryRepository 側にあるが、動く実装は
-同梱されていない(`ProcessSession` はプロセスに 1 本、sink は `ShutdownFlush` のみ)。先にホストを分類し、
-分類できなければ**推奨せずユーザーに問う**:
+**この観測文脈(`setup.php` が設置する構成)は、常駐ホスト(1 プロセスが複数のリクエストを跨いで生き続ける実行モデル)では現時点で非対応。**
+差し込み口(`SessionStoreInterface` / `LogSinkInterface`)は BEAR.QueryRepository 側にあるが、動く実装は同梱されていない。
 
-| ホスト | すること |
+**分類するのは、`dev-` 文脈を起動するプロセス。** §3 の `php bin/dev.php` は CLI の 1 プロセス 1 リクエストなので、
+本番がどのホストでも、そのまま下へ進んでよい。問題になるのは、`setup.php` が書く `DevModule` が `dev-` を含む
+文脈すべてに載るため、`public/index.php` などを `dev-` 文脈のまま常駐ホストで起動している場合。その起動を分類する:
+
+| `dev-` 文脈を起動するホスト | すること |
 |---|---|
-| PHP-FPM / CLI 実行 | そのまま下へ |
-| RoadRunner(`RR_MODE`)、Swoole コルーチン内 | 入れても記録されない。sink が arm を拒否し、理由は `error_log` に出る |
-| FrankenPHP worker mode、ReactPHP、Amp、常駐 CLI consumer、boot 時に logger を作る Swoole worker | **検出されないので入れない。** 上の拒否が働かず、リクエスト境界が 1 本の木に混ざる(同じ logger 上で処理が実際に重なれば LIFO 違反で `close` が落ちる) |
+| CLI(`bin/dev.php`)、PHP-FPM | そのまま下へ |
+| RoadRunner(`RR_MODE`)、コルーチン内で logger が作られる Swoole | 入れても記録されない(QueryRepository の sink が arm を拒否し、理由を `error_log` に出す)。§2 の `check.php` は束縛しか見ないので PASS する。観測は `bin/dev.php` で行う |
+| FrankenPHP worker mode、ReactPHP、Amp、常駐 CLI consumer、boot 時に logger を作る Swoole worker | **検出されないので、その起動に `dev-` 文脈を載せない。** 拒否が働かず、リクエスト境界が 1 本の木に混ざる(処理が同じ logger 上で重なると、close が `close_id_mismatch` として拒否・診断記録され、スコープが閉じないまま木が崩れる。例外は出ない) |
 | 分からない | 入れる前に問う |
 
-それでも観測するなら、ホスト側で request context をキーにした `SessionStoreInterface` と、request end で
+常駐ホストでも観測するなら、ホスト側で request context をキーにした `SessionStoreInterface` と、request end で
 flush する `LogSinkInterface` を**両方**束縛する(片方だけだとセッションを共有するか、排出されずに溜まる)。
 根拠は BEAR.QueryRepository の
 [docs/what-the-log-proves.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/what-the-log-proves.md)
-"Concurrent sessions"。`setup.php` が書く `DevModule` はそれを書かない。`SafeSemanticLogger` の "Safe" は
-「記録に失敗してもリクエストを壊さない」の意味で、並行実行時にセッションを分離する保証ではない。
+"Concurrent sessions"。`setup.php` が書く `DevModule` はそれを書かない。
 
-ホストが通っても、束縛の形で無音のまま欠ける配線が 2 つある。`check.php`(§2)は束縛の中身を見るが
-スコープと writer の種類までは見ないので、ここで目視する:
+EventSourcing のイベント抽出だけなら常駐ホストでも使えるが、`DevModule` のままでは使えない。無印の logger が
+`#[CacheLog]` の logger と同じインスタンスなので、sink が拒否すると `resource_request` も記録されない。
+`DevQueryRepositoryLogModule` を入れない別の配線で、`EventCollector` をランタイムの request end から呼ぶ
+(README "The application owns the flush")。
+
+`SafeSemanticLogger` の "Safe" は、セッションをリクエストごとに解決し、直列化の境界を越えて持ち越さず、
+sink が拒否したら黙る、という意味。並行実行時にセッションを分離する保証ではない。
+
+ホストが通っても、束縛の形で無音のまま欠ける配線が 2 つある。`check.php`(§2)だけでは拾い切れないので、ここで目視する:
 
 | 点検 | 落ちると起きること |
 |---|---|
@@ -202,7 +210,9 @@ php <skill>/harness/tree.php
 ```
 
 `tree.php` は引数なしなら `var/log/*/observe/latest.json` の最新を読む。パスを渡せばそれを読む。
-`ls -t var/log/<context>/observe/*.json` で過去のセッションが新しい順に並ぶ。
+`ls -t var/log/<context>/observe/*.json` で過去のセッションが新しい順に並ぶ。中身は
+`vendor/bin/stree` が描く(`tree.php` は `body_ref` のベースネーム化と、この var/log 規約の解決・
+表示だけをする薄い委譲先)。
 
 **読むのは今回の実行が書いたものか。** `latest.json` はリクエストごとに入れ替わる。リポジトリに
 commit されたサンプル出力を判定に使うと、自分の変更が反映されない結果を測ることになる。
@@ -210,32 +220,41 @@ commit されたサンプル出力を判定に使うと、自分の変更が反�
 コールドの GET:
 
 ```text
-└── resource_request uri=page://self/orders method=GET params={"order_id":"O-1"} → resource_response code=200 body_ref=000002.json durationMs=7.653
-    └── get uri=page://self/orders?order_id=O-1 → cache_miss layer=resource durationMs=6.346
-        ├── pre_write_cleanup uri=page://self/orders?order_id=O-1
-        ├── invalidate tags=["_orders_order_id=O-1"] roPool=invalidated etagPool=invalidated cdn=skipped
-        ├── cache_policy uri=page://self/orders?order_id=O-1 expiry=never resolvedTtl=31536000
-        ├── save_etag uri=page://self/orders?order_id=O-1 etag="3620929378" tags=[...] requestedTtl=31536000 saved=1
-        ├── save_value uri=page://self/orders?order_id=O-1 tags=[...] requestedTtl=31536000 saved=1
-        └── resource_request uri=app://self/orders method=GET params={"orderId":"O-1"} → resource_response code=200
-            └── get uri=app://self/orders?orderId=O-1 → cache_miss layer=resource durationMs=2.818
+resource_request uri=page://self/orders method=GET params=[order_id]
+├── get uri=page://self/orders?order_id=O-1
+│   ├── pre_write_cleanup uri=page://self/orders?order_id=O-1 [event]
+│   ├── invalidate tags=[_orders_order_id=O-1] roPool=invalidated etagPool=invalidated cdn=skipped [event]
+│   ├── cache_policy uri=page://self/orders?order_id=O-1 expiry=never resolvedTtl=31536000 [event]
+│   ├── save_etag uri=page://self/orders?order_id=O-1 etag="3620929378" tags=[_orders_order_id=O-1] requestedTtl=31536000 (+1 more) [event]
+│   ├── save_value uri=page://self/orders?order_id=O-1 tags=[_orders_order_id=O-1] requestedTtl=31536000 saved=true [event]
+│   ├── resource_request uri=app://self/orders method=GET params=[orderId]
+│   │   ├── get uri=app://self/orders?orderId=O-1
+│   │   │   └── cache_miss layer=resource durationMs=2.818
+│   │   └── resource_response code=200
+│   └── cache_miss layer=resource durationMs=6.346
+└── resource_response code=200 body_ref=000002.json
 ```
 
 同じ URI の 2 回目:
 
 ```text
-└── resource_request uri=page://self/orders method=GET params={"order_id":"O-1"} → resource_response code=200 durationMs=0.93
-    └── get uri=page://self/orders?order_id=O-1 → cache_hit layer=resource durationMs=0.296
+resource_request uri=page://self/orders method=GET params=[order_id]
+├── get uri=page://self/orders?order_id=O-1
+│   └── cache_hit layer=resource durationMs=0.296
+└── resource_response code=200 durationMs=0.93
 ```
 
 木の文法は 3 つだけ:
 
-- **`A → B`** — スコープ A が型 B で閉じた。**答えを運ぶのは閉じた型**(`get` を閉じるのが `cache_hit` か
-  `cache_miss` か)。`vendor/bin/stree` はこの型を出さないので、判定には `tree.php` を使う
+- **閉じの型** — 開いたスコープの最後の子として現れる行が、そのスコープを閉じた型を運ぶ
+  (`get` を閉じるのが `cache_hit` か `cache_miss` か)。閉じの行だけの特別な記号は無いので、
+  それが閉じの型かどうかは §4 の表にある語彙(`cache_hit` / `cache_miss` / `resource_response` /
+  `command_result` など)で見分ける
 - **入れ子** — 外側の実行中に内側が起きた。**入れ子は依存の証拠ではない**(§4)
-- **葉** — そのスコープの中で起きた出来事。`save_*` `invalidate` `cache_policy` など
+- **葉**(`[event]` の印つき)— そのスコープの中で起きた出来事。`save_*` `invalidate` `cache_policy` など
 
-`--full` 相当の生 JSON が要るなら `php -r` ではなく `vendor/bin/stree --json <file>`。
+生の JSON が要るなら `tree.php --json`(内部で `stree --json` を呼ぶので同じ出力だが、
+`body_ref` はベースネーム済み)。
 
 ### ファイルが無い現場もある
 

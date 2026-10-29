@@ -42,7 +42,7 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         }
 
         $filtered = $this->filterParams($request->query);
-        $openId = $this->logger->open(new ResourceRequestContext(
+        $openId = $this->safeOpen(fn (): ResourceRequestContext => new ResourceRequestContext(
             uri: self::canonicalUri($request),
             method: $method,
             params: $filtered->params,
@@ -54,34 +54,83 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         try {
             $ro = $this->invoker->invoke($request);
         } catch (Throwable $e) {
-            $this->safeClose(
-                new ResourceResponseContext(
-                    code: self::httpCode($e),
-                    exception: self::exceptionContext($e),
-                    durationMs: self::elapsedMs($start),
-                ),
-                $openId,
-            );
+            if ($openId !== null) {
+                $this->safeClose(
+                    static fn (): ResourceResponseContext => ResourceResponseContext::failure(
+                        $e,
+                        code: self::httpCode($e),
+                        durationMs: self::elapsedMs($start),
+                    ),
+                    $openId,
+                );
+            }
 
             throw $e;
         }
 
-        $this->safeClose($this->responseContext($request, $ro, self::elapsedMs($start)), $openId);
+        if ($openId !== null) {
+            $this->safeClose(
+                fn (): ResourceResponseContext => $this->responseContext($request, $ro, self::elapsedMs($start)),
+                $openId,
+            );
+        }
 
         return $ro;
     }
 
     /**
+     * Open the observation scope without letting a logging failure escape.
+     *
+     * Mirrors safeClose(): the logger is an interface, and open() throwing here must
+     * not break a request it is only meant to watch — the inner invoker still has to
+     * run either way. $contextFactory is called inside the guard for the same reason
+     * it is in safeClose(): building the request context could in principle fail too.
+     * On failure this returns null instead of an openId, so invoke() skips the
+     * matching safeClose() at the end of the request rather than closing an id the
+     * logger never issued — the logger stays consistent because every close() it
+     * receives still pairs with an open() it actually returned an id for.
+     *
+     * @param callable(): ResourceRequestContext $contextFactory
+     */
+    private function safeOpen(callable $contextFactory): string|null
+    {
+        try {
+            return $this->logger->open($contextFactory());
+        } catch (Throwable $e) {
+            self::warn(sprintf('Semantic log open failed: %s', $e->getMessage()));
+
+            return null;
+        }
+    }
+
+    /**
      * Close the open observation without letting a logging failure escape.
      *
-     * The bundled SemanticLogger records an out-of-order close as a diagnostic,
-     * but the binding is an interface: an implementation that throws would, on
-     * the success path, destroy a completed response and, on the error path,
-     * mask the real domain exception. Observation must never break the request,
-     * so a close failure is downgraded to a warning.
+     * $contextFactory is called here, not before safeClose: building a
+     * ResourceResponseContext can itself throw (an out-of-range or malformed
+     * $ro->code from an ill-behaved ResourceObject, for one), and that
+     * failure must still close the open scope — losing the close entirely
+     * would leave the observation dangling open instead of just losing its
+     * detail — so a context-build failure degrades to a bare
+     * ResourceResponseContext::failure() recording the build failure itself.
+     * The bundled SemanticLogger records an out-of-order close as a
+     * diagnostic, but the binding is an interface: an implementation that
+     * throws would, on the success path, destroy a completed response and,
+     * on the error path, mask the real domain exception. Observation must
+     * never break the request, so a close failure is downgraded to a
+     * warning.
+     *
+     * @param callable(): ResourceResponseContext $contextFactory
      */
-    private function safeClose(ResourceResponseContext $context, string $openId): void
+    private function safeClose(callable $contextFactory, string $openId): void
     {
+        try {
+            $context = $contextFactory();
+        } catch (Throwable $e) {
+            self::warn(sprintf('Semantic log context build failed: %s', $e->getMessage()));
+            $context = ResourceResponseContext::failure($e);
+        }
+
         try {
             $this->logger->close($context, $openId);
         } catch (Throwable $e) {
@@ -131,14 +180,10 @@ final readonly class SemanticLogInvoker implements InvokerInterface
             $bodyRef = ($this->bodyStore)($request, $ro);
         } catch (Throwable $e) {
             // Observation must not break a completed request: keep the real code and record the failure.
-            return new ResourceResponseContext(
-                code: $ro->code,
-                exception: self::exceptionContext($e),
-                durationMs: $durationMs,
-            );
+            return ResourceResponseContext::failure($e, code: $ro->code, durationMs: $durationMs);
         }
 
-        return new ResourceResponseContext($ro->code, $bodyRef, durationMs: $durationMs);
+        return ResourceResponseContext::success($ro->code, $bodyRef, durationMs: $durationMs);
     }
 
     private static function elapsedMs(int|float $start): float
@@ -164,19 +209,13 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         return "{$uri->scheme}://{$uri->host}{$uri->path}";
     }
 
-    private static function httpCode(Throwable $e): int
+    private static function httpCode(Throwable $e): int|null
     {
         $code = $e->getCode();
 
-        return is_int($code) && $code >= 400 && $code < 600 ? $code : 500;
-    }
-
-    /** @return array{class: class-string, message: string} */
-    private static function exceptionContext(Throwable $e): array
-    {
-        return [
-            'class' => $e::class,
-            'message' => $e->getMessage(),
-        ];
+        // Only a status the exception itself declares (400-599) is reported: the invoker runs
+        // before the application's error handler maps the exception to a real HTTP status, so a
+        // fallback here would assert a code the client was never actually sent.
+        return is_int($code) && $code >= 400 && $code < 600 ? $code : null;
     }
 }

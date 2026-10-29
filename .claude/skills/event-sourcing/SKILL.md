@@ -57,7 +57,7 @@ Typical split — `DevModule`: rename+decorate + `EventSourcingModule()` (observ
 `DevLogModule` produces two artifacts for inspection:
 
 - **Body files** under `bodyDir`, numbered in invocation order (`000001.json`, `000002.json`, …), each holding the rendered body `(string) $ro`. The directory is cleared when `DevLogModule` is constructed.
-- **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. It is a nested open/close **tree** (`LogJson`): child operations sit under their parent's `open`, each node has a request `context` (`uri`/`method`/`params`/`timestamp`) and a `close` whose `context` carries `code` and a `body_ref` to the matching body file. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk.
+- **The Semantic Logger log**, in memory until `SemanticLoggerInterface::flush()`. It is a nested open/close **tree** (`LogJson`): child operations sit in their parent interval's `log` list, each resource-request node has a request `context` (`uri`/`method`/`params`/`timestamp`) and a `close` whose `context` carries `code` when a status is known (omitted for an escaped exception with no declared HTTP status, which carries `exception` instead) and `body_ref` when a body store recorded one. `GET` is recorded too (`WITH_READS`). This package never writes the log to disk.
 
 Read the log as a tree — far fewer tokens than raw JSON, so prefer it for both human and AI inspection. `Resource\Stree\ResourceNodeFormatter` renders each node as one resource operation (intent in, result out):
 
@@ -73,4 +73,4 @@ Every node follows one rule: intent inline, heavy detail behind a `*_ref` pointe
 
 ## Examples
 
-Reach for the bundled examples before inventing new integration code: `extract.php`, `store.php`, `replay.php` cover extraction, storage, and replay; `tree.php` renders the log as a resource tree. They share the `examples/semantic-log.json` fixture, built through `SemanticLogger::flush()`.
+Reach for the bundled examples before inventing new integration code: `extract.php`, `store.php` cover extraction and storage; `filter.php` selects a subset of events with PHP's standard iterators; `tree.php` renders the log as a resource tree. None of them re-execute an event — see README "Recording and observation" for the typed one-line re-execution call and the conditions that gate it. They share the `examples/semantic-log.json` fixture, built through `SemanticLogger::flush()`.

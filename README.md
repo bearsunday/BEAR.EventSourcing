@@ -1,8 +1,8 @@
 # BEAR.EventSourcing
 
-Make your application's state changes a **replayable source of truth** — fold the events back to reconstruct state at any point in time.
+Captures your application's write requests as a deterministic, ordered event stream — ready for a replay engine to fold back into state, and already a readable audit trail of which write happened, when, and to which resource, for people and AI alike.
 
-Every event is a resource operation: a `method` on a `uri`, like `POST app://self/users`. That resource shape keeps replay straightforward, and it lets the same event stream double as an audit history of the recorded state changes: which write occurred, when, and to which resource.
+Every event is a resource operation: a `method` on a `uri`, like `POST app://self/users`. That shape keeps a future replay implementation simple — re-execute `method` on `uri` with the recorded `params` — but this package stops at producing the event stream: the re-execution itself, and the two conditions that make it safe, are the consuming application's own code (see [Recording and observation](#recording-and-observation)).
 
 ## Installation
 
@@ -78,7 +78,7 @@ Recorded methods by default — `GET` is observation data, not a state change, s
 
 Include `GET` explicitly for development-time read tracing by injecting `new RecordedMethods(RecordedMethods::WITH_READS)`.
 
-A response `code` of `400` or greater marks a failed operation, which is ignored; a string of digits such as `"404"` is read the same way. A missing code is treated as success (no failure signal). A code that is present but cannot be read as a status — a non-digit string, a float, a boolean — is treated as a failure too, so only confirmed successes become events.
+A response `code` of `400` or greater marks a failed operation, which is ignored; a string of digits such as `"404"` is read the same way. A code that is present but cannot be read as a status — a non-digit string, a float, a boolean — is treated as a failure too. A *missing* code with no `exception` alongside it is still read as no failure signal at all — the same default a close context that never set `code` (predating the field, or hand-written) relies on. A missing code *together with* an `exception`, though, is a confirmed failure: `SemanticLogInvoker` omits `code` entirely when a resource invocation throws and the exception's own `getCode()` is not itself a valid HTTP status, because the real status is decided later by the application's error handler — which the observation bridge runs ahead of — and asserting a guessed `500` there would log a status the client was never actually sent. The `exception` it records instead (see [BEAR.Resource observation bridge](#bearresource-observation-bridge-optional) below) is what the extractor reads as the failure signal in `code`'s place. Only a confirmed status below `400`, or an absent code with no exception, becomes an event.
 
 ### Event identity
 
@@ -91,6 +91,21 @@ Identity is what makes the store a source of truth. Re-extraction reproduces the
 The log and the event stream answer different questions. The event stream records what can be **reproduced**: the boundary write requests (root reads only when opted in), the input a replay re-executes. The log observes what **happened**: every node — reads, failures, nested requests, `durationMs` — for transparency, debugging, and checking a replay against the original run.
 
 Extraction therefore takes root entries only. A `POST app://self/orders` whose handler issues `PUT app://self/inventory/SKU-1` yields one event, the POST. Replaying it re-executes the handler, which issues the PUT again; had the PUT been recorded as well, replay would apply it twice. This is the same boundary MySQL statement-based replication draws when it logs a statement but not the writes its triggers perform. The nested PUT is still in the log, as observation.
+
+The mechanism itself is one call, using only `ResourceInterface`'s public, typed surface:
+
+```php
+use BEAR\Resource\Method;
+use LogicException;
+
+if (! $event->replayable) {
+    throw new LogicException('Recorded params are incomplete; this event cannot be replayed faithfully.');
+}
+
+$resource->newRequest(Method::from(strtolower($event->method)), $event->uri, $event->params)();
+```
+
+Building that call is not what this package stops short of. What it does not provide is the judgment the two conditions below require, and a replay engine that applies it — checking `replayable`, as above, is necessary but not sufficient.
 
 Replay by re-execution rests on two conditions the package assumes but does not enforce, the way MySQL flags unsafe statements rather than refusing them:
 
@@ -193,7 +208,7 @@ $orderEvents = new CallbackFilterIterator(
 );
 ```
 
-See `examples/extract.php`, `examples/replay.php`, and `examples/store.php` for runnable end-to-end scripts.
+See `examples/extract.php`, `examples/filter.php`, and `examples/store.php` for runnable end-to-end scripts.
 
 ## Storage (optional)
 
@@ -311,7 +326,9 @@ file_put_contents($logFile, json_encode($log));
 $events = $extractor->extract($log);              // the facts
 ```
 
-Note that the bundled `ResourceResponseContext` records `code`, `body_ref`, and `durationMs` — it never inlines the body. Events extracted from a bridge log therefore always carry a `null` `result`; the payload lives behind the `body_ref` pointer (see below). Record your own close context with a `body` field when the event itself must carry the result.
+Note that the bundled `ResourceResponseContext` records `code`, `body_ref`, `exception`, and `durationMs` — it never inlines the body. Events extracted from a bridge log therefore always carry a `null` `result`; the payload lives behind the `body_ref` pointer (see below). Record your own close context with a `body` field when the event itself must carry the result.
+
+When a resource invocation throws, `SemanticLogInvoker` still closes the observation — with `exception: {class, message}` and, unless the exception's own `getCode()` is a valid HTTP status (`400`-`599`), no `code` at all. The invoker runs ahead of the application's error handler, so it does not know the status the client will actually receive (a `ProductNotFoundException` an application maps to `404` still has `getCode() === 0` here); recording a guessed `500` would log a status nobody sent. `SemanticLogExtractor` reads a missing `code` paired with a present `exception` as a confirmed failure — exactly as it would read `code: 500` — so this close is excluded from the event stream either way; the difference is that the log no longer asserts a specific wrong status.
 
 For local AI/debug work, use `DevLogModule`. It clears the body directory when the module is constructed, stores rendered bodies as files through `FileBodyStore`, and records `GET` as well as write methods:
 

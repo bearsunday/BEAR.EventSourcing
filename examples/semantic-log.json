@@ -1,6 +1,6 @@
 {
     "$schema": "https://koriym.github.io/Koriym.SemanticLogger/schemas/semantic-log.json",
-    "open": [
+    "log": [
         {
             "id": "resource_request_1",
             "type": "resource_request",
@@ -64,7 +64,7 @@
                 },
                 "timestamp": "2026-06-10T12:36:00.000000+00:00"
             },
-            "open": [
+            "log": [
                 {
                     "id": "resource_request_4",
                     "type": "resource_request",
