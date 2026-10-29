@@ -69,7 +69,7 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 
 ## 1. 設置 — 要るかどうかを先に決める
 
-**並行ホスト(1プロセスが複数リクエストを跨いで生き続ける実行モデル全般)は現時点で非対応。**
+**この観測文脈(`setup.php` が設置する構成)は、並行ホスト(1プロセスが複数リクエストを跨いで生き続ける実行モデル全般)では現時点で非対応。**
 差し込み口(`SessionStoreInterface` / `LogSinkInterface`)は BEAR.QueryRepository 側に用意されているが、
 動く実装は同梱されていない — 詳細は下の表と bearsunday/BEAR.EventSourcing#23。
 
@@ -79,7 +79,7 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 | ホスト | すること |
 |---|---|
 | PHP-FPM / CLI 実行 | そのまま下へ |
-| RoadRunner(`RR_MODE`)、Swoole コルーチン内 | 入れても記録されない。sink が arm を拒否し、理由は `error_log` に出る |
+| RoadRunner(`RR_MODE`)、Swoole コルーチン内 | この観測文脈では記録されない。QueryRepository の sink が arm を拒否し、理由は `error_log` に出る。EventSourcing の記録だけなら、アプリがリクエスト境界で flush すれば worker でも使える(README "BEAR.Resource observation bridge" の worker runtimes) |
 | FrankenPHP worker mode、ReactPHP、Amp、常駐 CLI consumer、boot 時に logger を作る Swoole worker | **検出されないので入れない。** 上の保護が効かず、リクエスト境界が 1 本の木に混ざる(同じ logger 上で処理が実際に重なれば、LIFO 違反で close が落ちる) |
 | 分からない | 入れる前に問う |
 
