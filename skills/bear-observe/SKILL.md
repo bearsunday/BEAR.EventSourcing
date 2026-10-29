@@ -69,6 +69,34 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 
 ## 1. 設置 — 要るかどうかを先に決める
 
+**この観測文脈(`setup.php` が設置する構成)は、常駐ホスト(1 プロセスが複数のリクエストを跨いで生き続ける実行モデル)では現時点で非対応。**
+差し込み口(`SessionStoreInterface` / `LogSinkInterface`)は BEAR.QueryRepository 側にあるが、動く実装は同梱されていない。
+
+**分類するのは、`dev-` 文脈を起動するプロセス。** §3 の `php bin/dev.php` は CLI の 1 プロセス 1 リクエストなので、
+本番がどのホストでも、そのまま下へ進んでよい。問題になるのは、`setup.php` が書く `DevModule` が `dev-` を含む
+文脈すべてに載るため、`public/index.php` などを `dev-` 文脈のまま常駐ホストで起動している場合。その起動を分類する:
+
+| `dev-` 文脈を起動するホスト | すること |
+|---|---|
+| CLI(`bin/dev.php`)、PHP-FPM | そのまま下へ |
+| RoadRunner(`RR_MODE`)、コルーチン内で logger が作られる Swoole | 入れても記録されない(QueryRepository の sink が arm を拒否し、理由を `error_log` に出す)。§2 の `check.php` は束縛しか見ないので PASS する。観測は `bin/dev.php` で行う |
+| FrankenPHP worker mode、ReactPHP、Amp、常駐 CLI consumer、boot 時に logger を作る Swoole worker | **検出されないので、その起動に `dev-` 文脈を載せない。** 拒否が働かず、リクエスト境界が 1 本の木に混ざる(処理が同じ logger 上で重なると、close が `close_id_mismatch` として拒否・診断記録され、スコープが閉じないまま木が崩れる。例外は出ない) |
+| 分からない | 入れる前に問う |
+
+常駐ホストでも観測するなら、ホスト側で request context をキーにした `SessionStoreInterface` と、request end で
+flush する `LogSinkInterface` を**両方**束縛する(片方だけだとセッションを共有するか、排出されずに溜まる)。
+根拠は BEAR.QueryRepository の
+[docs/what-the-log-proves.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/what-the-log-proves.md)
+"Concurrent sessions"。`setup.php` が書く `DevModule` はそれを書かない。
+
+EventSourcing のイベント抽出だけなら常駐ホストでも使えるが、`DevModule` のままでは使えない。無印の logger が
+`#[CacheLog]` の logger と同じインスタンスなので、sink が拒否すると `resource_request` も記録されない。
+`DevQueryRepositoryLogModule` を入れない別の配線で、`EventCollector` をランタイムの request end から呼ぶ
+(README "The application owns the flush")。
+
+`SafeSemanticLogger` の "Safe" は、セッションをリクエストごとに解決し、直列化の境界を越えて持ち越さず、
+sink が拒否したら黙る、という意味。並行実行時にセッションを分離する保証ではない。
+
 観測はもう動いているかもしれない。動いているなら**アプリに 1 文字も書かない**。
 `src/Module/DevModule.php` を見て 3 つに分ける:
 
