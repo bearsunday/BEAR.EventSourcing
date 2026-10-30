@@ -32,12 +32,14 @@ use Symfony\Component\Cache\Adapter\AdapterInterface;
 final class DevModule extends AbstractAppModule
 {
     private const ORIGINAL_INVOKER = 'original_invoker';
+    // Body generations and cache-log sessions are pruned by separate counters; keep
+    // them equal so no retained log points at a pruned body.
+    private const KEEP = 100;
 
     #[Override]
     protected function configure(): void
     {
         $bodyDir = $this->appMeta->logDir . '/es-bodies';
-        FileBodyStore::clearDirectory($bodyDir);
 
         $this->rename(InvokerInterface::class, self::ORIGINAL_INVOKER);
         $this->bind(InvokerInterface::class)
@@ -53,12 +55,12 @@ final class DevModule extends AbstractAppModule
         // reads visible in the tree.
         $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)
             ->toInstance(new RecordedMethods(RecordedMethods::WITH_READS));
-        $this->bind(BodyStoreInterface::class)->toInstance(new FileBodyStore($bodyDir));
+        $this->bind(BodyStoreInterface::class)->toInstance(new FileBodyStore($bodyDir, self::KEEP));
         $this->install(new EventSourcingModule());
 
         // The cache log module owns the writer and the shutdown flush, so the application
         // writes no flush of its own.
-        $this->install(new DevQueryRepositoryLogModule($this->appMeta->logDir . '/observe'));
+        $this->install(new DevQueryRepositoryLogModule($this->appMeta->logDir . '/observe', self::KEEP));
         // One request, one tree: the resource invoker records into the logger the sink flushes.
         $this->bind(SemanticLoggerInterface::class)
             ->toProvider(ObserveLoggerProvider::class)->in(Scope::SINGLETON);

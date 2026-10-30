@@ -330,7 +330,7 @@ Note that the bundled `ResourceResponseContext` records `code`, `body_ref`, `exc
 
 When a resource invocation throws, `SemanticLogInvoker` still closes the observation — with `exception: {class, message}` and, unless the exception's own `getCode()` is a valid HTTP status (`400`-`599`), no `code` at all. The invoker runs ahead of the application's error handler, so it does not know the status the client will actually receive (a `ProductNotFoundException` an application maps to `404` still has `getCode() === 0` here); recording a guessed `500` would log a status nobody sent. `SemanticLogExtractor` reads a missing `code` paired with a present `exception` as a confirmed failure — exactly as it would read `code: 500` — so this close is excluded from the event stream either way; the difference is that the log no longer asserts a specific wrong status.
 
-For local AI/debug work, use `DevLogModule`. It clears the body directory when the module is constructed, stores rendered bodies as files through `FileBodyStore`, and records `GET` as well as write methods:
+For local AI/debug work, use `DevLogModule`. Constructing it writes nothing to disk; the first stored body creates a uniquely named generation directory under `bodyDir` and stores rendered bodies as files through `FileBodyStore`, keeping `GET` as well as write methods:
 
 ```php
 use BEAR\EventSourcing\Resource\DevLogModule;
@@ -343,6 +343,8 @@ $injector = new Injector(new DevLogModule(
 ));
 ```
 
+One `bodyDir` can be shared across sessions or processes: each `FileBodyStore` instance names its own generation, so their sequences never collide. After creating a generation, the store prunes sibling generations it marked itself down to `keep` (default 5, oldest first) — pass `keep:` to `DevLogModule` to change it. Anything under `bodyDir` without `FileBodyStore::MARKER` is left alone and never counted toward that cap. Retention counts generations, not live sessions: give `keep` room for the sessions you expect to overlap, or a generation can be pruned while its session is still writing. When a log writer keeps its own count beside it (`DevQueryRepositoryLogModule`'s `keep`), give both the same number, so no retained log points at a pruned body; the `bear-observe` DevModule template does this. Pruning is best effort: a generation that cannot be removed raises an `E_USER_WARNING` and is skipped, and the write still succeeds.
+
 ### Wiring inside a BEAR.Sunday context
 
 Passing `module:` is for a standalone injector, where the bridge's wrapped module is the only provider of `InvokerInterface`. A BEAR.Sunday context module (a `dev-` prefix such as `dev-hal-app`) inherits the whole inner chain instead, so it renames the chain's own binding and decorates it in place:
@@ -354,7 +356,6 @@ final class DevModule extends AbstractAppModule
     protected function configure(): void
     {
         $bodyDir = $this->appMeta->logDir . '/es-bodies';
-        FileBodyStore::clearDirectory($bodyDir);
 
         $this->rename(InvokerInterface::class, 'original_invoker');
         $this->bind(InvokerInterface::class)
@@ -380,7 +381,7 @@ Recording and extraction stay separate policies (`#[Recorded]` / `#[Extracted]`)
 A `BodyStoreInterface` records a `body_ref` in the close context:
 
 ```json
-{"code": 200, "body_ref": "file:///path/to/var/es/bodies/000001.json", "durationMs": 0.42}
+{"code": 200, "body_ref": "file:///path/to/var/es/bodies/20260922-143059-482913-a1b2c3d4/000001.json", "durationMs": 0.42}
 ```
 
 `body_ref` is a reference to a stored rendered body. It stays in the Semantic Log for inspection and is **not** extracted into `Event::$result` — the event's `result` comes from `close.context.body`. A bridge log that records only `body_ref` therefore yields an event with a `null` result; the payload lives in the externalized body, not in the event. The same domain operation produces the same event regardless of which `BodyStoreInterface` the bridge uses.
@@ -391,14 +392,14 @@ A `BodyStoreInterface` records a `body_ref` in the close context:
 
 With `DevLogModule` active you read two artifacts:
 
-**Body files** under `bodyDir`, one per recorded operation, numbered in invocation order. The directory is cleared when `DevLogModule` is constructed, so it always reflects the latest run:
+**Body files** under `bodyDir`, one per recorded operation, numbered in invocation order within the generation subdirectory `FileBodyStore` created for the run:
 
 ```text
-var/es/bodies/000001.json   # rendered body of the first recorded operation, i.e. $ro->toString()
-var/es/bodies/000002.json
+var/es/bodies/20260922-143059-482913-a1b2c3d4/000001.json   # rendered body of the first recorded operation, i.e. $ro->toString()
+var/es/bodies/20260922-143059-482913-a1b2c3d4/000002.json
 ```
 
-`bodyDir` must be a dedicated directory owned by the body store: it is cleared on each run, and to avoid deleting anything else it refuses to clear a directory it did not create or adopt while empty (an ownership marker guards this). Use one `bodyDir` per process; the sequence counter is per-store, so pointing concurrent processes at the same directory can overwrite each other's files. A failed render is recorded as an `exception` in the close context, not written as an empty body file.
+`bodyDir` is the shared root `FileBodyStore` creates generation subdirectories under; nothing is created until the first body is stored, and each session's generation is uniquely named so multiple sessions or processes can point at the same `bodyDir` without their sequences colliding (see "For local AI/debug work" above for `keep`). To avoid deleting anything else, `clearDirectory()` refuses to clear a directory it did not create or adopt while empty (an ownership marker guards this — `FileBodyStore::MARKER`). A `bodyDir` last used by 0.2.0 still carries that marker on the root itself, so `clearDirectory()` would accept it and clear every generation under it; delete that directory once when upgrading. A failed render is recorded as an `exception` in the close context, not written as an empty body file.
 
 **The Semantic Logger log**, a nested open/close tree held in memory until you call `$logger->flush()`. Render it as a readable tree — far smaller than the raw JSON, for both humans and AI. `Resource\Stree\ResourceNodeFormatter` renders each node as one resource operation, so a `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` reads as intent in, result out:
 

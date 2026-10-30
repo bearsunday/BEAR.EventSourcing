@@ -25,12 +25,9 @@ use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
 
-use function file_exists;
-use function file_put_contents;
+use function is_dir;
 use function json_decode;
 use function json_encode;
-use function mkdir;
-use function rmdir;
 use function sys_get_temp_dir;
 use function uniqid;
 
@@ -63,25 +60,21 @@ final class ResourceObservationModuleTest extends TestCase
         $this->assertInstanceOf(SensitiveParamsFilter::class, $filter);
     }
 
-    public function testDevModuleClearsDirectoryAndUsesFileBodyStoreWithReads(): void
+    public function testDevModuleDefersDirectoryCreationAndUsesFileBodyStoreWithReads(): void
     {
         $dir = sys_get_temp_dir() . '/' . uniqid('bear-es-dev-bodies-', true);
-        mkdir($dir);
-        new FileBodyStore($dir); // a prior dev run adopts the directory (writes the ownership marker)
-        file_put_contents($dir . '/old.json', '{}');
 
         $injector = new Injector(new DevLogModule(
             bodyDir: $dir,
             module: new ResourceClientModule(),
         ));
 
-        $this->assertFalse(file_exists($dir . '/old.json'));
+        // Constructing the module costs nothing until a body is actually stored:
+        // no eager mkdir/clear that would drift out of sync with what gets logged.
+        $this->assertFalse(is_dir($dir));
         $this->assertInstanceOf(SemanticLogInvoker::class, $injector->getInstance(InvokerInterface::class));
         $this->assertInstanceOf(FileBodyStore::class, $injector->getInstance(BodyStoreInterface::class));
         $this->assertSame('GET', $injector->getInstance(RecordedMethods::class, Recorded::class)->normalize('GET'));
-
-        FileBodyStore::clearDirectory($dir);
-        rmdir($dir);
     }
 
     public function testCustomParamsFilterBoundByTheApplicationReachesTheRealInvoker(): void

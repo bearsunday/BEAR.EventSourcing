@@ -6,7 +6,6 @@ namespace BEAR\EventSourcing\Tests;
 
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\EventSourcing\Resource\DevLogModule;
-use BEAR\EventSourcing\Resource\FileBodyStore;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\Tests\Fixture\UnifiedLogModule;
 use BEAR\Resource\ResourceInterface;
@@ -18,7 +17,6 @@ use function is_array;
 use function json_decode;
 use function json_encode;
 use function mkdir;
-use function rmdir;
 use function sys_get_temp_dir;
 use function uniqid;
 
@@ -30,6 +28,8 @@ use const JSON_THROW_ON_ERROR;
  */
 final class UnifiedLogTest extends TestCase
 {
+    use RemovesDirectoryTree;
+
     public function testCacheScopesNestInsideResourceRequestTree(): void
     {
         $logger = new SemanticLogger();
@@ -70,8 +70,7 @@ final class UnifiedLogTest extends TestCase
         $events = (new SemanticLogExtractor(new RecordedMethods(RecordedMethods::WITH_READS)))->extract($log);
         $this->assertCount(2, $events);
 
-        FileBodyStore::clearDirectory($bodyDir);
-        rmdir($bodyDir);
+        self::removeTree($bodyDir);
     }
 
     /** @param array<array-key, mixed> $entries */
