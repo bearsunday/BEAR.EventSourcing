@@ -33,11 +33,13 @@ use function str_ends_with;
 use function str_starts_with;
 use function strlen;
 use function substr;
+use function symlink;
 use function sys_get_temp_dir;
 use function uniqid;
 use function unlink;
 use function usleep;
 
+use const E_USER_WARNING;
 use const E_WARNING;
 
 final class FileBodyStoreTest extends TestCase
@@ -229,6 +231,95 @@ final class FileBodyStoreTest extends TestCase
 
         unlink($stale . '/' . FileBodyStore::MARKER);
         rmdir($stale);
+        self::removeTree($dir);
+    }
+
+    public function testAGenerationThatCannotBePrunedWarnsAndTheWriteStillSucceeds(): void
+    {
+        if (getmyuid() === 0) {
+            $this->markTestSkipped('Cannot simulate an unwritable directory as root.');
+        }
+
+        $dir = self::newBodyDir();
+        $stuck = $dir . '/00000101-000000-000000-00000000';
+        mkdir($stuck);
+        file_put_contents($stuck . '/' . FileBodyStore::MARKER, '');
+        mkdir($stuck . '/locked');
+        file_put_contents($stuck . '/locked/file', '{}');
+        chmod($stuck . '/locked', 0500);
+
+        $ro = new FakeResourceObject(body: ['id' => 1]);
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
+
+        $userWarnings = 0;
+        set_error_handler(static function (int $errno) use (&$userWarnings): bool {
+            if ($errno === E_USER_WARNING) {
+                $userWarnings++;
+            }
+
+            return true;
+        });
+        try {
+            $first = (new FileBodyStore($dir, keep: 1))($request, $ro);
+            usleep(1_000);
+            $second = (new FileBodyStore($dir, keep: 1))($request, $ro);
+        } finally {
+            restore_error_handler();
+            chmod($stuck . '/locked', 0700);
+        }
+
+        assert($first !== null && $second !== null);
+        $this->assertSame(2, $userWarnings, 'each prune pass warns about the stuck generation');
+        $this->assertTrue(file_exists(self::pathFromRef($second)), 'a stuck generation never blocks a write');
+
+        self::removeTree($dir);
+    }
+
+    public function testSymlinkedEntryUnderRootIsNotTreatedAsAGeneration(): void
+    {
+        $dir = self::newBodyDir();
+        $target = self::newBodyDir();
+        file_put_contents($target . '/' . FileBodyStore::MARKER, '');
+        file_put_contents($target . '/precious.json', '{}');
+        symlink($target, $dir . '/00000101-000000-000000-00000000');
+
+        $ro = new FakeResourceObject(body: ['id' => 1]);
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
+        (new FileBodyStore($dir, keep: 1))($request, $ro);
+
+        $this->assertTrue(file_exists($target . '/precious.json'), 'pruning never follows a symlink');
+
+        unlink($dir . '/00000101-000000-000000-00000000');
+        self::removeTree($dir);
+        self::removeTree($target);
+    }
+
+    public function testClearDirectoryRefusesTheRootOfAStoreWithGenerations(): void
+    {
+        $dir = self::newBodyDir();
+        $ro = new FakeResourceObject(body: ['id' => 1]);
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
+        (new FileBodyStore($dir))($request, $ro);
+
+        try {
+            FileBodyStore::clearDirectory($dir);
+            $this->fail('Expected the unmarked root to be refused.');
+        } catch (UnownedDirectoryException) {
+            $this->assertCount(1, self::subdirectories($dir), 'the generation is left in place');
+        }
+
         self::removeTree($dir);
     }
 

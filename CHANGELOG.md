@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Migration
+
+- **Delete the old body directory once when upgrading from 0.2.0.** 0.2.0 wrote numbered files straight into `bodyDir` and marked `bodyDir` itself as owned. Those files are not generations, so retention never removes them, and the leftover marker lets one `FileBodyStore::clearDirectory($bodyDir)` succeed and wipe every generation under it before the call starts throwing `UnownedDirectoryException`.
+
 ### Added
 
 - `FileBodyStore::MARKER` is public (was a private constant every consumer had to re-state) and `FileBodyStore` takes a `keep` constructor parameter (default 5): the store now owns its own generation retention instead of a host reimplementing it
@@ -9,7 +13,7 @@
 
 ### Fixed
 
-- `FileBodyStore` no longer creates its directory in the constructor. A host wires `BodyStoreInterface` while building the injector, before routing knows the request method; `SemanticLogInvoker` stores nothing for a method outside `RecordedMethods::WITH_READS`, so the directory used to exist even for a request that recorded nothing. Any per-request retention scheme built on that directory advanced on every injector build but only sometimes gained a log to reference it, so count-based pruning drifted out of sync with what was actually retained until a kept log's `body_ref` pointed at an already-pruned directory. `FileBodyStore` now creates nothing until the first body is stored, names that store's directory uniquely (so one root can be shared across sessions or processes without their sequences colliding), and prunes sibling generations it marked itself down to `keep` — the drift is no longer something a host can reintroduce by getting the two counters out of sync. `DevLogModule` and the `skills/bear-observe/templates/DevModule.php` template stop clearing the body directory at construction/`configure()` for the same reason (#28)
+- `FileBodyStore` no longer creates its directory in the constructor. A host wires `BodyStoreInterface` while building the injector, before routing knows the request method; `SemanticLogInvoker` stores nothing for a method outside `RecordedMethods::WITH_READS`, so the directory used to exist even for a request that recorded nothing. Any per-request retention scheme built on that directory advanced on every injector build but only sometimes gained a log to reference it, so count-based pruning drifted out of sync with what was actually retained until a kept log's `body_ref` pointed at an already-pruned directory. `FileBodyStore` now creates nothing until the first body is stored, names that store's directory uniquely (so one root can be shared across sessions or processes without their sequences colliding), and prunes sibling generations it marked itself down to `keep`. Pruning is best effort: a generation that cannot be removed (permissions, another process removing it first) raises an `E_USER_WARNING` and is skipped instead of failing the write, and a symlinked entry under the root is never treated as a generation. The `bear-observe` DevModule template passes the same `keep` to `FileBodyStore` and `DevQueryRepositoryLogModule`, so no retained cache log points at a pruned body. `DevLogModule` and the `skills/bear-observe/templates/DevModule.php` template stop clearing the body directory at construction/`configure()` for the same reason (#28)
 
 ### Changed
 

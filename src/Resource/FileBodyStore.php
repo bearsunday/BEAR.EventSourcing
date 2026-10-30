@@ -10,10 +10,12 @@ use FilesystemIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
+use UnexpectedValueException;
 
 use function bin2hex;
 use function count;
 use function explode;
+use function file_exists;
 use function file_put_contents;
 use function gmdate;
 use function is_dir;
@@ -28,10 +30,12 @@ use function round;
 use function sort;
 use function sprintf;
 use function str_starts_with;
+use function trigger_error;
 use function trim;
 use function unlink;
 
 use const DIRECTORY_SEPARATOR;
+use const E_USER_WARNING;
 use const LOCK_EX;
 use const SORT_STRING;
 
@@ -56,10 +60,15 @@ use const SORT_STRING;
  * `BodyStoreInterface` failure and records it in the close context rather
  * than propagating it, so this degrades one entry to a missing `body_ref`
  * rather than breaking the request; size `$keep` above the number of
- * sessions you expect to overlap to avoid it. A generation that cannot be
- * deleted (permissions, a held file handle) also fails the write that
- * triggered the prune, since pruning runs before the new generation's
- * first file is written.
+ * sessions you expect to overlap to avoid it. Pairing it with a log writer
+ * that keeps its own count (DevQueryRepositoryLogModule's `keep`), give both
+ * the same number: a generation pruned before the log that references it
+ * leaves that log's `body_ref` dangling.
+ *
+ * Pruning is best effort. A generation that cannot be removed (permissions,
+ * a held file handle, another process removing it first) raises an
+ * E_USER_WARNING and is skipped; the write that triggered the prune still
+ * succeeds.
  *
  * Use it for dev/debug observation (DevLogModule); production body stores
  * belong to the application.
@@ -187,7 +196,11 @@ final class FileBodyStore implements BodyStoreInterface
         $owned = [];
         foreach (new FilesystemIterator($rootDir) as $entry) {
             /** @var SplFileInfo $entry */
-            if (! $entry->isDir() || ! is_file($entry->getPathname() . DIRECTORY_SEPARATOR . self::MARKER)) {
+            if (
+                $entry->isLink()
+                || ! $entry->isDir()
+                || ! is_file($entry->getPathname() . DIRECTORY_SEPARATOR . self::MARKER)
+            ) {
                 continue;
             }
 
@@ -197,7 +210,15 @@ final class FileBodyStore implements BodyStoreInterface
         sort($owned, SORT_STRING);
         $overflow = count($owned) - $keep;
         for ($i = 0; $i < $overflow; $i++) {
-            self::removeGeneration($rootDir . DIRECTORY_SEPARATOR . $owned[$i]);
+            $generation = $rootDir . DIRECTORY_SEPARATOR . $owned[$i];
+            try {
+                self::removeGeneration($generation);
+            } catch (BodyStoreException | UnexpectedValueException $e) {
+                trigger_error(
+                    sprintf('FileBodyStore could not prune %s: %s', $generation, $e->getMessage()),
+                    E_USER_WARNING,
+                );
+            }
         }
     }
 
@@ -320,14 +341,14 @@ final class FileBodyStore implements BodyStoreInterface
             }
 
             if ($file->isLink() || $file->isFile()) {
-                if (! unlink($path)) {
+                if (! unlink($path) && file_exists($path)) {
                     throw new BodyStoreException(sprintf('Failed to remove body store file: %s', $path));
                 }
 
                 continue;
             }
 
-            if ($file->isDir() && ! rmdir($path)) {
+            if ($file->isDir() && ! rmdir($path) && is_dir($path)) {
                 throw new BodyStoreException(sprintf('Failed to remove body store directory: %s', $path));
             }
         }

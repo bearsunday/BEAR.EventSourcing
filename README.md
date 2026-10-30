@@ -343,7 +343,7 @@ $injector = new Injector(new DevLogModule(
 ));
 ```
 
-One `bodyDir` can be shared across sessions or processes: each `FileBodyStore` instance names its own generation, so their sequences never collide. After creating a generation, the store prunes sibling generations it marked itself down to `keep` (default 5, oldest first) — pass `keep:` to `DevLogModule` to change it. Anything under `bodyDir` without `FileBodyStore::MARKER` is left alone and never counted toward that cap.
+One `bodyDir` can be shared across sessions or processes: each `FileBodyStore` instance names its own generation, so their sequences never collide. After creating a generation, the store prunes sibling generations it marked itself down to `keep` (default 5, oldest first) — pass `keep:` to `DevLogModule` to change it. Anything under `bodyDir` without `FileBodyStore::MARKER` is left alone and never counted toward that cap. Retention counts generations, not live sessions: give `keep` room for the sessions you expect to overlap, or a generation can be pruned while its session is still writing. When a log writer keeps its own count beside it (`DevQueryRepositoryLogModule`'s `keep`), give both the same number, so no retained log points at a pruned body; the `bear-observe` DevModule template does this. Pruning is best effort: a generation that cannot be removed raises an `E_USER_WARNING` and is skipped, and the write still succeeds.
 
 ### Wiring inside a BEAR.Sunday context
 
