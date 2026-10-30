@@ -323,6 +323,30 @@ final class FileBodyStoreTest extends TestCase
         self::removeTree($dir);
     }
 
+    public function testTheNewGenerationSurvivesWhenTheClockRunsBehind(): void
+    {
+        $dir = self::newBodyDir();
+        foreach (['99991231-235958-000000-00000000', '99991231-235959-000000-00000000'] as $future) {
+            mkdir($dir . '/' . $future);
+            file_put_contents($dir . '/' . $future . '/' . FileBodyStore::MARKER, '');
+        }
+
+        $ro = new FakeResourceObject(body: ['id' => 1]);
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
+        $ref = (new FileBodyStore($dir, keep: 2))($request, $ro);
+
+        assert($ref !== null);
+        $this->assertTrue(file_exists(self::pathFromRef($ref)), 'the generation being written is never pruned');
+        $this->assertCount(2, self::subdirectories($dir));
+        $this->assertFalse(is_dir($dir . '/99991231-235958-000000-00000000'), 'the oldest other generation goes');
+
+        self::removeTree($dir);
+    }
+
     public function testForeignDirectoryUnderRootIsNeverPrunedOrCounted(): void
     {
         $dir = self::newBodyDir();

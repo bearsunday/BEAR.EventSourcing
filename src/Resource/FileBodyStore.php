@@ -166,7 +166,7 @@ final class FileBodyStore implements BodyStoreInterface
         }
 
         self::markOwned($generationDir);
-        self::pruneGenerations($rootDir, $keep);
+        self::pruneGenerations($rootDir, $keep, $generationDir);
 
         return $generationDir;
     }
@@ -190,8 +190,11 @@ final class FileBodyStore implements BodyStoreInterface
         return gmdate('Ymd-His', $seconds) . '-' . sprintf('%06d', $micros) . '-' . bin2hex(random_bytes(4));
     }
 
-    /** Remove owned generations beyond $keep, oldest first; foreign entries are never touched or counted. */
-    private static function pruneGenerations(string $rootDir, int $keep): void
+    /**
+     * Remove owned generations beyond $keep, oldest first; foreign entries are never touched or counted.
+     * The generation just created always survives, even when a clock running behind sorts it first.
+     */
+    private static function pruneGenerations(string $rootDir, int $keep, string $current): void
     {
         $owned = [];
         foreach (new FilesystemIterator($rootDir) as $entry) {
@@ -199,6 +202,7 @@ final class FileBodyStore implements BodyStoreInterface
             if (
                 $entry->isLink()
                 || ! $entry->isDir()
+                || $entry->getPathname() === $current
                 || ! is_file($entry->getPathname() . DIRECTORY_SEPARATOR . self::MARKER)
             ) {
                 continue;
@@ -208,7 +212,7 @@ final class FileBodyStore implements BodyStoreInterface
         }
 
         sort($owned, SORT_STRING);
-        $overflow = count($owned) - $keep;
+        $overflow = count($owned) - ($keep - 1);
         for ($i = 0; $i < $overflow; $i++) {
             $generation = $rootDir . DIRECTORY_SEPARATOR . $owned[$i];
             try {
