@@ -97,6 +97,13 @@ EventSourcing のイベント抽出だけなら常駐ホストでも使えるが
 `SafeSemanticLogger` の "Safe" は、セッションをリクエストごとに解決し、直列化の境界を越えて持ち越さず、
 sink が拒否したら黙る、という意味。並行実行時にセッションを分離する保証ではない。
 
+ホストが通っても、束縛の形で無音のまま欠ける配線が 2 つある。`check.php`(§2)だけでは拾い切れないので、ここで目視する:
+
+| 点検 | 落ちると起きること |
+|---|---|
+| `SemanticLoggerInterface` が別の場所で `Scope::SINGLETON` 無しに束縛されていないか | §2 の `check.php` の `one logger for both keys` が拾う(無印と `#[CacheLog]` が同一インスタンスでなければ FAIL)。それでも見逃す形は sink 側が拾い、`error_log` に `a second logger armed an already-armed sink` と出す — 読みに行かなければ気づかない |
+| injector を直列化する文脈(コンパイル済みアプリ)に `PsrLogWriter` が無いか | ホストの logger(Monolog はクロージャを持つ)を抱えるので、コンパイルしたグラフが unserialize できなくなる。その文脈は `LogFileWriter` / `LogStreamWriter` で書く |
+
 観測はもう動いているかもしれない。動いているなら**アプリに 1 文字も書かない**。
 `src/Module/DevModule.php` を見て 3 つに分ける:
 
