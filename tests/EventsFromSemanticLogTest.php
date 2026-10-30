@@ -11,9 +11,10 @@ use BEAR\EventSourcing\Resource\ResourceResponseContext as BodyResponseContext;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\SemanticLogExtractorInterface;
 use DateTimeImmutable;
-use Koriym\SemanticLogger\EventEntry;
+use DomainException;
+use Koriym\SemanticLogger\CloseEntry;
 use Koriym\SemanticLogger\LogJson;
-use Koriym\SemanticLogger\OpenCloseEntry;
+use Koriym\SemanticLogger\OpenEntry;
 use Koriym\SemanticLogger\SemanticLogger;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -79,23 +80,25 @@ final class EventsFromSemanticLogTest extends TestCase
     {
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
-                id: 'resource_request_1',
-                type: 'resource_request',
-                schemaUrl: 'https://example.com/resource-request.schema.json',
-                context: [
-                    'uri' => 'app://self/users',
-                    'method' => 'POST',
-                    'timestamp' => '2026-06-10T12:34:56.123456+00:00',
-                ],
-            )],
-            close: [new EventEntry(
-                id: 'resource_response_1',
-                type: 'resource_response',
-                schemaUrl: 'https://example.com/resource-response.schema.json',
-                context: ['code' => $code, 'body' => ['id' => 1]],
-                openId: 'resource_request_1',
-            )],
+            records: [
+                new OpenEntry(
+                    id: 'resource_request_1',
+                    type: 'resource_request',
+                    schemaUrl: 'https://example.com/resource-request.schema.json',
+                    context: [
+                        'uri' => 'app://self/users',
+                        'method' => 'POST',
+                        'timestamp' => '2026-06-10T12:34:56.123456+00:00',
+                    ],
+                ),
+                new CloseEntry(
+                    id: 'resource_response_1',
+                    type: 'resource_response',
+                    schemaUrl: 'https://example.com/resource-response.schema.json',
+                    context: ['code' => $code, 'body' => ['id' => 1]],
+                    openId: 'resource_request_1',
+                ),
+            ],
         );
 
         $events = (new SemanticLogExtractor())->extract($semanticLog);
@@ -107,7 +110,7 @@ final class EventsFromSemanticLogTest extends TestCase
     public static function responseCodeProvider(): array
     {
         return [
-            'explicit null keeps the event' => [null, 1],
+            'explicit null, no exception, keeps the event (no failure signal)' => [null, 1],
             'int success' => [201, 1],
             'int boundary 399' => [399, 1],
             'int boundary 400' => [400, 0],
@@ -141,7 +144,7 @@ final class EventsFromSemanticLogTest extends TestCase
     {
         $logger = new SemanticLogger();
         $openId = $logger->open(new ResourceRequestContext('app://self/users/1', 'POST'));
-        $logger->close(new BodyResponseContext(200, 'file://var/es/bodies/000001.json'), $openId);
+        $logger->close(BodyResponseContext::success(200, 'file://var/es/bodies/000001.json'), $openId);
 
         $events = (new SemanticLogExtractor())->extract($logger->flush());
 
@@ -149,6 +152,26 @@ final class EventsFromSemanticLogTest extends TestCase
         $event = iterator_to_array($events)[0];
         $this->assertSame('app://self/users/1', $event->uri);
         $this->assertNull($event->result);
+    }
+
+    public function testEscapedExceptionWithNoKnownCodeIsNotExtracted(): void
+    {
+        // SemanticLogInvoker omits `code` entirely when a resource invocation throws and the
+        // exception's own getCode() is not itself a valid HTTP status — the application's error
+        // handler decides the real status later, after the observation bridge already closed
+        // the entry. A missing code alone is still "no failure signal" (see
+        // responseCodeProvider's null case), but a missing code together with a present
+        // exception is read as a confirmed failure, so this close must not be extracted.
+        $logger = new SemanticLogger();
+        $openId = $logger->open(new ResourceRequestContext('app://self/checkout', 'POST'));
+        $logger->close(
+            BodyResponseContext::failure(new DomainException('boom')),
+            $openId,
+        );
+
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
+
+        $this->assertCount(0, $events);
     }
 
     public function testRejectsUnsupportedRecordedMethod(): void
@@ -242,25 +265,27 @@ final class EventsFromSemanticLogTest extends TestCase
         // same default ResourceRequestContext::$replayable carries.
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
-                id: 'resource_request_1',
-                type: 'resource_request',
-                schemaUrl: 'https://example.com/resource-request.schema.json',
-                context: [
-                    'uri' => 'app://self/users',
-                    'method' => 'POST',
-                    'params' => ['name' => 'Ada'],
-                    'timestamp' => '2026-06-10T12:34:56.123456+00:00',
-                    // deliberately no 'replayable' key
-                ],
-            )],
-            close: [new EventEntry(
-                id: 'resource_response_1',
-                type: 'resource_response',
-                schemaUrl: 'https://example.com/resource-response.schema.json',
-                context: ['code' => 201],
-                openId: 'resource_request_1',
-            )],
+            records: [
+                new OpenEntry(
+                    id: 'resource_request_1',
+                    type: 'resource_request',
+                    schemaUrl: 'https://example.com/resource-request.schema.json',
+                    context: [
+                        'uri' => 'app://self/users',
+                        'method' => 'POST',
+                        'params' => ['name' => 'Ada'],
+                        'timestamp' => '2026-06-10T12:34:56.123456+00:00',
+                        // deliberately no 'replayable' key
+                    ],
+                ),
+                new CloseEntry(
+                    id: 'resource_response_1',
+                    type: 'resource_response',
+                    schemaUrl: 'https://example.com/resource-response.schema.json',
+                    context: ['code' => 201],
+                    openId: 'resource_request_1',
+                ),
+            ],
         );
 
         $events = (new SemanticLogExtractor())->extract($semanticLog);
@@ -275,25 +300,27 @@ final class EventsFromSemanticLogTest extends TestCase
         // a replayable fact: the same stance the extractor takes on an uninterpretable code.
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
-                id: 'resource_request_1',
-                type: 'resource_request',
-                schemaUrl: 'https://example.com/resource-request.schema.json',
-                context: [
-                    'uri' => 'app://self/users',
-                    'method' => 'POST',
-                    'params' => ['name' => 'Ada'],
-                    'timestamp' => '2026-06-10T12:34:56.123456+00:00',
-                    'replayable' => 'yes',
-                ],
-            )],
-            close: [new EventEntry(
-                id: 'resource_response_1',
-                type: 'resource_response',
-                schemaUrl: 'https://example.com/resource-response.schema.json',
-                context: ['code' => 201],
-                openId: 'resource_request_1',
-            )],
+            records: [
+                new OpenEntry(
+                    id: 'resource_request_1',
+                    type: 'resource_request',
+                    schemaUrl: 'https://example.com/resource-request.schema.json',
+                    context: [
+                        'uri' => 'app://self/users',
+                        'method' => 'POST',
+                        'params' => ['name' => 'Ada'],
+                        'timestamp' => '2026-06-10T12:34:56.123456+00:00',
+                        'replayable' => 'yes',
+                    ],
+                ),
+                new CloseEntry(
+                    id: 'resource_response_1',
+                    type: 'resource_response',
+                    schemaUrl: 'https://example.com/resource-response.schema.json',
+                    context: ['code' => 201],
+                    openId: 'resource_request_1',
+                ),
+            ],
         );
 
         $events = (new SemanticLogExtractor())->extract($semanticLog);
@@ -309,25 +336,27 @@ final class EventsFromSemanticLogTest extends TestCase
         // than with absence — a distinction `??` cannot make, since it coalesces null too.
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
-                id: 'resource_request_1',
-                type: 'resource_request',
-                schemaUrl: 'https://example.com/resource-request.schema.json',
-                context: [
-                    'uri' => 'app://self/users',
-                    'method' => 'POST',
-                    'params' => ['name' => 'Ada'],
-                    'timestamp' => '2026-06-10T12:34:56.123456+00:00',
-                    'replayable' => null,
-                ],
-            )],
-            close: [new EventEntry(
-                id: 'resource_response_1',
-                type: 'resource_response',
-                schemaUrl: 'https://example.com/resource-response.schema.json',
-                context: ['code' => 201],
-                openId: 'resource_request_1',
-            )],
+            records: [
+                new OpenEntry(
+                    id: 'resource_request_1',
+                    type: 'resource_request',
+                    schemaUrl: 'https://example.com/resource-request.schema.json',
+                    context: [
+                        'uri' => 'app://self/users',
+                        'method' => 'POST',
+                        'params' => ['name' => 'Ada'],
+                        'timestamp' => '2026-06-10T12:34:56.123456+00:00',
+                        'replayable' => null,
+                    ],
+                ),
+                new CloseEntry(
+                    id: 'resource_response_1',
+                    type: 'resource_response',
+                    schemaUrl: 'https://example.com/resource-response.schema.json',
+                    context: ['code' => 201],
+                    openId: 'resource_request_1',
+                ),
+            ],
         );
 
         $events = (new SemanticLogExtractor())->extract($semanticLog);
@@ -340,19 +369,21 @@ final class EventsFromSemanticLogTest extends TestCase
     {
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
-                id: 'operation_1',
-                type: 'operation',
-                schemaUrl: 'https://example.com/operation.schema.json',
-                context: ['name' => 'not-a-resource-request'],
-            )],
-            close: [new EventEntry(
-                id: 'operation_response_1',
-                type: 'operation_response',
-                schemaUrl: 'https://example.com/operation-response.schema.json',
-                context: ['body' => ['ok' => true]],
-                openId: 'operation_1',
-            )],
+            records: [
+                new OpenEntry(
+                    id: 'operation_1',
+                    type: 'operation',
+                    schemaUrl: 'https://example.com/operation.schema.json',
+                    context: ['name' => 'not-a-resource-request'],
+                ),
+                new CloseEntry(
+                    id: 'operation_response_1',
+                    type: 'operation_response',
+                    schemaUrl: 'https://example.com/operation-response.schema.json',
+                    context: ['body' => ['ok' => true]],
+                    openId: 'operation_1',
+                ),
+            ],
         );
 
         $events = (new SemanticLogExtractor())->extract($semanticLog);
@@ -366,23 +397,25 @@ final class EventsFromSemanticLogTest extends TestCase
         // resource_request type may become an event.
         $semanticLog = new LogJson(
             schemaUrl: 'https://example.com/semantic-log.schema.json',
-            open: [new OpenCloseEntry(
-                id: 'http_client_1',
-                type: 'http_client',
-                schemaUrl: 'https://example.com/http-client.schema.json',
-                context: [
-                    'method' => 'POST',
-                    'uri' => 'https://api.example.com/charges',
-                    'timestamp' => '2026-06-10T12:34:56.123456+00:00',
-                ],
-            )],
-            close: [new EventEntry(
-                id: 'http_client_response_1',
-                type: 'http_client_response',
-                schemaUrl: 'https://example.com/http-client-response.schema.json',
-                context: ['code' => 201, 'body' => ['ok' => true]],
-                openId: 'http_client_1',
-            )],
+            records: [
+                new OpenEntry(
+                    id: 'http_client_1',
+                    type: 'http_client',
+                    schemaUrl: 'https://example.com/http-client.schema.json',
+                    context: [
+                        'method' => 'POST',
+                        'uri' => 'https://api.example.com/charges',
+                        'timestamp' => '2026-06-10T12:34:56.123456+00:00',
+                    ],
+                ),
+                new CloseEntry(
+                    id: 'http_client_response_1',
+                    type: 'http_client_response',
+                    schemaUrl: 'https://example.com/http-client-response.schema.json',
+                    context: ['code' => 201, 'body' => ['ok' => true]],
+                    openId: 'http_client_1',
+                ),
+            ],
         );
 
         $events = (new SemanticLogExtractor())->extract($semanticLog);

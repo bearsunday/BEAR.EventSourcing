@@ -49,10 +49,10 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
 
         $adapter->start();
         $adapter->log('inventory_reserve', ['sku' => 'SKU-1']);
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
-        $entry = self::flushToArray($logger->flush())['open'][0];
-        $event = $entry['events'][0];
+        $entry = self::flushToArray($logger->flush())['log'][0];
+        $event = $entry['log'][0];
         $this->assertSame('media_query', $event['type']);
         $this->assertSame('inventory_reserve', $event['context']['name']);
         $this->assertSame(['sku' => 'SKU-1'], $event['context']['params']);
@@ -72,12 +72,12 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
 
         $adapter->start();
         $adapter->log('blob_save', ['payload' => "\xB1\x31", 'meta' => ['raw' => "\xB1\x31"]]);
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
-        $entry = self::flushToArray($logger->flush())['open'][0];
-        $this->assertSame(base64_encode("\xB1\x31"), $entry['events'][0]['context']['params']['payload']);
+        $entry = self::flushToArray($logger->flush())['log'][0];
+        $this->assertSame(base64_encode("\xB1\x31"), $entry['log'][0]['context']['params']['payload']);
         // Nested values are sanitized too: the context must stay JSON-encodable at any depth.
-        $this->assertSame(base64_encode("\xB1\x31"), $entry['events'][0]['context']['params']['meta']['raw']);
+        $this->assertSame(base64_encode("\xB1\x31"), $entry['log'][0]['context']['params']['meta']['raw']);
     }
 
     public function testLogWithoutStartRecordsZeroDuration(): void
@@ -89,11 +89,11 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
         );
 
         $adapter->log('unstarted', []);
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
-        $entry = self::flushToArray($logger->flush())['open'][0];
+        $entry = self::flushToArray($logger->flush())['log'][0];
         // 0.0 loses its float-ness in the JSON roundtrip; the value is what matters.
-        $this->assertEquals(0.0, $entry['events'][0]['context']['durationMs']);
+        $this->assertEquals(0.0, $entry['log'][0]['context']['durationMs']);
     }
 
     public function testObservationFailureNeverEscapes(): void
@@ -148,12 +148,12 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
 
         $adapter->start();
         $adapter->log('admin_two_factor_enable', ['adminId' => 7, 'secret' => 'JBSWY3DPEHPK3PXP', 'token' => 'r']);
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
-        $entry = self::flushToArray($logger->flush())['open'][0];
+        $entry = self::flushToArray($logger->flush())['log'][0];
         $this->assertSame(
             ['adminId' => 7, 'secret' => '[FILTERED]', 'token' => '[FILTERED]'],
-            $entry['events'][0]['context']['params'],
+            $entry['log'][0]['context']['params'],
         );
     }
 
@@ -191,10 +191,10 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
 
         $adapter->start();
         $adapter->log('otp_verify', ['otp' => '123456', 'password' => 'kept-by-this-filter']);
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
-        $entry = self::flushToArray($logger->flush())['open'][0];
-        $this->assertSame(['password' => 'kept-by-this-filter'], $entry['events'][0]['context']['params']);
+        $entry = self::flushToArray($logger->flush())['log'][0];
+        $this->assertSame(['password' => 'kept-by-this-filter'], $entry['log'][0]['context']['params']);
     }
 
     public function testThrowingParamsFilterRecordsNothingItFailedOn(): void
@@ -225,11 +225,11 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
             restore_error_handler();
         }
 
-        $logger->close(new ResourceResponseContext(200), $openId);
+        $logger->close(ResourceResponseContext::success(200), $openId);
 
-        $entry = self::flushToArray($logger->flush())['open'][0];
-        $this->assertSame('orders_add', $entry['events'][0]['context']['name']);
-        $this->assertSame([], $entry['events'][0]['context']['params']);
+        $entry = self::flushToArray($logger->flush())['log'][0];
+        $this->assertSame('orders_add', $entry['log'][0]['context']['name']);
+        $this->assertSame([], $entry['log'][0]['context']['params']);
         $this->assertStringContainsString('Media query params filter failed', $message);
         $this->assertStringContainsString(RuntimeException::class, $message);
         $this->assertStringNotContainsString('filter down', $message, 'only the class is reported');
@@ -251,10 +251,10 @@ final class SemanticLogMediaQueryLoggerTest extends TestCase
         );
     }
 
-    /** @return array{open: list<array<array-key, mixed>>} */
+    /** @return array{log: list<array<array-key, mixed>>} */
     private static function flushToArray(LogJson $log): array
     {
-        /** @var array{open: list<array<array-key, mixed>>} */
+        /** @var array{log: list<array<array-key, mixed>>} */
         return json_decode(
             json_encode($log, JSON_THROW_ON_ERROR),
             true,

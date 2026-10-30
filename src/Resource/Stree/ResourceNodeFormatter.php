@@ -21,7 +21,8 @@ use function sprintf;
  *     request="POST app://self/users?id=koriym&name=Akihito"
  *
  * The intent (method + uri + params as a query string) is one line; stree
- * renders the close (`code` + `body`/`body_ref`) beneath it. Register this for
+ * renders the close (its type, then `code` + `body`/`body_ref`, e.g.
+ * `resource_response code=200 body_ref=...`) beneath it. Register this for
  * the `resource_request` type via a {@see \Koriym\SemanticLogger\Stree\FormatterRegistry}.
  *
  * @psalm-suppress MixedAssignment Semantic Logger context values are schema-defined but mixed.

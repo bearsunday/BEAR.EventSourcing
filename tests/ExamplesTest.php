@@ -58,9 +58,9 @@ final class ExamplesTest extends TestCase
         $this->assertStringContainsString('"status": "accepted"', $output);
     }
 
-    public function testReplayExampleCanIncludeDevelopmentReads(): void
+    public function testFilterExampleCanIncludeDevelopmentReads(): void
     {
-        $output = self::runExample('replay.php');
+        $output = self::runExample('filter.php');
 
         $this->assertSame(2, substr_count($output, '"method":'));
         $this->assertStringContainsString('"method": "POST"', $output);
@@ -84,7 +84,10 @@ final class ExamplesTest extends TestCase
         // the close line keeps the body_ref pointer for drilling into detail.
         // No timestamp noise.
         $this->assertStringContainsString('request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"', $output);
-        $this->assertStringContainsString('└── code=201 body_ref=file://var/es/bodies/000002.json', $output);
+        $this->assertStringContainsString(
+            '└── resource_response code=201 body_ref=file://var/es/bodies/000002.json',
+            $output,
+        );
         $this->assertStringNotContainsString('timestamp=', $output);
 
         // An embedded non-resource operation (a media query) is a leaf event:
@@ -112,7 +115,7 @@ final class ExamplesTest extends TestCase
 
         $this->assertStringContainsString('events stored after re-append: 1 (no duplicates)', $output);
         $this->assertStringContainsString('stored rows after re-append: 1', $output);
-        $this->assertSame(1, substr_count($output, 'replay '));
+        $this->assertSame(1, substr_count($output, 'item '));
 
         // Exit 0 (asserted by runExample) only proves [10] did not fail; this
         // proves the schema validation actually ran to its success line.
