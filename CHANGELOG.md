@@ -1,10 +1,10 @@
 # Changelog
 
-## 0.3.0 - 2026-10-30
+## 0.2.1 - 2026-10-30
 
 ### Migration
 
-- **Delete the old body directory once when upgrading from 0.2.0.** 0.2.0 wrote numbered files straight into `bodyDir` and marked `bodyDir` itself as owned. Those files are not generations, so retention never removes them, and the leftover marker lets one `FileBodyStore::clearDirectory($bodyDir)` succeed and wipe every generation under it before the call starts throwing `UnownedDirectoryException`.
+- **Delete the old body directory once when upgrading from 0.2.0 (recommended).** Nothing breaks if you skip it, but 0.2.0 wrote numbered files straight into `bodyDir` and marked `bodyDir` itself as owned. Those files are not generations, so retention never removes them, and the leftover marker lets one `FileBodyStore::clearDirectory($bodyDir)` succeed and wipe every generation under it before the call starts throwing `UnownedDirectoryException`.
 
 ### Added
 
@@ -17,7 +17,7 @@
 
 ### Changed
 
-- **BREAKING — `FileBodyStore::clearDirectory()` no longer works against a `FileBodyStore`'s own root directory.** `createGeneration()` never marks the root itself — only the generation subdirectories it creates under it — so a host that paired `new FileBodyStore($dir)` with a `clearDirectory($dir)` teardown now gets `UnownedDirectoryException` on that call. Retention (`keep`) replaces the need for that teardown; a host that still wants to wipe everything under a root should recursively delete the directory itself rather than call `clearDirectory()` on it
+- `FileBodyStore::clearDirectory()` no longer works against a `FileBodyStore`'s own root directory. This affects only code that calls it directly; `DevLogModule` no longer does. `createGeneration()` never marks the root itself — only the generation subdirectories it creates under it — so a host that paired `new FileBodyStore($dir)` with a `clearDirectory($dir)` teardown now gets `UnownedDirectoryException` on that call. Retention (`keep`) replaces the need for that teardown; a host that still wants to wipe everything under a root should recursively delete the directory itself rather than call `clearDirectory()` on it
 
 ## 0.2.0 - 2026-10-28
 
