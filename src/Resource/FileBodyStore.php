@@ -75,7 +75,7 @@ use const SORT_STRING;
  */
 final class FileBodyStore implements BodyStoreInterface
 {
-    /** File that marks a directory as one this store created and may clear. */
+    /** File that marks a directory as one this store created and may prune. */
     public const string MARKER = '.bear-es-bodies';
 
     private const int DEFAULT_KEEP = 5;
