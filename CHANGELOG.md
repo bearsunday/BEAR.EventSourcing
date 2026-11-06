@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- `FileBodyStore::clearDirectory()` and `UnownedDirectoryException`. `keep` already prunes old generations; to wipe a body directory, delete it recursively.
+
+### Changed
+
+- `BodyStoreException` is `final`.
+
 ## 0.2.1 - 2026-10-30
 
 ### Migration

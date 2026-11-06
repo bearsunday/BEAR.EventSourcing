@@ -6,7 +6,6 @@ namespace BEAR\EventSourcing\Tests\Resource;
 
 use BEAR\EventSourcing\Resource\FileBodyStore;
 use BEAR\EventSourcing\Resource\BodyStoreException;
-use BEAR\EventSourcing\Resource\UnownedDirectoryException;
 use BEAR\EventSourcing\Tests\RemovesDirectoryTree;
 use BEAR\Resource\JsonRenderer;
 use BEAR\Resource\Method;
@@ -40,7 +39,6 @@ use function unlink;
 use function usleep;
 
 use const E_USER_WARNING;
-use const E_WARNING;
 
 final class FileBodyStoreTest extends TestCase
 {
@@ -275,6 +273,10 @@ final class FileBodyStoreTest extends TestCase
         assert($first !== null && $second !== null);
         $this->assertSame(2, $userWarnings, 'each prune pass warns about the stuck generation');
         $this->assertTrue(file_exists(self::pathFromRef($second)), 'a stuck generation never blocks a write');
+        $this->assertTrue(
+            file_exists($stuck . '/' . FileBodyStore::MARKER),
+            'a prune that fails partway leaves the generation marked for the next one',
+        );
 
         self::removeTree($dir);
     }
@@ -300,27 +302,6 @@ final class FileBodyStoreTest extends TestCase
         unlink($dir . '/00000101-000000-000000-00000000');
         self::removeTree($dir);
         self::removeTree($target);
-    }
-
-    public function testClearDirectoryRefusesTheRootOfAStoreWithGenerations(): void
-    {
-        $dir = self::newBodyDir();
-        $ro = new FakeResourceObject(body: ['id' => 1]);
-        $request = new Request(
-            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
-            $ro,
-            Method::GET,
-        );
-        (new FileBodyStore($dir))($request, $ro);
-
-        try {
-            FileBodyStore::clearDirectory($dir);
-            $this->fail('Expected the unmarked root to be refused.');
-        } catch (UnownedDirectoryException) {
-            $this->assertCount(1, self::subdirectories($dir), 'the generation is left in place');
-        }
-
-        self::removeTree($dir);
     }
 
     public function testTheNewGenerationSurvivesWhenTheClockRunsBehind(): void
@@ -385,74 +366,11 @@ final class FileBodyStoreTest extends TestCase
         self::removeTree($dir);
     }
 
-    public function testClearDirectoryRemovesPreviousRunFiles(): void
-    {
-        $dir = self::newBodyDir();
-        file_put_contents($dir . '/' . FileBodyStore::MARKER, '');
-        mkdir($dir . '/nested');
-        file_put_contents($dir . '/old.json', '{}');
-        file_put_contents($dir . '/nested/old.json', '{}');
-
-        FileBodyStore::clearDirectory($dir);
-
-        $this->assertTrue(is_dir($dir));
-        $this->assertFalse(file_exists($dir . '/old.json'));
-        $this->assertFalse(file_exists($dir . '/nested'));
-
-        rmdir($dir);
-    }
-
-    public function testRefusesToClearADirectoryItDoesNotOwn(): void
-    {
-        $dir = self::newBodyDir();
-        $precious = $dir . '/precious.txt';
-        file_put_contents($precious, 'keep me');
-
-        try {
-            FileBodyStore::clearDirectory($dir);
-            $this->fail('Expected an UnownedDirectoryException for an unowned directory.');
-        } catch (UnownedDirectoryException) {
-            $this->assertTrue(file_exists($precious), 'unmarked contents must be left untouched');
-        } finally {
-            unlink($precious);
-            rmdir($dir);
-        }
-    }
-
-    public function testKeepsOwnershipMarkerWhenCleanupFailsPartway(): void
-    {
-        if (getmyuid() === 0) {
-            $this->markTestSkipped('Cannot simulate an unwritable directory as root.');
-        }
-
-        $dir = self::newBodyDir();
-        file_put_contents($dir . '/' . FileBodyStore::MARKER, '');
-        mkdir($dir . '/locked');
-        file_put_contents($dir . '/locked/file', '{}');
-        chmod($dir . '/locked', 0500); // read+execute only: unlink of its child fails
-
-        set_error_handler(static fn (): bool => true, E_WARNING); // swallow the expected unlink() warning
-        try {
-            FileBodyStore::clearDirectory($dir);
-            $this->fail('Expected cleanup to fail on the unwritable directory.');
-        } catch (BodyStoreException) {
-            // The marker must survive the partial failure so a retry can still own and clear the directory.
-        } finally {
-            restore_error_handler();
-        }
-
-        chmod($dir . '/locked', 0700);
-        FileBodyStore::clearDirectory($dir); // succeeds only if the marker survived (assertOwned passes)
-
-        $this->assertTrue(is_dir($dir));
-        rmdir($dir);
-    }
-
     public function testRejectsUnsafeDirectory(): void
     {
         $this->expectException(BodyStoreException::class);
 
-        FileBodyStore::clearDirectory('');
+        new FileBodyStore('');
     }
 
     public function testRejectsFilePath(): void
@@ -460,10 +378,16 @@ final class FileBodyStoreTest extends TestCase
         $dir = self::newBodyDir();
         $file = $dir . '/not-directory';
         file_put_contents($file, '');
+        $ro = new FakeResourceObject(body: ['id' => 1]);
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
 
         try {
             $this->expectException(BodyStoreException::class);
-            FileBodyStore::clearDirectory($file);
+            (new FileBodyStore($file))($request, $ro);
         } finally {
             unlink($file);
             rmdir($dir);
@@ -474,14 +398,14 @@ final class FileBodyStoreTest extends TestCase
     {
         $this->expectException(BodyStoreException::class);
 
-        FileBodyStore::clearDirectory(sys_get_temp_dir() . '/..');
+        new FileBodyStore(sys_get_temp_dir() . '/..');
     }
 
     public function testRejectsPathResolvingToRoot(): void
     {
         $this->expectException(BodyStoreException::class);
 
-        FileBodyStore::clearDirectory('//');
+        new FileBodyStore('//');
     }
 
     public function testRenderFailurePropagatesAndWritesNoEmptyFile(): void
