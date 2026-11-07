@@ -212,8 +212,9 @@ composer tree
 `composer tree` が無ければ `vendor/bin/stree var/log/<context>/events/latest.json`。`latest.json` は直近の
 セッションで、`ls -t var/log/<context>/events/*.json` で過去のセッションが新しい順に並ぶ。`body_ref` は応答
 ボディのファイルを `file://` の絶対パスで指す(長いと省略される。全部見るなら `stree --full`)。
-既定の表示は文脈のキーを選んで出す(`resource_response` の `durationMs` は出ない)ので、「記録されていない」と
-言う前に `stree --full` で確かめる。
+閉じの行は、開いたときから変わったキーを先頭から 2 つだけ出し、残りは印を付けずに落とす(body を保存した
+`resource_response` は `code` と `body_ref` が出て `durationMs` が落ちる)。「記録されていない」と言う前に
+`stree --full` で確かめる。
 
 **読むのは今回の実行が書いたものか。** `latest.json` はリクエストごとに入れ替わる。叩く前後で mtime が
 変わったかを見る — 変わらなければ今回のリクエストは何も記録していない(§2 の表の 2 行目)。別の文脈も
