@@ -10,9 +10,9 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 テストは緑のまま、遅いだけ、あるいは古いだけになる。見るのはコードではなくログで、順番は決まっている。
 
 ```text
-1. 設置     観測用の dev 文脈をアプリに書く          (harness/setup.php)
-2. 実証     配線が生きていることを束縛から確かめる    (harness/check.php)
-3. 観測     リクエストを 1 本流して木を読む           (harness/tree.php)
+1. 設置     DevModule に DevEventSourcingModule を 1 行で入れる
+2. 実証     1 回叩いて、木の形で配線を確かめる
+3. 観測     リクエストを 1 本流して木を読む           (composer tree / vendor/bin/stree)
 4. 照合     宣言した意図が、どのイベント列で現れるか
 5. 切り分け  食い違ったら、アプリの問題かライブラリの問題か
 6. 報告     根拠つきで、どちらかを言う
@@ -21,19 +21,16 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 **この手順を実行するのはエージェントで、ユーザーではない。** ユーザーがするのはスキルを入れることと、
 「ログを見て」と言うことだけ。コマンドをユーザーに貼って待たない。
 
-以下 `<skill>` は、このファイルのあるディレクトリ。`${CLAUDE_PLUGIN_ROOT}` があればそれ、
-プロジェクトに `cp` したなら `.claude/skills/bear-observe`。
-
 ## 呼ばれ方 — どこから入るか
 
 「キャッシュログを確認して」「何が起きたか見て」「遅い理由を調べて」で入る。
 
-1. **読める木があるなら、まず読む。** `var/log/*/events/latest.json`(キャッシュのログだけのアプリは
-   `query-repository/`、以前のテンプレートは `observe/`)があれば `tree.php` を実行する。
-   設置は済んでいるので §1 は飛ばす。mtime が前回見たときから動いていなければ、**そう言う** —
-   古い木を新しい実行の証拠にしない
+1. **読める木があるなら、まず読む。** アプリに `composer tree` があればそれで、無ければ
+   `ls -t var/log/*/events/latest.json` で最新を選んで `vendor/bin/stree <そのパス>` で読む(キャッシュのログだけの
+   アプリは `query-repository/`、以前のテンプレートは `observe/` に書いている)。設置は済んでいるので §1 は飛ばす。
+   mtime が前回見たときから動いていなければ、**そう言う** — 古い木を新しい実行の証拠にしない
 2. 木が無いときだけ §1 の判定に降りる。設置してから、ユーザーに「どのリクエストを見ますか」と聞く
-   (勝手にリクエストを選ばない)。木が薄い・不審なときは §2 の `check.php` で配線から確かめる
+   (勝手にリクエストを選ばない)。木が薄い・不審なときは §2 の表で、木の形から配線を確かめる
 3. 木を読み、§3 の表で問いに答える。ユーザーが問いを持っていなければ、木から言えることを言う:
    何回リソースが走ったか、hit したか、保存されたか、時間はどこに落ちたか
 4. 宣言どおりに動いているかを問われたら §4、食い違ったら §5。降りるときは何を確かめに行くかを先に言う
@@ -70,17 +67,17 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 
 ## 1. 設置 — 要るかどうかを先に決める
 
-**この観測文脈(`setup.php` が設置する構成)は、常駐ホスト(1 プロセスが複数のリクエストを跨いで生き続ける実行モデル)では現時点で非対応。**
+**この観測文脈は、常駐ホスト(1 プロセスが複数のリクエストを跨いで生き続ける実行モデル)では現時点で非対応。**
 差し込み口(`SessionStoreInterface` / `LogSinkInterface`)は BEAR.QueryRepository 側にあるが、動く実装は同梱されていない。
 
-**分類するのは、`dev-` 文脈を起動するプロセス。** §3 の `php bin/dev.php` は CLI の 1 プロセス 1 リクエストなので、
-本番がどのホストでも、そのまま下へ進んでよい。問題になるのは、`setup.php` が書く `DevModule` が `dev-` を含む
-文脈すべてに載るため、`public/index.php` などを `dev-` 文脈のまま常駐ホストで起動している場合。その起動を分類する:
+**分類するのは、`dev-` 文脈を起動するプロセス。** §3 の CLI 入口は 1 プロセス 1 リクエストなので、
+本番がどのホストでも、そのまま下へ進んでよい。問題になるのは、`DevModule` が `dev-` を含む文脈すべてに
+載るため、`public/index.php` などを `dev-` 文脈のまま常駐ホストで起動している場合。その起動を分類する:
 
 | `dev-` 文脈を起動するホスト | すること |
 |---|---|
-| CLI(`bin/dev.php`)、PHP-FPM | そのまま下へ |
-| RoadRunner(`RR_MODE`)、コルーチン内で logger が作られる Swoole | 入れても記録されない(QueryRepository の sink が arm を拒否し、理由を `error_log` に出す)。§2 の `check.php` は束縛しか見ないので PASS する。観測は `bin/dev.php` で行う |
+| CLI、PHP-FPM | そのまま下へ |
+| RoadRunner(`RR_MODE`)、コルーチン内で logger が作られる Swoole | 入れても記録されない(QueryRepository の sink が arm を拒否し、理由を `error_log` に出す)。観測は CLI 入口で行う |
 | FrankenPHP worker mode、ReactPHP、Amp、常駐 CLI consumer、boot 時に logger を作る Swoole worker | **検出されないので、その起動に `dev-` 文脈を載せない。** 拒否が働かず、リクエスト境界が 1 本の木に混ざる(処理が同じ logger 上で重なると、close が `close_id_mismatch` として拒否・診断記録され、スコープが閉じないまま木が崩れる。例外は出ない) |
 | 分からない | 入れる前に問う |
 
@@ -88,7 +85,7 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 flush する `LogSinkInterface` を**両方**束縛する(片方だけだとセッションを共有するか、排出されずに溜まる)。
 根拠は BEAR.QueryRepository の
 [docs/what-the-log-proves.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/what-the-log-proves.md)
-"Concurrent sessions"。`setup.php` が書く `DevModule` はそれを書かない。
+"Concurrent sessions"。`DevEventSourcingModule` はそれを束縛しない。
 
 EventSourcing のイベント抽出だけなら常駐ホストでも使えるが、`DevModule` のままでは使えない。invoker は
 `#[CacheLog]` の logger に記録するので、sink が拒否すると `resource_request` も記録されない。
@@ -98,11 +95,11 @@ EventSourcing のイベント抽出だけなら常駐ホストでも使えるが
 `SafeSemanticLogger` の "Safe" は、セッションをリクエストごとに解決し、直列化の境界を越えて持ち越さず、
 sink が拒否したら黙る、という意味。並行実行時にセッションを分離する保証ではない。
 
-ホストが通っても、束縛の形で無音のまま欠ける配線が 2 つある。`check.php`(§2)だけでは拾い切れないので、ここで目視する:
+ホストが通っても、束縛の形で無音のまま欠ける配線が 2 つある。ここで目視する:
 
 | 点検 | 落ちると起きること |
 |---|---|
-| `SemanticLoggerInterface` `#[CacheLog]` が別の場所で `Scope::SINGLETON` 無しに束縛されていないか | §2 の `check.php` の `invoker records into the cache log` が拾う(invoker の logger と `#[CacheLog]` の logger が同一インスタンスでなければ FAIL)。それでも見逃す形は sink 側が拾い、`error_log` に `a second logger armed an already-armed sink` と出す — 読みに行かなければ気づかない |
+| `SemanticLoggerInterface` `#[CacheLog]` が別の場所で `Scope::SINGLETON` 無しに束縛されていないか | invoker とキャッシュが別々の logger に記録し、木から `resource_request` かキャッシュのスコープが欠ける(§2 の表)。sink 側も拾い、`error_log` に `a second logger armed an already-armed sink` と出す — 読みに行かなければ気づかない |
 | injector を直列化する文脈(コンパイル済みアプリ)に `PsrLogWriter` が無いか | ホストの logger(Monolog はクロージャを持つ)を抱えるので、コンパイルしたグラフが unserialize できなくなる。その文脈は `LogFileWriter` / `LogStreamWriter` で書く |
 
 観測はもう動いているかもしれない。動いているなら**アプリに 1 文字も書かない**。
@@ -110,80 +107,67 @@ sink が拒否したら黙る、という意味。並行実行時にセッショ
 
 | 見えたもの | すること |
 |---|---|
-| 無い | `setup.php` を走らせる。何を書くかを先に 1 行で言う(下表) |
-| ある、`SemanticLogInvoker` を含む | 設置済み。§2 の `check.php` だけ走らせて §3 へ |
-| ある、含まない | アプリ自身の `DevModule`。`setup.php` は上書きせず `DevModule.php.observe` を隣に置くので、畳み込みはこちらの仕事 |
+| `DevEventSourcingModule` を install している | 設置済み。§2 へ |
+| `DevModule` が無い | 下の 1 行だけの `DevModule` を書く。何を書くかを先に 1 行で言う |
+| ある、`DevEventSourcingModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める) |
 
-`setup.php` は冪等で、既存ファイルは残す(`--force` は自前の `DevModule` も含めて全部を上書きする)。それでも「観測が動いているか」の判定に
-**ファイルの有無を使わない** — 判定は §2 の `check.php` で、束縛から取る。
+書くのはこの 1 行だけ。invoker の包み方、logger、書き出し、body の保存はモジュールの中にある:
 
-```bash
-php <skill>/harness/setup.php .
-php <skill>/harness/setup.php . bin/admin.php   # 別の入口の文脈を観測する
-php <skill>/harness/setup.php . public/index.php --context=html-app   # 1 ファイルに複数文脈がある場合
+```php
+$this->install(new DevEventSourcingModule($this->appMeta->logDir . '/events'));
 ```
 
-`--context`の値は入口ファイル内に引用符付きリテラルとして存在しない場合でも書き込みは続行される(`note`で警告するのみ) — 環境変数や定数から文脈を組み立てる入口には元々一致するリテラルが無いため。
-
-これが書くもの:
-
-| ファイル | 役目 |
-|---|---|
-| `src/Module/DevModule.php` | 観測文脈。`DevEventSourcingModule` を install する。invoker を包んでキャッシュログの logger に記録させ、木と body を `var/log/<context>/events/` に書く |
-| `bin/dev.php` | 観測文脈で CLI から叩く入口 |
-
+木もボディも `var/log/<context>/events/` に落ちる(ボディは `bodies/` の下。直近 10 セッション分を残す)。
+`DevModule` が無いアプリでは、`src/Module/DevModule.php` を `BEAR\Package\AbstractAppModule` の子として書く。
+namespace は `composer.json` の psr-4 で `src/` に対応する接頭辞に `\Module` を付けたもの。
 `public/index.php` は**変えない**。flush はキャッシュログモジュールの shutdown sink が持つので、
 アプリが自分で書き出す行は要らない。
 
+**dev 文脈で叩く。** 文脈名はアプリの文脈の前に `dev-` を付けたもの(`cli-hal-app` なら `dev-cli-hal-app`)。
+BEAR.Skeleton 由来の CLI 入口は、`BEAR_CONTEXT` が無ければ CLI で dev 文脈を使う(`bin/page.php` は
+`dev-cli-hal-app`、`bin/app.php` は `dev-cli-hal-api-app`)。入口が文脈を固定しているアプリでは、入口が
+`BEAR_CONTEXT` を読むかを先に見て、読むなら `BEAR_CONTEXT=dev-cli-hal-app php bin/page.php get /` で渡す。
+
+**読む口を 1 つ用意する。** アプリの `composer.json` に `tree` スクリプトが無ければ足す。以降は `composer tree` で読める:
+
+```json
+"tree": "vendor/bin/stree var/log/dev-cli-hal-app/events/latest.json"
+```
+
 キャッシュの保存先は変えない。アプリが保存先を束縛していなければ(QueryRepository の既定は何も残さない
 `NullAdapter`)、毎回 miss になる。hit を見るなら、`#[ResourceObjectPool]` にリクエストをまたいで残る保存先を
-束縛する文脈を重ねる(例: その束縛だけの `CacheModule` を `cache-` 文脈にする。入口のリテラルが
-`dev-cache-hal-app` なら、`setup.php` が出す文脈は `cli-dev-cache-hal-app`)。
+束縛する文脈を重ねる(例: その束縛だけの `CacheModule` を `cache-` 文脈にして、`dev-cache-cli-hal-app` で叩く)。
 
-**このファイルを自分で書き起こさない。** 中身は `DevEventSourcingModule` を install する 1 行で、invoker の
-包み方や logger の指定はモジュールの中にある。namespace は `composer.json` から、文脈名は渡した入口(既定
-`public/index.php`)から取る。判断が要るのは、アプリが自前の `DevModule` を持っていたときの畳み込みだけで、
-そこは `setup.php` が `.observe` を隣に置いて手に渡す。`DevQueryRepositoryLogModule` の行があれば(`setup.php` が
-`note` で知らせる)、`DevEventSourcingModule` の 1 行に置き換える(両方あると、先に install した方が木の置き場所を決める)。
+畳み込むときの罠が 2 つある。
 
-畳み込むときの罠が 1 つある。**包んだモジュールは「足す」のではなく「置き換える」**。アプリが既に
-`QueryRepositoryModule` を持つ(BEAR.Package 経由など)のに、上から `module: new QueryRepositoryModule()`
-を足すと **Ray.Aop の pointcut が累積してインターセプタが 2 回走る** — 1 リクエストで参照 2 回・書き込み
-2 回、木には同じ URI が自分の中に入れ子で現れる。既存グラフに記録だけ足すなら、包まずに
-`bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)` の 1 本だけを差し替える。
-
-**入口が複数あるアプリでは、観測したい入口を第 2 引数で渡す。** 文脈はその入口が渡す文脈リテラルから
-`cli-` `prod-` `dev-` を落として `cli-dev-` を付けたもの(`bin/app.php` の `'cli-hal-api-app'` なら
-`cli-dev-hal-api-app`)。アプリ自身の語(`stage-` など)は文脈の一部なので残る。`bin/dev.php` は 1 つしか
-無いので、入口を切り替えるときは `bin/dev.php` の文脈リテラルを手で書き換える — 古いものが残っていれば
-`note` 行がそう言う。**ここで `--force` を使わない**: `src/Module/*.php` も上書きするので、アプリ自身の
-`DevModule` が消える。ルートに `autoload.php` が無く `vendor/autoload.php` だけの構成でも動く。
-
-`setup.php` は文脈名(`cli-dev-hal-app` 等)とログのパスを出す。以降その文脈名を使う。
+- **包んだモジュールは「足す」のではなく「置き換える」**。アプリが既に `QueryRepositoryModule` を持つ
+  (BEAR.Package 経由など)のに、上から `module: new QueryRepositoryModule()` を足すと **Ray.Aop の pointcut が
+  累積してインターセプタが 2 回走る** — 1 リクエストで参照 2 回・書き込み 2 回、木には同じ URI が自分の中に
+  入れ子で現れる。既存グラフに記録だけ足すなら、包まずに
+  `bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)` の 1 本だけを差し替える
+- **リクエストの途中で flush するものと logger を共有しない**。Be Framework の `BecomingInterface` は becoming の
+  たびに semantic logger を flush するので、`DevModule`(またはそれが install / override する別のモジュール)が
+  同じ logger を共有していると、1 リクエストの木が途中で切れる。その場合は `dev` ではなく、観測専用の文脈語
+  (例: `observe-`)でモジュールを作る
 
 ## 2. 実証 — 「入れた」で終わらせない
 
-観測の失敗は全部無音だ。アプリは正しく答え、ログが薄くなるだけになる。束縛から確かめる:
+観測の失敗は全部無音だ。アプリは正しく答え、ログが薄くなるだけになる。dev 文脈で 1 回叩き、木の形で確かめる:
 
-```bash
-php <skill>/harness/check.php . <context>
-```
-
-3 行すべて PASS でなければ観測は始まっていない。各 FAIL は「それが隠す欠落」を自分で書く:
-
-| 点検 | 落ちると見えなくなるもの |
+| 見えたもの | 意味 |
 |---|---|
-| invoker is decorated | `resource_request` が 1 つも無く、キャッシュのスコープが宙に浮く |
-| invoker records into the cache log | `resource_request` が別の logger に入り、この木ではキャッシュのスコープが宙に浮く |
-| a sink owns the flush | 木は組み上がって shutdown で捨てられる。ファイルが 1 つも増えない |
+| 根が `resource_request`(キャッシュするリソースなら、その中に `get` などのスコープ) | 配線は生きている |
+| `var/log/<context>/events/latest.json` が増えない | その文脈に `DevModule` が載っていない(文脈名に `dev` が無い)か、sink が書き出しを拒否した |
+| 根に `resource_request` が無く、キャッシュのスコープが宙に浮く | invoker が包まれていないか、別の logger に記録している |
+| 木が `query-repository/` にだけ出る | `DevQueryRepositoryLogModule` の行が `DevEventSourcingModule` より先に残っている。その行を消す |
 
-FAIL が残るなら、アプリの `AppModule` が同じ束縛を後から上書きしていないかを見る
+崩れているなら、アプリの `AppModule` が `InvokerInterface` か `#[CacheLog]` の logger を後から上書きしていないかを見る
 (`install()` は既存を上書きしないが、`bind()` は上書きする)。到達しない理由が束縛に無ければ
 `error_log`(FPM なら SAPI のエラーログ)を見る。sink の拒否・二重 arm・書けない先は全部そこに出る。
 
-### PASS でも木が薄いとき
+### 木が薄いとき
 
-`check.php` が見るのは束縛だけで、**インターセプタが織られたかは見ていない**。ここを外すと、
+`resource_request` が出ていても、**インターセプタが織られたかは別の話**。ここを外すと、
 測っているものが別物になる:
 
 - **`final class` はインターセプタを受け取れない**。Ray.Aop はクラスを継承して織るので、`final` なリソースの
@@ -208,14 +192,13 @@ $injector->getInstance($class)->bindings;               // メソッド名 => �
 ## 3. 観測 — リクエストを流して木を読む
 
 ```bash
-php bin/dev.php get '/orders?order_id=O-1'
-php <skill>/harness/tree.php
+php bin/page.php get '/orders?order_id=O-1'
+composer tree
 ```
 
-`tree.php` は引数なしなら `var/log/*/events/latest.json` の最新を読む(キャッシュのログだけの `query-repository/` と、
-以前のテンプレートが書いた `observe/` も探す)。パスを渡せばそれを読む。`ls -t var/log/<context>/events/*.json` で過去のセッションが新しい順に並ぶ。中身は
-`vendor/bin/stree` が描く(`tree.php` は `body_ref` のベースネーム化と、この var/log 規約の解決・
-表示だけをする薄い委譲先)。
+`composer tree` が無ければ `vendor/bin/stree var/log/<context>/events/latest.json`。`latest.json` は直近の
+セッションで、`ls -t var/log/<context>/events/*.json` で過去のセッションが新しい順に並ぶ。`body_ref` は応答
+ボディのファイルを `file://` の絶対パスで指す(長いと省略される。全部見るなら `stree --full`)。
 
 **読むのは今回の実行が書いたものか。** `latest.json` はリクエストごとに入れ替わる。リポジトリに
 commit されたサンプル出力を判定に使うと、自分の変更が反映されない結果を測ることになる。
@@ -235,7 +218,7 @@ resource_request uri=page://self/orders method=GET params=[order_id]
 │   │   │   └── cache_miss layer=resource durationMs=2.818
 │   │   └── resource_response code=200
 │   └── cache_miss layer=resource durationMs=6.346
-└── resource_response code=200 body_ref=000002.json
+└── resource_response code=200 body_ref=file:///…/000002.json
 ```
 
 同じ URI の 2 回目:
@@ -256,8 +239,7 @@ resource_request uri=page://self/orders method=GET params=[order_id]
 - **入れ子** — 外側の実行中に内側が起きた。**入れ子は依存の証拠ではない**(§4)
 - **葉**(`[event]` の印つき)— そのスコープの中で起きた出来事。`save_*` `invalidate` `cache_policy` など
 
-生の JSON が要るなら `tree.php --json`(内部で `stree --json` を呼ぶので同じ出力だが、
-`body_ref` はベースネーム済み)。
+生の JSON が要るなら `vendor/bin/stree --json <file>`。
 
 ### ファイルが無い現場もある
 
@@ -328,7 +310,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 古い版を使っているなら書き込みは `#[Purge]` / `#[Refresh]` で宣言する。なお `#[Cacheable]` クラスでは
 `#[RefreshCache]` は何も足さない — `CommandInterceptor` が既に purge して再生成する。
 
-食い違いの読み方: **期待した `save_*` が無い**なら宣言が届いていない(§2 の「PASS でも木が薄いとき」を
+食い違いの読み方: **期待した `save_*` が無い**なら宣言が届いていない(§2 の「木が薄いとき」を
 先に潰す)。**`invalidate` があるのに `cache_miss` にならない**ならタグが交わっていない(下記)。
 
 ### 依存が効いているかを確かめる手順
@@ -400,7 +382,7 @@ donut の親なら `tags` と `refresh_donut`。
 | 書き込みが `invalidate` を出さない | 書き込み経路に `#[Refresh]`/`#[Purge]` が無い | 属性はあるのにマッチャがそのメソッドを拾わない | 織られたオブジェクトの `bindings` にそのメソッドがあるか |
 | `invalidate` は出るが親が hit のまま | タグの選び方が違う(URI タグと共有サロゲートキーの混同) | タグ集合の交差計算の欠陥 | 2 つのタグ集合を並べて交わりを見る |
 | `invalidate` のタグがどのリソースの宣言とも一致しない | **手書きの `invalidateTags()` が定数からドリフトしている** — リソースは `SURROGATE_KEY` 定数を宣言し、無効化側は生文字列を持ったまま取り残された | — | `invalidate` の `tags` を、リソースが宣言する定数の実値と 1 文字ずつ突き合わせる。docblock だけ正しいことがある |
-| `conditional_request` スコープが 1 つも無い | — | — | **まず要求側を見る**。`If-None-Match` を送っていない要求なら正常で、`bin/dev.php` の CLI 要求は送らない。送ったと確かめた上で無いときだけ、プロキシ・WAF・CDN が落としている |
+| `conditional_request` スコープが 1 つも無い | — | — | **まず要求側を見る**。`If-None-Match` を送っていない要求なら正常で、CLI からの要求は送らない。送ったと確かめた上で無いときだけ、プロキシ・WAF・CDN が落としている |
 | 値が古い | TTL が床(設計判断) | — | `save_*` の `ttl` |
 | `cache_error` / `pool_error` | 店の設定・接続 | 縮退の扱い | 例外か縮退かは `docs/what-the-log-proves.md` |
 
@@ -415,14 +397,14 @@ donut の親なら `tags` と `refresh_donut`。
 
 ```bash
 # 1) どの分岐まで届いているか(--include-vendor が無いとライブラリのフレームは空)
-xtrace --include-vendor="bear/query-repository" --context="tags absent from parent save" -- php bin/dev.php get /orders
+xtrace --include-vendor="bear/query-repository" --context="tags absent from parent save" -- php bin/page.php get /orders
 
 # 2) 判断している行を名前で探す(行番号は版ごとに動く)
 grep -n "SURROGATE_KEY" vendor/bear/query-repository/src/CacheDependency.php
 
 # 3) その行で実引数を見る
 xstep --break="vendor/bear/query-repository/src/CacheDependency.php:<line>" \
-  --steps=20 --context="what tags arrive" -- php bin/dev.php get /orders
+  --steps=20 --context="what tags arrive" -- php bin/page.php get /orders
 ```
 
 `xtrace` はスクリプトの stdout をそのまま流し、**トレース自体は `/tmp/trace.*.xt` に書いて**末尾に場所と

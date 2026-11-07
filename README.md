@@ -490,15 +490,13 @@ $this->bind(MediaQueryLoggerInterface::class)
 
 ## Agent skill: bear-observe
 
-`skills/bear-observe/` is a Claude Code skill that writes the wiring above into an application, proves it from the bindings, renders one request as a tree, and reads that tree: the cache event vocabulary, what each `#[Cacheable]`-family declaration is supposed to look like in the log, and app-vs-library triage. Install it into a project:
+`skills/bear-observe/` is a Claude Code skill that installs `DevEventSourcingModule` in an application's `DevModule`, runs one request in the dev context, and reads the tree: the cache event vocabulary, what each `#[Cacheable]`-family declaration is supposed to look like in the log, and app-vs-library triage. Install it into a project:
 
 ```bash
 mkdir -p .claude/skills && cp -r vendor/bear/event-sourcing/skills/bear-observe .claude/skills/
 ```
 
-Then ask an agent to read the log. It runs `harness/setup.php` only when observation is not already working, so an application that is already wired is left alone.
-
-Its `DevModule` template is that one line; the tree lands in `var/log/<context>/events/latest.json`.
+Then ask an agent to read the log. The tree lands in `var/log/<context>/events/latest.json`; `vendor/bin/stree` renders it, and a `tree` script in the application's `composer.json` makes that `composer tree`.
 
 ## Boundaries
 
