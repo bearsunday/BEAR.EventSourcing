@@ -465,6 +465,9 @@ Share the instance with `toInstance()`: two separate `to(...)->in(Scope::SINGLET
 Under a compiled injector (a BEAR.Sunday context), do not share an instance — the compiler would serialize it and each process would get its own copy, splitting the tree again. Install `DevEventSourcingModule` beside `DevQueryRepositoryLogModule` instead. The first owns the `#[CacheLog]` logger and writes its session at shutdown; the second records every resource request into that logger and stores response bodies under its directory. Give both the same `keep`, so no retained log points at a pruned body:
 
 ```php
+use BEAR\EventSourcing\Module\DevEventSourcingModule;
+use BEAR\QueryRepository\DevQueryRepositoryLogModule;
+
 $this->install(new DevQueryRepositoryLogModule($this->appMeta->logDir . '/query-repository', keep: 10));
 $this->install(new DevEventSourcingModule($this->appMeta->logDir . '/events', keep: 10));
 ```
@@ -474,6 +477,12 @@ $this->install(new DevEventSourcingModule($this->appMeta->logDir . '/events', ke
 `MediaQueryObservationModule` records through the unqualified `SemanticLoggerInterface`, which this wiring leaves unbound. To put `media_query` events in the same tree, bind the media query logger the same way instead of installing the module:
 
 ```php
+use BEAR\EventSourcing\Filtered;
+use BEAR\EventSourcing\MediaQuery\SemanticLogMediaQueryLogger;
+use BEAR\RepositoryModule\Annotation\CacheLog;
+use Ray\Di\Scope;
+use Ray\MediaQuery\MediaQueryLoggerInterface;
+
 $this->bind(MediaQueryLoggerInterface::class)
     ->toConstructor(SemanticLogMediaQueryLogger::class, ['logger' => CacheLog::class, 'paramsFilter' => Filtered::class])
     ->in(Scope::SINGLETON);
