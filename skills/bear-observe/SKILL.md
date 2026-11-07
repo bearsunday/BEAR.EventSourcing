@@ -1,7 +1,7 @@
 ---
 user-invocable: true
 name: bear-observe
-description: BEAR.Sunday アプリに観測用の dev 文脈を設置し、1 リクエストが何をしたか(リソースの入れ子・キャッシュの hit/miss・保存と無効化)を木で読む。宣言した意図と照合し、食い違えばアプリかライブラリかを切り分けて報告する。決着しなければ xstep に降りる。Use when user says "ログを見て", "キャッシュログ", "cache log", "何が起きたか", "observe", "リソースの動きを追って", "デバッグして", "遅い", "キャッシュが効いてない", "キャッシュが古い", "purge が効かない", "304 が返らない", "アプリかライブラリか切り分けて", or asks what a BEAR.Sunday request actually did.
+description: BEAR.Sunday アプリのツリーログ(1 リクエストが何をしたかを表す木。var/log/<context>/events/latest.json)を読む。リソースの入れ子・キャッシュの hit/miss・保存と無効化が入っている。木が無ければ観測用の dev 文脈を 1 行で設置してから読む。宣言した意図と照合し、食い違えばアプリかライブラリかを切り分けて報告する。決着しなければ xstep に降りる。Use when user says "ツリーログを見て", "ツリーログ", "tree log", "ログを見て", "キャッシュログ", "cache log", "何が起きたか", "observe", "リソースの動きを追って", "デバッグして", "遅い", "キャッシュが効いてない", "キャッシュが古い", "purge が効かない", "304 が返らない", "アプリかライブラリか切り分けて", or asks what a BEAR.Sunday request actually did.
 ---
 
 # bear-observe — 1 リクエストが何をしたかを木で読む
@@ -19,11 +19,11 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 ```
 
 **この手順を実行するのはエージェントで、ユーザーではない。** ユーザーがするのはスキルを入れることと、
-「ログを見て」と言うことだけ。コマンドをユーザーに貼って待たない。
+「ツリーログを見て」と言うことだけ。コマンドをユーザーに貼って待たない。
 
 ## 呼ばれ方 — どこから入るか
 
-「キャッシュログを確認して」「何が起きたか見て」「遅い理由を調べて」で入る。
+「ツリーログを見て」「キャッシュログを確認して」「何が起きたか見て」「遅い理由を調べて」で入る。
 
 1. **読める木があるなら、まず読む。** アプリに `composer tree` があればそれで、無ければ
    `ls -t var/log/*/*/latest.json` で最新を選んで `vendor/bin/stree <そのパス>` で読む(`events/` のほか、キャッシュの
@@ -212,6 +212,8 @@ composer tree
 `composer tree` が無ければ `vendor/bin/stree var/log/<context>/events/latest.json`。`latest.json` は直近の
 セッションで、`ls -t var/log/<context>/events/*.json` で過去のセッションが新しい順に並ぶ。`body_ref` は応答
 ボディのファイルを `file://` の絶対パスで指す(長いと省略される。全部見るなら `stree --full`)。
+既定の表示は文脈のキーを選んで出す(`resource_response` の `durationMs` は出ない)ので、「記録されていない」と
+言う前に `stree --full` で確かめる。
 
 **読むのは今回の実行が書いたものか。** `latest.json` はリクエストごとに入れ替わる。叩く前後で mtime が
 変わったかを見る — 変わらなければ今回のリクエストは何も記録していない(§2 の表の 2 行目)。別の文脈も

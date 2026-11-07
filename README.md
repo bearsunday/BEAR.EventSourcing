@@ -496,7 +496,7 @@ $this->bind(MediaQueryLoggerInterface::class)
 mkdir -p .claude/skills && cp -r vendor/bear/event-sourcing/skills/bear-observe .claude/skills/
 ```
 
-Then ask an agent to read the log. The tree lands in `var/log/<context>/events/latest.json`; `vendor/bin/stree` renders it, and a `tree` script in the application's `composer.json` makes that `composer tree`.
+Then ask an agent 「ツリーログを見て」 ("show me the tree log"). The tree lands in `var/log/<context>/events/latest.json`; `vendor/bin/stree` renders it, and a `tree` script in the application's `composer.json` makes that `composer tree`. For the agent to reach for the skill every time rather than reading the files on its own, add one line to the application's `CLAUDE.md`: 「ツリーログを見て」と言われたら、bear-observe スキルを使う。
 
 ## Boundaries
 
