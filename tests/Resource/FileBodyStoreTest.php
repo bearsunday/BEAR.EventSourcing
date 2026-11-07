@@ -278,6 +278,9 @@ final class FileBodyStoreTest extends TestCase
             'a prune that fails partway leaves the generation marked for the next one',
         );
 
+        (new FileBodyStore($dir, keep: 1))($request, $ro);
+        $this->assertDirectoryDoesNotExist($stuck, 'the marked generation is pruned once it can be');
+
         self::removeTree($dir);
     }
 
