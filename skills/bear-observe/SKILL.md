@@ -28,7 +28,7 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 
 「キャッシュログを確認して」「何が起きたか見て」「遅い理由を調べて」で入る。
 
-1. **読める木があるなら、まず読む。** `var/log/*/observe/latest.json` があれば `tree.php` を実行する。
+1. **読める木があるなら、まず読む。** `var/log/*/query-repository/latest.json` があれば `tree.php` を実行する。
    設置は済んでいるので §1 は飛ばす。mtime が前回見たときから動いていなければ、**そう言う** —
    古い木を新しい実行の証拠にしない
 2. 木が無いときだけ §1 の判定に降りる。設置してから、ユーザーに「どのリクエストを見ますか」と聞く
@@ -101,7 +101,7 @@ sink が拒否したら黙る、という意味。並行実行時にセッショ
 
 | 点検 | 落ちると起きること |
 |---|---|
-| `SemanticLoggerInterface` が別の場所で `Scope::SINGLETON` 無しに束縛されていないか | §2 の `check.php` の `one logger for both keys` が拾う(無印と `#[CacheLog]` が同一インスタンスでなければ FAIL)。それでも見逃す形は sink 側が拾い、`error_log` に `a second logger armed an already-armed sink` と出す — 読みに行かなければ気づかない |
+| `SemanticLoggerInterface` `#[CacheLog]` が別の場所で `Scope::SINGLETON` 無しに束縛されていないか | §2 の `check.php` の `invoker records into the cache log` が拾う(invoker の logger と `#[CacheLog]` の logger が同一インスタンスでなければ FAIL)。それでも見逃す形は sink 側が拾い、`error_log` に `a second logger armed an already-armed sink` と出す — 読みに行かなければ気づかない |
 | injector を直列化する文脈(コンパイル済みアプリ)に `PsrLogWriter` が無いか | ホストの logger(Monolog はクロージャを持つ)を抱えるので、コンパイルしたグラフが unserialize できなくなる。その文脈は `LogFileWriter` / `LogStreamWriter` で書く |
 
 観測はもう動いているかもしれない。動いているなら**アプリに 1 文字も書かない**。
@@ -128,16 +128,18 @@ php <skill>/harness/setup.php . public/index.php --context=html-app   # 1 ファ
 
 | ファイル | 役目 |
 |---|---|
-| `src/Module/DevModule.php` | 観測文脈。invoker を包み、event sourcing とキャッシュログを install し、プールを永続にする |
-| `src/Module/ObserveLoggerProvider.php` | `#[CacheLog]` の logger を無印の `SemanticLoggerInterface` にも配る |
-| `src/Module/DevPoolProvider.php` | リクエストをまたいで生き残るファイルプール |
+| `src/Module/DevModule.php` | 観測文脈。キャッシュログを install し、invoker を包んでその logger に記録させ、body を保存する |
 | `bin/dev.php` | 観測文脈で CLI から叩く入口 |
 
 `public/index.php` は**変えない**。flush はキャッシュログモジュールの shutdown sink が持つので、
 アプリが自分で書き出す行は要らない。
 
+キャッシュの保存先は変えない。アプリが保存先を束縛していなければ(QueryRepository の既定は何も残さない
+`NullAdapter`)、毎回 miss になる。hit や 304 を見るなら、保存先を束縛する文脈を重ねる(BEAR.Skeleton では
+`cache-`。入口のリテラルが `dev-cache-hal-app` なら、`setup.php` が出す文脈は `cli-dev-cache-hal-app`)。
+
 **このファイル群を自分で書き起こさない。** `templates/` を読んで手で書き直すと、`rename()` した invoker の
-差し替えや 2 つの束縛キーが同じ logger を指す形が微妙にずれる。ずれても例外は出ず、木が薄くなるだけだ
+差し替えや、invoker に渡す logger の指定が微妙にずれる。ずれても例外は出ず、木が薄くなるだけだ
 (§2 の表がその一覧)。namespace は `composer.json` から、文脈名は渡した入口(既定 `public/index.php`)から取る。
 判断が要るのは、アプリが自前の `DevModule` を持っていたときの畳み込みだけで、そこは `setup.php` が
 `.observe` を隣に置いて手に渡す。
@@ -165,13 +167,12 @@ php <skill>/harness/setup.php . public/index.php --context=html-app   # 1 ファ
 php <skill>/harness/check.php . <context>
 ```
 
-5 行すべて PASS でなければ観測は始まっていない。各 FAIL は「それが隠す欠落」を自分で書く:
+3 行すべて PASS でなければ観測は始まっていない。各 FAIL は「それが隠す欠落」を自分で書く:
 
 | 点検 | 落ちると見えなくなるもの |
 |---|---|
-| one logger for both keys | `resource_request` は残り、`get` / `save_value` が消える(2 つ目の logger を誰も flush しない) |
 | invoker is decorated | `resource_request` が 1 つも無く、キャッシュのスコープが宙に浮く |
-| resource object / etag pool survives | 毎回 miss になり、hit も 304 も原理的に出ない |
+| invoker records into the cache log | `resource_request` が別の logger に入り、この木ではキャッシュのスコープが宙に浮く |
 | a sink owns the flush | 木は組み上がって shutdown で捨てられる。ファイルが 1 つも増えない |
 
 FAIL が残るなら、アプリの `AppModule` が同じ束縛を後から上書きしていないかを見る
@@ -209,8 +210,8 @@ php bin/dev.php get '/orders?order_id=O-1'
 php <skill>/harness/tree.php
 ```
 
-`tree.php` は引数なしなら `var/log/*/observe/latest.json` の最新を読む。パスを渡せばそれを読む。
-`ls -t var/log/<context>/observe/*.json` で過去のセッションが新しい順に並ぶ。中身は
+`tree.php` は引数なしなら `var/log/*/query-repository/latest.json` の最新を読む(以前のテンプレートが書いた
+`observe/` も探す)。パスを渡せばそれを読む。`ls -t var/log/<context>/query-repository/*.json` で過去のセッションが新しい順に並ぶ。中身は
 `vendor/bin/stree` が描く(`tree.php` は `body_ref` のベースネーム化と、この var/log 規約の解決・
 表示だけをする薄い委譲先)。
 
@@ -454,7 +455,7 @@ xstep --break="vendor/bear/query-repository/src/CacheDependency.php:<line>" \
 
 ## 範囲外
 
-観測文脈は開発用だ。プールはファイルで、body は全部ディスクに落ち、記録は無条件。本番で同じことを
+観測文脈は開発用だ。body は全部ディスクに落ち、記録は無条件。本番で同じことを
 したいなら `ProdQueryRepositoryLogModule`(サンプリングと flush 時の判定を持つ)を見る。
 セッションは URI(クエリ文字列込み)・client validator・生の例外文を含むので、本番の出力先に何を流すかは
 先に決める(scrub や流量制限は `LogWriterInterface` を decorate する)。

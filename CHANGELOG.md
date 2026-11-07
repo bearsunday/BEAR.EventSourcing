@@ -9,6 +9,7 @@
 ### Changed
 
 - **BREAKING — `BodyStoreException` is `final`.**
+- `skills/bear-observe/`: the `DevModule` template hands the cache log's logger to the invoker (`'logger' => CacheLog::class`) and writes the tree to `var/log/<context>/query-repository/`; `ObserveLoggerProvider`, `DevPoolProvider` and `check.php`'s pool checks are gone. To see hits, run under a context that binds a persistent pool, such as BEAR.Skeleton's `cache-`.
 
 ## 0.2.1 - 2026-10-30
 

@@ -462,23 +462,19 @@ $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toI
 
 Share the instance with `toInstance()`: two separate `to(...)->in(Scope::SINGLETON)` bindings would create one singleton per binding key and split the tree in two. Extraction stays safe in the merged tree — only `resource_request` entries become events, so cache scopes are never misread as state changes. `tests/UnifiedLogTest.php` proves both properties.
 
-Under a compiled injector (a BEAR.Sunday context), alias with a provider instead of `toInstance` — the compiler would serialize the logger instance and each process would get its own copy, splitting the tree again:
+Under a compiled injector (a BEAR.Sunday context), do not share an instance — the compiler would serialize it and each process would get its own copy, splitting the tree again. `DevQueryRepositoryLogModule` already binds the `#[CacheLog]` logger and flushes it at shutdown, so hand that logger to the invoker by its qualifier:
 
 ```php
-final class CacheLogProvider implements ProviderInterface
-{
-    public function __construct(private readonly SemanticLoggerInterface $logger)
-    {
-    }
-
-    public function get(): SemanticLoggerInterface
-    {
-        return $this->logger;
-    }
-}
-
-$this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)
-    ->toProvider(CacheLogProvider::class)->in(Scope::SINGLETON);
+$this->install(new DevQueryRepositoryLogModule($this->appMeta->logDir . '/query-repository', keep: 10));
+$this->rename(InvokerInterface::class, 'original_invoker');
+$this->bind(InvokerInterface::class)
+    ->toConstructor(SemanticLogInvoker::class, [
+        'invoker' => 'original_invoker',
+        'logger' => CacheLog::class,
+        'recordedMethods' => Recorded::class,
+        'paramsFilter' => Filtered::class,
+    ])
+    ->in(Scope::SINGLETON);
 ```
 
 ## Agent skill: bear-observe
@@ -491,7 +487,7 @@ mkdir -p .claude/skills && cp -r vendor/bear/event-sourcing/skills/bear-observe 
 
 Then ask an agent to read the log. It runs `harness/setup.php` only when observation is not already working, so an application that is already wired is left alone.
 
-Its `DevModule` template aliases in the opposite direction from the snippet above: `DevQueryRepositoryLogModule` already binds the `#[CacheLog]` key, so the template points the plain `SemanticLoggerInterface` at that one. Either direction gives one tree; this one does not restate the writer and the shutdown sink.
+Its `DevModule` template is the wiring above plus the body store, and writes the tree to `var/log/<context>/query-repository/latest.json`.
 
 ## Boundaries
 

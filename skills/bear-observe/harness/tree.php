@@ -9,7 +9,7 @@ declare(strict_types=1);
  * Usage: php tree.php [log.json] [stree options]   (default: the newest latest.json under var/log)
  *
  * `stree` takes a required file argument and knows nothing of this project's
- * `var/log/*\/observe/latest.json` convention, so this resolves the file first and echoes the
+ * `var/log/*\/query-repository/latest.json` convention, so this resolves the file first and echoes the
  * resolved path — `latest.json` changes on every request, and a stale tree must never pass
  * silently as evidence of the run that just happened.
  *
@@ -47,8 +47,12 @@ if (isset($argvList[0]) && $argvList[0] !== '' && $argvList[0][0] !== '-') {
 $streeArgs = $argvList;
 
 if ($file === null) {
-    $found = glob(getcwd() . '/var/log/*/observe/latest.json') ?: [];
-    $found !== [] || fail('no var/log/*/observe/latest.json — run a request first, or pass a path');
+    // observe/ is where DevModules written by earlier versions of this skill log.
+    $found = [
+        ...(glob(getcwd() . '/var/log/*/query-repository/latest.json') ?: []),
+        ...(glob(getcwd() . '/var/log/*/observe/latest.json') ?: []),
+    ];
+    $found !== [] || fail('no var/log/*/query-repository/latest.json — run a request first, or pass a path');
     usort($found, static fn (string $a, string $b): int => filemtime($b) <=> filemtime($a));
     $file = $found[0];
 }
