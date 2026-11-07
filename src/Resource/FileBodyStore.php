@@ -75,7 +75,7 @@ use const SORT_STRING;
  */
 final class FileBodyStore implements BodyStoreInterface
 {
-    /** File that marks a directory as one this store created and may clear. */
+    /** File that marks a directory as one this store created and may prune. */
     public const string MARKER = '.bear-es-bodies';
 
     private const int DEFAULT_KEEP = 5;
@@ -120,31 +120,9 @@ final class FileBodyStore implements BodyStoreInterface
     }
 
     /**
-     * Empty and unmark a directory this store (or a prior run of it) owns.
-     *
-     * A directory qualifies by carrying the marker; an empty, unmarked
-     * directory is adopted (marked, then immediately cleared) so a first call
-     * against a fresh path succeeds. Anything else — populated and unmarked —
-     * is refused via {@see UnownedDirectoryException}, a distinguishable
-     * subtype of the general failures below (I/O errors, unsafe paths) raised
-     * here as {@see BodyStoreException}.
-     */
-    public static function clearDirectory(string $dir): void
-    {
-        self::ensureDirectory($dir);
-        self::assertOwned($dir);
-        self::clearContents($dir);
-        // Remove the ownership marker only after everything else is gone, so a
-        // cleanup that fails partway leaves the directory still marked as owned
-        // and clearable on the next attempt.
-        self::removeMarker($dir);
-    }
-
-    /**
      * Create this instance's generation directory under the shared root, then
      * prune sibling generations down to $keep. Every call names a directory
-     * that cannot already exist, so — unlike {@see clearDirectory()} — there
-     * is nothing to adopt here: mkdir() either creates it or fails outright.
+     * that cannot already exist, so mkdir() either creates it or fails outright.
      */
     private static function createGeneration(string $rootDir, int $keep): string
     {
@@ -240,52 +218,6 @@ final class FileBodyStore implements BodyStoreInterface
         }
     }
 
-    private static function ensureDirectory(string $dir): void
-    {
-        self::assertSafeDirectory($dir);
-        if (is_dir($dir)) {
-            // Adopt a pre-existing directory only while it is still empty, so a
-            // misconfigured bodyDir pointing at populated data is never cleared.
-            if (self::isEmpty($dir)) {
-                self::markOwned($dir);
-            }
-
-            return;
-        }
-
-        if (is_file($dir) || is_link($dir)) {
-            throw new BodyStoreException(sprintf('Body store path is not a directory: %s', $dir));
-        }
-
-        if (! mkdir($dir, 0775, true) && ! is_dir($dir)) {
-            throw new BodyStoreException(sprintf('Failed to create body store directory: %s', $dir));
-        }
-
-        self::markOwned($dir);
-    }
-
-    /**
-     * Refuse to clear a directory this store does not own. A directory is owned
-     * once it carries the marker, which is written only while adopting an empty
-     * directory or creating a new one — never over pre-existing contents. This
-     * stops `new DevLogModule('/path/to/project')` from wiping the project.
-     */
-    private static function assertOwned(string $dir): void
-    {
-        if (is_file($dir . DIRECTORY_SEPARATOR . self::MARKER)) {
-            return;
-        }
-
-        throw new UnownedDirectoryException(
-            sprintf('Refusing to clear a body store directory without an ownership marker: %s', $dir),
-        );
-    }
-
-    private static function isEmpty(string $dir): bool
-    {
-        return ! (new FilesystemIterator($dir))->valid();
-    }
-
     private static function markOwned(string $dir): void
     {
         $marker = $dir . DIRECTORY_SEPARATOR . self::MARKER;
@@ -341,7 +273,7 @@ final class FileBodyStore implements BodyStoreInterface
             /** @var SplFileInfo $file */
             $path = $file->getPathname();
             if ($path === $marker) {
-                continue; // preserved until clearDirectory removes it last
+                continue; // removed last: a prune that fails partway leaves the generation marked for the next one
             }
 
             if ($file->isLink() || $file->isFile()) {

@@ -14,11 +14,7 @@ use function rmdir;
 use function unlink;
 
 /**
- * FileBodyStore's own directory is now a root shared across generation
- * subdirectories it owns individually, not a single directory the store
- * itself owns end to end — so tests that hand it a fresh root tear the whole
- * tree down themselves instead of asking `FileBodyStore::clearDirectory()`
- * to clear a directory it was never marked as owning.
+ * Removes a test's body-store root and everything under it; the store itself only prunes the generations it marked.
  */
 trait RemovesDirectoryTree
 {

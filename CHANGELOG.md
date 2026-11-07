@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- **BREAKING — `FileBodyStore::clearDirectory()` and `UnownedDirectoryException` are removed.** Code that called `clearDirectory()` on a generation or on a 0.2.0-era `bodyDir` should delete that directory recursively instead; retention is `keep`.
+
+### Changed
+
+- **BREAKING — `BodyStoreException` is `final`.**
+
 ## 0.2.1 - 2026-10-30
 
 ### Migration
