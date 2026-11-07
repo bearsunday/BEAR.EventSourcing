@@ -355,7 +355,7 @@ final class DevModule extends AbstractAppModule
     #[Override]
     protected function configure(): void
     {
-        $bodyDir = $this->appMeta->logDir . '/es-bodies';
+        $bodyDir = $this->appMeta->logDir . '/events';
 
         $this->rename(InvokerInterface::class, 'original_invoker');
         $this->bind(InvokerInterface::class)
@@ -462,20 +462,14 @@ $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toI
 
 Share the instance with `toInstance()`: two separate `to(...)->in(Scope::SINGLETON)` bindings would create one singleton per binding key and split the tree in two. Extraction stays safe in the merged tree — only `resource_request` entries become events, so cache scopes are never misread as state changes. `tests/UnifiedLogTest.php` proves both properties.
 
-Under a compiled injector (a BEAR.Sunday context), do not share an instance — the compiler would serialize it and each process would get its own copy, splitting the tree again. `DevQueryRepositoryLogModule` already binds the `#[CacheLog]` logger and flushes it at shutdown, so hand that logger to the invoker by its qualifier:
+Under a compiled injector (a BEAR.Sunday context), do not share an instance — the compiler would serialize it and each process would get its own copy, splitting the tree again. Install `DevEventSourcingModule` beside `DevQueryRepositoryLogModule` instead. The first owns the `#[CacheLog]` logger and writes its session at shutdown; the second records every resource request into that logger and stores response bodies under its directory. Give both the same `keep`, so no retained log points at a pruned body:
 
 ```php
 $this->install(new DevQueryRepositoryLogModule($this->appMeta->logDir . '/query-repository', keep: 10));
-$this->rename(InvokerInterface::class, 'original_invoker');
-$this->bind(InvokerInterface::class)
-    ->toConstructor(SemanticLogInvoker::class, [
-        'invoker' => 'original_invoker',
-        'logger' => CacheLog::class,
-        'recordedMethods' => Recorded::class,
-        'paramsFilter' => Filtered::class,
-    ])
-    ->in(Scope::SINGLETON);
+$this->install(new DevEventSourcingModule($this->appMeta->logDir . '/events', keep: 10));
 ```
+
+`DevEventSourcingModule` decorates BEAR.Resource's `Invoker` directly, so an application that decorates `InvokerInterface` itself wires `SemanticLogInvoker` by hand instead, as in "Wiring inside a BEAR.Sunday context", passing `'logger' => CacheLog::class`.
 
 `MediaQueryObservationModule` records through the unqualified `SemanticLoggerInterface`, which this wiring leaves unbound. To put `media_query` events in the same tree, bind the media query logger the same way instead of installing the module:
 
@@ -495,7 +489,7 @@ mkdir -p .claude/skills && cp -r vendor/bear/event-sourcing/skills/bear-observe 
 
 Then ask an agent to read the log. It runs `harness/setup.php` only when observation is not already working, so an application that is already wired is left alone.
 
-Its `DevModule` template is the wiring above plus the body store, and writes the tree to `var/log/<context>/query-repository/latest.json`.
+Its `DevModule` template is those two lines; the tree lands in `var/log/<context>/query-repository/latest.json`.
 
 ## Boundaries
 

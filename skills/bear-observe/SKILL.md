@@ -129,7 +129,7 @@ php <skill>/harness/setup.php . public/index.php --context=html-app   # 1 ファ
 
 | ファイル | 役目 |
 |---|---|
-| `src/Module/DevModule.php` | 観測文脈。キャッシュログを install し、invoker を包んでその logger に記録させ、body を保存する |
+| `src/Module/DevModule.php` | 観測文脈。`DevQueryRepositoryLogModule` と `DevEventSourcingModule` を install する。後者が invoker を包んでキャッシュログの logger に記録させ、body を `events/` に保存する |
 | `bin/dev.php` | 観測文脈で CLI から叩く入口 |
 
 `public/index.php` は**変えない**。flush はキャッシュログモジュールの shutdown sink が持つので、
@@ -140,11 +140,11 @@ php <skill>/harness/setup.php . public/index.php --context=html-app   # 1 ファ
 束縛する文脈を重ねる(例: その束縛だけの `CacheModule` を `cache-` 文脈にする。入口のリテラルが
 `dev-cache-hal-app` なら、`setup.php` が出す文脈は `cli-dev-cache-hal-app`)。
 
-**このファイル群を自分で書き起こさない。** `templates/` を読んで手で書き直すと、`rename()` した invoker の
-差し替えや、invoker に渡す logger の指定が微妙にずれる。ずれても例外は出ず、木が薄くなるだけだ
-(§2 の表がその一覧)。namespace は `composer.json` から、文脈名は渡した入口(既定 `public/index.php`)から取る。
-判断が要るのは、アプリが自前の `DevModule` を持っていたときの畳み込みだけで、そこは `setup.php` が
-`.observe` を隣に置いて手に渡す。
+**このファイルを自分で書き起こさない。** 中身はモジュールを 2 つ install するだけで、invoker の包み方や
+logger の指定はモジュールの中にある。namespace は `composer.json` から、文脈名は渡した入口(既定
+`public/index.php`)から取る。判断が要るのは、アプリが自前の `DevModule` を持っていたときの畳み込みだけで、
+そこは `setup.php` が `.observe` を隣に置いて手に渡す。`DevQueryRepositoryLogModule` の行が既にあれば、
+足すのは `DevEventSourcingModule` の 1 行だ。
 
 畳み込むときの罠が 1 つある。**包んだモジュールは「足す」のではなく「置き換える」**。アプリが既に
 `QueryRepositoryModule` を持つ(BEAR.Package 経由など)のに、上から `module: new QueryRepositoryModule()`
@@ -291,7 +291,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 | 依存の伝播 | `save_*` の `tags` ↔ `invalidate` の `tags` の突き合わせ。`depends_on` を出すのは `#[Cacheable]` の親だけで、donut の親は出さない(§4) |
 | 何回リソースが走ったか | `resource_request` の数。N+1 は同じ URI の兄弟が並ぶ形で出る |
 | どこで時間を使ったか | `durationMs`。親から子を引いた残りがその層の自前のコスト |
-| 何を返したか | `body_ref` のファイル(`var/log/<context>/es-bodies/<generation>/`。`<generation>` は初回保存時に作られるディレクトリ) |
+| 何を返したか | `body_ref` のファイル(`var/log/<context>/events/<generation>/`。`<generation>` は初回保存時に作られるディレクトリ) |
 
 読み間違えやすい 4 点(いずれも実測):
 

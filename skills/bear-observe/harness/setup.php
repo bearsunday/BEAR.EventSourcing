@@ -101,12 +101,12 @@ $becomingWarning = '';
 $written = [];
 $kept = [];
 $merge = [];
-// The identifiers that must all appear for the file to be doing our job already. A DevModule that
-// wraps the invoker but installs no log module leaves half a tree, so half the markers is a miss.
+// The identifiers that must all appear for the file to be doing our job already. A DevModule with
+// one of the two modules but not the other leaves half a tree, so half the markers is a miss.
 // This only decides whether to leave a template beside the file; whether observation works is
 // check.php's answer, and it comes from the bindings.
 $markers = [
-    'DevModule' => ['SemanticLogInvoker', 'DevQueryRepositoryLogModule', 'CacheLog'],
+    'DevModule' => ['DevQueryRepositoryLogModule', 'DevEventSourcingModule'],
 ];
 foreach ($markers as $class => $required) {
     $target = $appDir . '/src/Module/' . $class . '.php';

@@ -40,6 +40,7 @@
         "vimeo/psalm": "^6.0"
     },
     "suggest": {
+        "bear/query-repository": "To record resource requests into the cache log's session with DevEventSourcingModule (^1.19)",
         "bear/resource": "To observe BEAR.Resource execution with the InvokerInterface bridge (^1.32)",
         "ray/media-query": "To back EventStoreInterface with SQL and to observe media queries as semantic log events (^1.1)"
     },

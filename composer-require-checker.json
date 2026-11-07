@@ -1,6 +1,8 @@
 {
     "symbol-whitelist": [
+        "BEAR\\RepositoryModule\\Annotation\\CacheLog",
         "BEAR\\Resource\\AbstractRequest",
+        "BEAR\\Resource\\Invoker",
         "BEAR\\Resource\\InvokerInterface",
         "BEAR\\Resource\\ResourceObject",
         "Ray\\MediaQuery\\Annotation\\DbQuery",

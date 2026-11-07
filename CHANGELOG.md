@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `DevEventSourcingModule`: records every resource request into the cache log's session, so requests and their cache scopes read as one tree, and stores response bodies under the given directory. Install it beside `DevQueryRepositoryLogModule` with the same `keep`.
+
 ### Removed
 
 - **BREAKING — `FileBodyStore::clearDirectory()` and `UnownedDirectoryException` are removed.** Code that called `clearDirectory()` on a generation or on a 0.2.0-era `bodyDir` should delete that directory recursively instead; retention is `keep`.
@@ -9,7 +13,7 @@
 ### Changed
 
 - **BREAKING — `BodyStoreException` is `final`.**
-- `skills/bear-observe/`: the `DevModule` template hands the cache log's logger to the invoker (`'logger' => CacheLog::class`) and writes the tree to `var/log/<context>/query-repository/`; `ObserveLoggerProvider`, `DevPoolProvider` and `check.php`'s pool checks are gone. To see hits, run under a context that binds a persistent `#[ResourceObjectPool]`.
+- `skills/bear-observe/`: the `DevModule` template installs `DevQueryRepositoryLogModule` and `DevEventSourcingModule`, writing the tree under `var/log/<context>/query-repository/` and bodies under `events/`; `ObserveLoggerProvider`, `DevPoolProvider` and `check.php`'s pool checks are gone. To see hits, run under a context that binds a persistent `#[ResourceObjectPool]`.
 
 ## 0.2.1 - 2026-10-30
 
