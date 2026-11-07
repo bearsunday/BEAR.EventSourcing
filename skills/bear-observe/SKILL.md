@@ -124,14 +124,21 @@ namespace は `composer.json` の psr-4 で `src/` に対応する接頭辞に `
 アプリが自分で書き出す行は要らない。
 
 **dev 文脈で叩く。** 文脈名はアプリの文脈の前に `dev-` を付けたもの(`cli-hal-app` なら `dev-cli-hal-app`)。
-BEAR.Skeleton 由来の CLI 入口は、`BEAR_CONTEXT` が無ければ CLI で dev 文脈を使う(`bin/page.php` は
-`dev-cli-hal-app`、`bin/app.php` は `dev-cli-hal-api-app`)。入口が文脈を固定しているアプリでは、入口が
-`BEAR_CONTEXT` を読むかを先に見て、読むなら `BEAR_CONTEXT=dev-cli-hal-app php bin/page.php get /` で渡す。
+CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に確かめる:
 
-**読む口を 1 つ用意する。** アプリの `composer.json` に `tree` スクリプトが無ければ足す。以降は `composer tree` で読める:
+| 入口の文脈 | すること |
+|---|---|
+| CLI の既定が `dev-`(`getenv('BEAR_CONTEXT') ?: (PHP_SAPI === 'cli' ? 'dev-cli-hal-app' : 'hal-app')`) | そのまま叩く |
+| `BEAR_CONTEXT` を読むが、既定が `dev-` でない | `BEAR_CONTEXT=dev-cli-hal-app php bin/page.php get /` |
+| 文脈を式で固定(`PHP_SAPI === 'cli' ? 'cli-hal-app' : 'hal-app'`) | その式を `getenv('BEAR_CONTEXT') ?: (元の式)` に直し、上の行の形で叩く(括弧が無いと PHP 8 ではエラー) |
+
+以下の例の `php bin/page.php` は、dev 文脈で動く入口を指す。
+
+**読む口を 1 つ用意する。** アプリの `composer.json` に `tree` スクリプトが無ければ足す。以降は `composer tree` で、
+文脈を変えてもいちばん新しい木を読める:
 
 ```json
-"tree": "vendor/bin/stree var/log/dev-cli-hal-app/events/latest.json"
+"tree": "vendor/bin/stree $(ls -t var/log/*/events/latest.json | head -1)"
 ```
 
 キャッシュの保存先は変えない。アプリが保存先を束縛していなければ(QueryRepository の既定は何も残さない
@@ -157,7 +164,7 @@ BEAR.Skeleton 由来の CLI 入口は、`BEAR_CONTEXT` が無ければ CLI で d
 | 見えたもの | 意味 |
 |---|---|
 | 根が `resource_request`(キャッシュするリソースなら、その中に `get` などのスコープ) | 配線は生きている |
-| `var/log/<context>/events/latest.json` が増えない | その文脈に `DevModule` が載っていない(文脈名に `dev` が無い)か、sink が書き出しを拒否した |
+| `var/log/<context>/events/latest.json` が増えない | その文脈に `DevModule` が載っていない(文脈名に `dev` が無い)か、sink が書き出しを拒否した。何も記録されなかったセッションはファイルにならないので、invoker が包まれておらず叩いたリソースにキャッシュの宣言も無いときも増えない(次の行の原因を見る) |
 | 根に `resource_request` が無く、キャッシュのスコープが宙に浮く | invoker が包まれていないか、別の logger に記録している |
 | 木が `query-repository/` にだけ出る | `DevQueryRepositoryLogModule` の行が `DevEventSourcingModule` より先に残っている。その行を消す |
 
