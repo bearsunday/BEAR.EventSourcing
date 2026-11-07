@@ -9,7 +9,6 @@ use BEAR\EventSourcing\Module\DevEventSourcingModule;
 use BEAR\EventSourcing\Resource\FilteredParams;
 use BEAR\EventSourcing\Resource\ParamsFilterInterface;
 use BEAR\EventSourcing\Tests\Fixture\DevContextChainModule;
-use BEAR\QueryRepository\DevQueryRepositoryLogModule;
 use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\ResourceInterface;
@@ -58,7 +57,7 @@ final class DevEventSourcingModuleTest extends TestCase
 
         $this->assertSame('resource_request', $root['type']);
         $this->assertTrue(self::subtreeHasType($root, 'get'), 'the cache scope nests inside the resource request');
-        $bodies = glob($this->logDir . '/events/*/*.json');
+        $bodies = glob($this->logDir . '/events/bodies/*/*.json');
         $this->assertNotSame([], $bodies, 'the response body is stored under the given directory');
     }
 
@@ -100,7 +99,6 @@ final class DevEventSourcingModuleTest extends TestCase
 
             protected function configure(): void
             {
-                $this->install(new DevQueryRepositoryLogModule($this->logDir . '/query-repository', 10));
                 $this->install(new DevEventSourcingModule($this->logDir . '/events', 10));
                 if ($this->app === null) {
                     return;
@@ -124,7 +122,7 @@ final class DevEventSourcingModuleTest extends TestCase
         $this->assertInstanceOf(SemanticLoggerInterface::class, $logger);
         $sink->flush($logger);
 
-        $latest = (string) file_get_contents($this->logDir . '/query-repository/latest.json');
+        $latest = (string) file_get_contents($this->logDir . '/events/latest.json');
         /** @var array{log: list<array<string, mixed>>} $tree */
         $tree = json_decode($latest, true, 512, JSON_THROW_ON_ERROR);
         $this->assertNotSame([], $tree['log']);

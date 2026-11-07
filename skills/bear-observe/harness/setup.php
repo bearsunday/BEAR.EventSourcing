@@ -101,12 +101,11 @@ $becomingWarning = '';
 $written = [];
 $kept = [];
 $merge = [];
-// The identifiers that must all appear for the file to be doing our job already. A DevModule with
-// one of the two modules but not the other leaves half a tree, so half the markers is a miss.
-// This only decides whether to leave a template beside the file; whether observation works is
-// check.php's answer, and it comes from the bindings.
+// The identifiers that must all appear for the file to be doing our job already. This only
+// decides whether to leave a template beside the file; whether observation works is check.php's
+// answer, and it comes from the bindings.
 $markers = [
-    'DevModule' => ['DevQueryRepositoryLogModule', 'DevEventSourcingModule'],
+    'DevModule' => ['DevEventSourcingModule'],
 ];
 foreach ($markers as $class => $required) {
     $target = $appDir . '/src/Module/' . $class . '.php';
@@ -189,7 +188,7 @@ if (! $hasBootstrapClass) {
 echo "namespace  {$namespace}\n";
 echo 'entry      ' . $entryName . (is_file($entry) ? '' : ' (absent — context defaults to app)') . "\n";
 echo "context    {$context}\n";
-echo "log        var/log/{$context}/query-repository/latest.json\n";
+echo "log        var/log/{$context}/events/latest.json\n";
 $written === [] || print('written    ' . implode(' ', $written) . "\n");
 $kept === [] || print('kept       ' . implode(' ', $kept) . " (--force to overwrite)\n");
 $notes === [] || print('note       ' . implode('; ', $notes) . "\n");

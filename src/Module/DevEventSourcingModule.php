@@ -10,6 +10,7 @@ use BEAR\EventSourcing\RecordedMethods;
 use BEAR\EventSourcing\Resource\BodyStoreInterface;
 use BEAR\EventSourcing\Resource\FileBodyStore;
 use BEAR\EventSourcing\Resource\SemanticLogInvoker;
+use BEAR\QueryRepository\DevQueryRepositoryLogModule;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Invoker;
 use BEAR\Resource\InvokerInterface;
@@ -17,15 +18,15 @@ use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
 /**
- * Records every resource request into the cache log's session, so requests and their cache scopes read as one tree
+ * Writes requests and their cache scopes as one tree in the given directory, with response bodies under bodies/
  *
- * Install beside DevQueryRepositoryLogModule, which owns that session and writes it, and give both the same keep.
+ * It installs DevQueryRepositoryLogModule there; an app installing that module too gets the first one's directory.
  */
 final class DevEventSourcingModule extends AbstractModule
 {
     private const string INVOKER = 'bear_event_sourcing_dev_invoker';
 
-    /** @param string $dir response bodies are stored under it */
+    /** @param int $keep sessions and body generations retained, one count for both */
     public function __construct(
         private readonly string $dir,
         private readonly int $keep = 10,
@@ -35,6 +36,7 @@ final class DevEventSourcingModule extends AbstractModule
 
     protected function configure(): void
     {
+        $this->install(new DevQueryRepositoryLogModule($this->dir, $this->keep));
         // An installed module cannot rename the app chain's invoker binding, so the inner invoker is named here.
         $this->bind(InvokerInterface::class)->annotatedWith(self::INVOKER)->to(Invoker::class);
         $this->bind(InvokerInterface::class)
@@ -47,6 +49,6 @@ final class DevEventSourcingModule extends AbstractModule
             ->in(Scope::SINGLETON);
         $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)
             ->toInstance(new RecordedMethods(RecordedMethods::WITH_READS));
-        $this->bind(BodyStoreInterface::class)->toInstance(new FileBodyStore($this->dir, $this->keep));
+        $this->bind(BodyStoreInterface::class)->toInstance(new FileBodyStore($this->dir . '/bodies', $this->keep));
     }
 }

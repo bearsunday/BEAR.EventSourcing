@@ -28,8 +28,8 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 
 「キャッシュログを確認して」「何が起きたか見て」「遅い理由を調べて」で入る。
 
-1. **読める木があるなら、まず読む。** `var/log/*/query-repository/latest.json`(以前のテンプレートなら
-   `var/log/*/observe/latest.json`)があれば `tree.php` を実行する。
+1. **読める木があるなら、まず読む。** `var/log/*/events/latest.json`(キャッシュのログだけのアプリは
+   `query-repository/`、以前のテンプレートは `observe/`)があれば `tree.php` を実行する。
    設置は済んでいるので §1 は飛ばす。mtime が前回見たときから動いていなければ、**そう言う** —
    古い木を新しい実行の証拠にしない
 2. 木が無いときだけ §1 の判定に降りる。設置してから、ユーザーに「どのリクエストを見ますか」と聞く
@@ -92,7 +92,7 @@ flush する `LogSinkInterface` を**両方**束縛する(片方だけだとセ�
 
 EventSourcing のイベント抽出だけなら常駐ホストでも使えるが、`DevModule` のままでは使えない。invoker は
 `#[CacheLog]` の logger に記録するので、sink が拒否すると `resource_request` も記録されない。
-`DevQueryRepositoryLogModule` を入れない別の配線で、`EventCollector` をランタイムの request end から呼ぶ
+`DevEventSourcingModule` を使わない別の配線で、`EventCollector` をランタイムの request end から呼ぶ
 (README "The application owns the flush")。
 
 `SafeSemanticLogger` の "Safe" は、セッションをリクエストごとに解決し、直列化の境界を越えて持ち越さず、
@@ -129,7 +129,7 @@ php <skill>/harness/setup.php . public/index.php --context=html-app   # 1 ファ
 
 | ファイル | 役目 |
 |---|---|
-| `src/Module/DevModule.php` | 観測文脈。`DevQueryRepositoryLogModule` と `DevEventSourcingModule` を install する。後者が invoker を包んでキャッシュログの logger に記録させ、body を `events/` に保存する |
+| `src/Module/DevModule.php` | 観測文脈。`DevEventSourcingModule` を install する。invoker を包んでキャッシュログの logger に記録させ、木と body を `var/log/<context>/events/` に書く |
 | `bin/dev.php` | 観測文脈で CLI から叩く入口 |
 
 `public/index.php` は**変えない**。flush はキャッシュログモジュールの shutdown sink が持つので、
@@ -140,11 +140,11 @@ php <skill>/harness/setup.php . public/index.php --context=html-app   # 1 ファ
 束縛する文脈を重ねる(例: その束縛だけの `CacheModule` を `cache-` 文脈にする。入口のリテラルが
 `dev-cache-hal-app` なら、`setup.php` が出す文脈は `cli-dev-cache-hal-app`)。
 
-**このファイルを自分で書き起こさない。** 中身はモジュールを 2 つ install するだけで、invoker の包み方や
-logger の指定はモジュールの中にある。namespace は `composer.json` から、文脈名は渡した入口(既定
+**このファイルを自分で書き起こさない。** 中身は `DevEventSourcingModule` を install する 1 行で、invoker の
+包み方や logger の指定はモジュールの中にある。namespace は `composer.json` から、文脈名は渡した入口(既定
 `public/index.php`)から取る。判断が要るのは、アプリが自前の `DevModule` を持っていたときの畳み込みだけで、
-そこは `setup.php` が `.observe` を隣に置いて手に渡す。`DevQueryRepositoryLogModule` の行が既にあれば、
-足すのは `DevEventSourcingModule` の 1 行だ。
+そこは `setup.php` が `.observe` を隣に置いて手に渡す。`DevQueryRepositoryLogModule` の行があれば
+`DevEventSourcingModule` の 1 行に置き換える(両方あると、先に install した方が木の置き場所を決める)。
 
 畳み込むときの罠が 1 つある。**包んだモジュールは「足す」のではなく「置き換える」**。アプリが既に
 `QueryRepositoryModule` を持つ(BEAR.Package 経由など)のに、上から `module: new QueryRepositoryModule()`
@@ -212,8 +212,8 @@ php bin/dev.php get '/orders?order_id=O-1'
 php <skill>/harness/tree.php
 ```
 
-`tree.php` は引数なしなら `var/log/*/query-repository/latest.json` の最新を読む(以前のテンプレートが書いた
-`observe/` も探す)。パスを渡せばそれを読む。`ls -t var/log/<context>/query-repository/*.json` で過去のセッションが新しい順に並ぶ。中身は
+`tree.php` は引数なしなら `var/log/*/events/latest.json` の最新を読む(キャッシュのログだけの `query-repository/` と、
+以前のテンプレートが書いた `observe/` も探す)。パスを渡せばそれを読む。`ls -t var/log/<context>/events/*.json` で過去のセッションが新しい順に並ぶ。中身は
 `vendor/bin/stree` が描く(`tree.php` は `body_ref` のベースネーム化と、この var/log 規約の解決・
 表示だけをする薄い委譲先)。
 
@@ -261,7 +261,7 @@ resource_request uri=page://self/orders method=GET params=[order_id]
 
 ### ファイルが無い現場もある
 
-テストやオラクルは `DevQueryRepositoryLogModule` を使わず、`SemanticLoggerInterface` `#[CacheLog]` に
+テストやオラクルは `DevEventSourcingModule` を使わず、`SemanticLoggerInterface` `#[CacheLog]` に
 `SafeSemanticLogger`(sink 無し)を束縛して、自分で `flush()` を受け取るのが普通だ。この形では
 `var/log` に何も作られない。観測する側が sink になるので、読み方はファイルではなく戻り値:
 
@@ -291,7 +291,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 | 依存の伝播 | `save_*` の `tags` ↔ `invalidate` の `tags` の突き合わせ。`depends_on` を出すのは `#[Cacheable]` の親だけで、donut の親は出さない(§4) |
 | 何回リソースが走ったか | `resource_request` の数。N+1 は同じ URI の兄弟が並ぶ形で出る |
 | どこで時間を使ったか | `durationMs`。親から子を引いた残りがその層の自前のコスト |
-| 何を返したか | `body_ref` のファイル(`var/log/<context>/events/<generation>/`。`<generation>` は初回保存時に作られるディレクトリ) |
+| 何を返したか | `body_ref` のファイル(`var/log/<context>/events/bodies/<generation>/`。`<generation>` は初回保存時に作られるディレクトリ) |
 
 読み間違えやすい 4 点(いずれも実測):
 

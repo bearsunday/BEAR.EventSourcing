@@ -32,7 +32,7 @@ use const PHP_BINARY;
 
 /**
  * tree.php is a thin wrapper around stree: it resolves which log to read (an explicit path, or
- * the newest var/log/*\/query-repository/latest.json), echoes the resolved path, rewrites `body_ref` to
+ * the newest var/log/*\/events/latest.json), echoes the resolved path, rewrites `body_ref` to
  * its basename, and forwards everything else verbatim to StreeCommand in-process. These tests
  * cover exactly that wrapper-owned surface — what each context value or signal line looks like
  * once stree renders it is koriym/semantic-logger's own contract (SignalExtractorTest); a test
@@ -138,14 +138,14 @@ final class TreeRenderTest extends TestCase
     {
         // Runs with an isolated cwd (a temp dir with vendor/ symlinked in, so
         // vendor/autoload.php still resolves) rather than this repo's own working tree: the
-        // discovery glob is var/log/*/query-repository/latest.json relative to cwd, and this repo has
+        // discovery glob is var/log/*/events/latest.json relative to cwd, and this repo has
         // no var/ of its own to seed safely.
         $cwd = sys_get_temp_dir() . '/tree-render-cwd-' . uniqid();
         $this->tmpDirs[] = $cwd;
         mkdir($cwd);
         symlink(dirname(__DIR__, 2) . '/vendor', $cwd . '/vendor');
 
-        $contextDir = $cwd . '/var/log/ctx/query-repository';
+        $contextDir = $cwd . '/var/log/ctx/events';
         mkdir($contextDir, 0777, true);
 
         $older = $contextDir . '/older.json';
@@ -162,7 +162,7 @@ final class TreeRenderTest extends TestCase
         ]));
         touch($newer, time());
 
-        // glob() only matches .../query-repository/latest.json, so this exercises the real discovery
+        // glob() only matches .../events/latest.json, so this exercises the real discovery
         // glob rather than a loosened stand-in for it.
         $latest = $contextDir . '/latest.json';
         file_put_contents($latest, (string) file_get_contents($newer));

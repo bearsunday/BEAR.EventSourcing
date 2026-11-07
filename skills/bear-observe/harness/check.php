@@ -88,5 +88,5 @@ $check(
     'the log is built and then dropped at shutdown — no file is ever written',
 );
 
-echo $failures === 0 ? "\nok  run a request, then read var/log/{$context}/query-repository/latest.json\n" : "\n{$failures} failed\n";
+echo $failures === 0 ? "\nok  run a request, then read var/log/{$context}/events/latest.json\n" : "\n{$failures} failed\n";
 exit($failures === 0 ? 0 : 1);

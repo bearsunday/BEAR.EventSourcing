@@ -1,5 +1,6 @@
 {
     "symbol-whitelist": [
+        "BEAR\\QueryRepository\\DevQueryRepositoryLogModule",
         "BEAR\\RepositoryModule\\Annotation\\CacheLog",
         "BEAR\\Resource\\AbstractRequest",
         "BEAR\\Resource\\Invoker",
