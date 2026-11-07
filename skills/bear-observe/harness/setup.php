@@ -113,6 +113,12 @@ foreach ($markers as $class => $required) {
 
     if (is_file($target) && ! $force) {
         $existing = (string) file_get_contents($target);
+        // With both lines, the first installed decides where the tree goes.
+        if ($class === 'DevModule' && str_contains($existing, 'DevQueryRepositoryLogModule')) {
+            $notes[] = 'src/Module/DevModule.php installs DevQueryRepositoryLogModule: replace that line with '
+                . 'DevEventSourcingModule, which installs it in its own directory';
+        }
+
         // An application's own module already carries bindings this cannot guess at, so the
         // template lands beside it and the merge is a reading job, not a rewrite.
         if (array_filter($required, static fn (string $m): bool => ! str_contains($existing, $m)) !== []) {

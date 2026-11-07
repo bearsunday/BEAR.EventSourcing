@@ -335,6 +335,38 @@ final class ObserveHarnessTest extends TestCase
         $this->assertFileExists($this->appDir . '/src/Module/DevModule.php.observe');
     }
 
+    public function testSetupNotesADevModuleThatInstallsTheCacheLogModule(): void
+    {
+        // BEAR.Skeleton's DevModule
+        $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");
+        $this->write('src/Module/DevModule.php', <<<'PHP'
+            <?php
+
+            declare(strict_types=1);
+
+            namespace MyVendor\MyProject\Module;
+
+            use BEAR\Package\AbstractAppModule;
+            use BEAR\QueryRepository\DevQueryRepositoryLogModule;
+
+            final class DevModule extends AbstractAppModule
+            {
+                protected function configure(): void
+                {
+                    $this->install(new DevQueryRepositoryLogModule($this->appMeta->logDir . '/query-repository'));
+                }
+            }
+            PHP);
+
+        [$status, $output] = $this->runHarness('setup.php', $this->appDir);
+
+        $this->assertSame(0, $status, $output);
+        $this->assertMatchesRegularExpression(
+            '/^note\s+.*installs DevQueryRepositoryLogModule: replace that line/m',
+            $output,
+        );
+    }
+
     public function testSetupRequiresVendorAutoloadWhenRootAutoloadIsAbsent(): void
     {
         $this->write('public/index.php', "<?php\nexit((new Bootstrap())('hal-app', \$GLOBALS, \$_SERVER));\n");

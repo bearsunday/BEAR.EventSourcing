@@ -13,7 +13,7 @@
 ### Changed
 
 - **BREAKING — `BodyStoreException` is `final`.**
-- `skills/bear-observe/`: the `DevModule` template is one `DevEventSourcingModule` install, writing to `var/log/<context>/events/`; `ObserveLoggerProvider`, `DevPoolProvider` and `check.php`'s pool checks are gone. To see hits, run under a context that binds a persistent `#[ResourceObjectPool]`.
+- `skills/bear-observe/`: the `DevModule` template is one `DevEventSourcingModule` install, writing to `var/log/<context>/events/`, and `setup.php` notes a `DevModule` that still installs `DevQueryRepositoryLogModule`; `ObserveLoggerProvider`, `DevPoolProvider` and `check.php`'s pool checks are gone. To see hits, run under a context that binds a persistent `#[ResourceObjectPool]`.
 
 ## 0.2.1 - 2026-10-30
 

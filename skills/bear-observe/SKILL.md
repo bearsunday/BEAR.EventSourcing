@@ -143,8 +143,8 @@ php <skill>/harness/setup.php . public/index.php --context=html-app   # 1 ファ
 **このファイルを自分で書き起こさない。** 中身は `DevEventSourcingModule` を install する 1 行で、invoker の
 包み方や logger の指定はモジュールの中にある。namespace は `composer.json` から、文脈名は渡した入口(既定
 `public/index.php`)から取る。判断が要るのは、アプリが自前の `DevModule` を持っていたときの畳み込みだけで、
-そこは `setup.php` が `.observe` を隣に置いて手に渡す。`DevQueryRepositoryLogModule` の行があれば
-`DevEventSourcingModule` の 1 行に置き換える(両方あると、先に install した方が木の置き場所を決める)。
+そこは `setup.php` が `.observe` を隣に置いて手に渡す。`DevQueryRepositoryLogModule` の行があれば(`setup.php` が
+`note` で知らせる)、`DevEventSourcingModule` の 1 行に置き換える(両方あると、先に install した方が木の置き場所を決める)。
 
 畳み込むときの罠が 1 つある。**包んだモジュールは「足す」のではなく「置き換える」**。アプリが既に
 `QueryRepositoryModule` を持つ(BEAR.Package 経由など)のに、上から `module: new QueryRepositoryModule()`

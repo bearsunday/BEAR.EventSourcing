@@ -355,7 +355,7 @@ final class DevModule extends AbstractAppModule
     #[Override]
     protected function configure(): void
     {
-        $bodyDir = $this->appMeta->logDir . '/events/bodies';
+        $bodyDir = $this->appMeta->logDir . '/events';
 
         $this->rename(InvokerInterface::class, 'original_invoker');
         $this->bind(InvokerInterface::class)
@@ -472,7 +472,7 @@ $this->install(new DevEventSourcingModule($this->appMeta->logDir . '/events'));
 
 Drop a separate `DevQueryRepositoryLogModule` line: with both installed, the first one decides where the tree goes.
 
-`DevEventSourcingModule` decorates BEAR.Resource's `Invoker` directly, so an application that decorates `InvokerInterface` itself wires `SemanticLogInvoker` by hand instead, as in "Wiring inside a BEAR.Sunday context", passing `'logger' => CacheLog::class`.
+`DevEventSourcingModule` decorates BEAR.Resource's `Invoker` directly. An application that decorates `InvokerInterface` itself copies `DevEventSourcingModule::configure()` into its own context module instead, keeping the `DevQueryRepositoryLogModule` install, and points `'invoker'` at the chain's own binding with `rename()` as in "Wiring inside a BEAR.Sunday context", so its decorator stays inside the recorded call.
 
 `MediaQueryObservationModule` records through the unqualified `SemanticLoggerInterface`, which this wiring leaves unbound. To put `media_query` events in the same tree, bind the media query logger the same way instead of installing the module:
 
