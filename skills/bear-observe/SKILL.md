@@ -26,9 +26,9 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 「キャッシュログを確認して」「何が起きたか見て」「遅い理由を調べて」で入る。
 
 1. **読める木があるなら、まず読む。** アプリに `composer tree` があればそれで、無ければ
-   `ls -t var/log/*/events/latest.json` で最新を選んで `vendor/bin/stree <そのパス>` で読む(キャッシュのログだけの
-   アプリは `query-repository/`、以前のテンプレートは `observe/` に書いている)。設置は済んでいるので §1 は飛ばす。
-   mtime が前回見たときから動いていなければ、**そう言う** — 古い木を新しい実行の証拠にしない
+   `ls -t var/log/*/*/latest.json` で最新を選んで `vendor/bin/stree <そのパス>` で読む(`events/` のほか、キャッシュの
+   ログだけのアプリは `query-repository/`、以前のテンプレートは `observe/` に書いている)。設置は済んでいるので §1 は
+   飛ばす。mtime が前回見たときから動いていなければ、**そう言う** — 古い木を新しい実行の証拠にしない
 2. 木が無いときだけ §1 の判定に降りる。設置してから、ユーザーに「どのリクエストを見ますか」と聞く
    (勝手にリクエストを選ばない)。木が薄い・不審なときは §2 の表で、木の形から配線を確かめる
 3. 木を読み、§3 の表で問いに答える。ユーザーが問いを持っていなければ、木から言えることを言う:
@@ -109,7 +109,7 @@ sink が拒否したら黙る、という意味。並行実行時にセッショ
 |---|---|
 | `DevEventSourcingModule` を install している | 設置済み。§2 へ |
 | `DevModule` が無い | 下の 1 行だけの `DevModule` を書く。何を書くかを先に 1 行で言う |
-| ある、`DevEventSourcingModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める) |
+| ある、`DevEventSourcingModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める。その行で `keep` を変えていたなら、同じ数を `DevEventSourcingModule` の第 2 引数に渡す) |
 
 書くのはこの 1 行だけ。invoker の包み方、logger、書き出し、body の保存はモジュールの中にある:
 
@@ -122,6 +122,10 @@ $this->install(new DevEventSourcingModule($this->appMeta->logDir . '/events'));
 namespace は `composer.json` の psr-4 で `src/` に対応する接頭辞に `\Module` を付けたもの。
 `public/index.php` は**変えない**。flush はキャッシュログモジュールの shutdown sink が持つので、
 アプリが自分で書き出す行は要らない。
+
+アプリが `InvokerInterface` を自前のクラスで包んでいる(`src/Module` で `bind(InvokerInterface::class)` している)
+なら、この 1 行はその包みを外す — モジュールは内側に素の `Invoker` を名指しするため。その場合は README
+"One tree with BEAR.QueryRepository" の手順で、自分の文脈モジュールに配線する。
 
 **dev 文脈で叩く。** 文脈名はアプリの文脈の前に `dev-` を付けたもの(`cli-hal-app` なら `dev-cli-hal-app`)。
 CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に確かめる:
@@ -159,7 +163,9 @@ CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に�
 
 ## 2. 実証 — 「入れた」で終わらせない
 
-観測の失敗は全部無音だ。アプリは正しく答え、ログが薄くなるだけになる。dev 文脈で 1 回叩き、木の形で確かめる:
+観測の失敗は全部無音だ。アプリは正しく答え、ログが薄くなるだけになる。`latest.json` の mtime を控えてから
+dev 文脈で 1 回叩き、mtime が新しくなったのを見てから木の形で確かめる(何も記録されないと、前のセッションの
+`latest.json` が残る):
 
 | 見えたもの | 意味 |
 |---|---|
@@ -207,8 +213,10 @@ composer tree
 セッションで、`ls -t var/log/<context>/events/*.json` で過去のセッションが新しい順に並ぶ。`body_ref` は応答
 ボディのファイルを `file://` の絶対パスで指す(長いと省略される。全部見るなら `stree --full`)。
 
-**読むのは今回の実行が書いたものか。** `latest.json` はリクエストごとに入れ替わる。リポジトリに
-commit されたサンプル出力を判定に使うと、自分の変更が反映されない結果を測ることになる。
+**読むのは今回の実行が書いたものか。** `latest.json` はリクエストごとに入れ替わる。叩く前後で mtime が
+変わったかを見る — 変わらなければ今回のリクエストは何も記録していない(§2 の表の 2 行目)。別の文脈も
+動かしているなら、`composer tree` はそちらの木を選ぶことがあるので、文脈のパスを `vendor/bin/stree` に直接渡す。
+リポジトリに commit されたサンプル出力を判定に使うと、自分の変更が反映されない結果を測ることになる。
 
 コールドの GET:
 
