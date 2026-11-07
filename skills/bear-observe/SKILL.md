@@ -89,8 +89,8 @@ flush する `LogSinkInterface` を**両方**束縛する(片方だけだとセ�
 [docs/what-the-log-proves.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/what-the-log-proves.md)
 "Concurrent sessions"。`setup.php` が書く `DevModule` はそれを書かない。
 
-EventSourcing のイベント抽出だけなら常駐ホストでも使えるが、`DevModule` のままでは使えない。無印の logger が
-`#[CacheLog]` の logger と同じインスタンスなので、sink が拒否すると `resource_request` も記録されない。
+EventSourcing のイベント抽出だけなら常駐ホストでも使えるが、`DevModule` のままでは使えない。invoker は
+`#[CacheLog]` の logger に記録するので、sink が拒否すると `resource_request` も記録されない。
 `DevQueryRepositoryLogModule` を入れない別の配線で、`EventCollector` をランタイムの request end から呼ぶ
 (README "The application owns the flush")。
 
@@ -135,8 +135,9 @@ php <skill>/harness/setup.php . public/index.php --context=html-app   # 1 ファ
 アプリが自分で書き出す行は要らない。
 
 キャッシュの保存先は変えない。アプリが保存先を束縛していなければ(QueryRepository の既定は何も残さない
-`NullAdapter`)、毎回 miss になる。hit や 304 を見るなら、保存先を束縛する文脈を重ねる(BEAR.Skeleton では
-`cache-`。入口のリテラルが `dev-cache-hal-app` なら、`setup.php` が出す文脈は `cli-dev-cache-hal-app`)。
+`NullAdapter`)、毎回 miss になる。hit を見るなら、`#[ResourceObjectPool]` にリクエストをまたいで残る保存先を
+束縛する文脈を重ねる(例: その束縛だけの `CacheModule` を `cache-` 文脈にする。入口のリテラルが
+`dev-cache-hal-app` なら、`setup.php` が出す文脈は `cli-dev-cache-hal-app`)。
 
 **このファイル群を自分で書き起こさない。** `templates/` を読んで手で書き直すと、`rename()` した invoker の
 差し替えや、invoker に渡す logger の指定が微妙にずれる。ずれても例外は出ず、木が薄くなるだけだ
