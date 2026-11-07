@@ -16,13 +16,8 @@ use BEAR\EventSourcing\Resource\SemanticLogInvoker;
 use BEAR\Package\Injector;
 use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\RepositoryModule\Annotation\EtagPool;
-use BEAR\RepositoryModule\Annotation\ResourceObjectPool;
 use BEAR\Resource\InvokerInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
-use Symfony\Component\Cache\Adapter\AdapterInterface;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Symfony\Component\Cache\Adapter\NullAdapter;
 
 $argvList = $argv;
 array_shift($argvList);
@@ -72,31 +67,20 @@ $get = static function (string $interface, string|null $qualifier = null) use ($
     }
 };
 
-$logger = $get(SemanticLoggerInterface::class);
-$check(
-    'one logger for both keys',
-    $logger !== null && $logger === $get(SemanticLoggerInterface::class, CacheLog::class),
-    'the cache scopes go to a second logger that nothing flushes — resource_request stays, get/save_value vanish',
-);
-
+$invoker = $get(InvokerInterface::class);
 $check(
     'invoker is decorated',
-    $get(InvokerInterface::class) instanceof SemanticLogInvoker,
+    $invoker instanceof SemanticLogInvoker,
     'no resource_request node at all — the tree has cache scopes with nothing around them',
 );
 
-// Both of these are bound on purpose elsewhere — NullAdapter by the default module, ArrayAdapter
-// by test overrides — and both keep the pool inside one process, which is what a hit needs to
-// outlive.
-$processLocal = [NullAdapter::class, ArrayAdapter::class];
-foreach ([ResourceObjectPool::class => 'resource object', EtagPool::class => 'etag'] as $qualifier => $label) {
-    $pool = $get(AdapterInterface::class, $qualifier);
-    $check(
-        "{$label} pool survives the request",
-        $pool !== null && ! in_array($pool::class, $processLocal, true),
-        'every GET is a miss, so the log can never show a hit or a 304',
-    );
-}
+// SemanticLogInvoker does not expose its logger; the tree is one only when it is the logger the sink flushes.
+$check(
+    'invoker records into the cache log',
+    $invoker instanceof SemanticLogInvoker
+        && (new ReflectionProperty($invoker, 'logger'))->getValue($invoker) === $get(SemanticLoggerInterface::class, CacheLog::class),
+    'resource_request goes to another logger — the cache scopes in the tree have nothing around them',
+);
 
 $check(
     'a sink owns the flush',
@@ -104,5 +88,5 @@ $check(
     'the log is built and then dropped at shutdown — no file is ever written',
 );
 
-echo $failures === 0 ? "\nok  run a request, then read var/log/{$context}/observe/latest.json\n" : "\n{$failures} failed\n";
+echo $failures === 0 ? "\nok  run a request, then read var/log/{$context}/events/latest.json\n" : "\n{$failures} failed\n";
 exit($failures === 0 ? 0 : 1);

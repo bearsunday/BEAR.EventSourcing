@@ -13,8 +13,8 @@ use function preg_match;
 use function preg_quote;
 
 /**
- * Proves the three files harness/setup.php writes into a consuming application (DevModule,
- * ObserveLoggerProvider, DevPoolProvider) carry #[Override] on every method that overrides a
+ * Proves the DevModule harness/setup.php writes into a consuming application carries
+ * #[Override] on every method that overrides a
  * parent class method or implements an interface method — the attribute a strict downstream
  * Psalm config (`ensureOverrideAttribute="true"`) requires, even though this repository's own
  * psalm.xml disables that check for itself. A missing #[Override] here is invisible to
@@ -34,8 +34,6 @@ final class GeneratedTemplatesOverrideAttributeTest extends TestCase
     {
         return [
             'DevModule.php::configure' => ['DevModule.php', 'configure'],
-            'ObserveLoggerProvider.php::get' => ['ObserveLoggerProvider.php', 'get'],
-            'DevPoolProvider.php::get' => ['DevPoolProvider.php', 'get'],
         ];
     }
 

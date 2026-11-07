@@ -9,11 +9,11 @@ declare(strict_types=1);
  * Usage: php tree.php [log.json] [stree options]   (default: the newest latest.json under var/log)
  *
  * `stree` takes a required file argument and knows nothing of this project's
- * `var/log/*\/observe/latest.json` convention, so this resolves the file first and echoes the
+ * `var/log/*\/events/latest.json` convention, so this resolves the file first and echoes the
  * resolved path — `latest.json` changes on every request, and a stale tree must never pass
  * silently as evidence of the run that just happened.
  *
- * `body_ref` holds a `file://` URI into the es-bodies store; `stree` has no domain knowledge of
+ * `body_ref` holds a `file://` URI into the body store; `stree` has no domain knowledge of
  * it and would render the full URI, truncated mid-path. This rewrites `body_ref` to its basename
  * on an in-memory copy of the log before handing off to `stree` — the file on disk is untouched.
  * Every other rendering decision (truncation, FQCN shortening, the type that closes each scope)
@@ -47,8 +47,13 @@ if (isset($argvList[0]) && $argvList[0] !== '' && $argvList[0][0] !== '-') {
 $streeArgs = $argvList;
 
 if ($file === null) {
-    $found = glob(getcwd() . '/var/log/*/observe/latest.json') ?: [];
-    $found !== [] || fail('no var/log/*/observe/latest.json — run a request first, or pass a path');
+    // query-repository/ holds a cache-only log; observe/ is where earlier versions of this skill logged.
+    $found = [
+        ...(glob(getcwd() . '/var/log/*/events/latest.json') ?: []),
+        ...(glob(getcwd() . '/var/log/*/query-repository/latest.json') ?: []),
+        ...(glob(getcwd() . '/var/log/*/observe/latest.json') ?: []),
+    ];
+    $found !== [] || fail('no var/log/*/events/latest.json — run a request first, or pass a path');
     usort($found, static fn (string $a, string $b): int => filemtime($b) <=> filemtime($a));
     $file = $found[0];
 }

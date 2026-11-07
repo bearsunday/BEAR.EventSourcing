@@ -8,7 +8,7 @@ declare(strict_types=1);
  *
  * Usage: php setup.php [app-dir] [entrypoint] [--force] [--context=<literal>]
  *
- * Writes src/Module/{DevModule,ObserveLoggerProvider,DevPoolProvider}.php and bin/dev.php.
+ * Writes src/Module/DevModule.php and bin/dev.php.
  * The observation context is built from the context literal in the entrypoint (default
  * public/index.php), so an application with several entry points is observed one at a time.
  * Existing files are left alone unless --force. Nothing else in the application changes:
@@ -101,14 +101,11 @@ $becomingWarning = '';
 $written = [];
 $kept = [];
 $merge = [];
-// The identifiers that must all appear for the file to be doing our job already. A DevModule that
-// wraps the invoker but installs no log module leaves half a tree, so half the markers is a miss.
-// This only decides whether to leave a template beside the file; whether observation works is
-// check.php's answer, and it comes from the bindings.
+// The identifiers that must all appear for the file to be doing our job already. This only
+// decides whether to leave a template beside the file; whether observation works is check.php's
+// answer, and it comes from the bindings.
 $markers = [
-    'DevModule' => ['SemanticLogInvoker', 'DevQueryRepositoryLogModule', 'SemanticLoggerInterface', 'ResourceObjectPool'],
-    'ObserveLoggerProvider' => ['CacheLog'],
-    'DevPoolProvider' => ['FilesystemAdapter'],
+    'DevModule' => ['DevEventSourcingModule'],
 ];
 foreach ($markers as $class => $required) {
     $target = $appDir . '/src/Module/' . $class . '.php';
@@ -191,7 +188,7 @@ if (! $hasBootstrapClass) {
 echo "namespace  {$namespace}\n";
 echo 'entry      ' . $entryName . (is_file($entry) ? '' : ' (absent — context defaults to app)') . "\n";
 echo "context    {$context}\n";
-echo "log        var/log/{$context}/observe/latest.json\n";
+echo "log        var/log/{$context}/events/latest.json\n";
 $written === [] || print('written    ' . implode(' ', $written) . "\n");
 $kept === [] || print('kept       ' . implode(' ', $kept) . " (--force to overwrite)\n");
 $notes === [] || print('note       ' . implode('; ', $notes) . "\n");
