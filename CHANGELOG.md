@@ -19,7 +19,7 @@
 
 ### Fixed
 
-- Recording a response body leaves the response the caller reads untouched. Under `HalRenderer` an object body came back as an array, and embedded requests moved into `_embedded`.
+- Recording a response body leaves the response object the caller holds untouched. Under `HalRenderer` an object body came back as an array, and embedded requests moved into `_embedded`.
 
 ## 0.2.1 - 2026-10-30
 
