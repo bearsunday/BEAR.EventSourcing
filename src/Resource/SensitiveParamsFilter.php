@@ -89,7 +89,7 @@ use const JSON_THROW_ON_ERROR;
 final class SensitiveParamsFilter implements ParamsFilterInterface
 {
     /** What a filtered value is recorded as: the key stays, so the log shows the field was sent. */
-    public const string FILTERED = '[FILTERED]';
+    public const FILTERED = '[FILTERED]';
 
     /**
      * Nesting deeper than this is replaced by the placeholder, so an over-deep array is
@@ -97,13 +97,13 @@ final class SensitiveParamsFilter implements ParamsFilterInterface
      * deep; a reference cycle would otherwise walk until the engine's own limit, and the walk
      * stays clear of a debugger's nesting limit (Xdebug: 512 frames) with room to spare.
      */
-    public const int MAX_DEPTH = 128;
+    public const MAX_DEPTH = 128;
 
     /** @var list<string> substrings that are transport metadata: filtered, replayability unaffected */
-    private const array TRANSPORT_SUBSTRINGS = ['csrf'];
+    private const TRANSPORT_SUBSTRINGS = ['csrf'];
 
     /** @var list<string> substrings that are domain credentials: filtered, marks the result non-replayable */
-    private const array CREDENTIAL_SUBSTRINGS = [
+    private const CREDENTIAL_SUBSTRINGS = [
         'passw',
         'pwd',
         'passphrase',

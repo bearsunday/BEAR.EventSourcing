@@ -16,7 +16,7 @@ use Throwable;
 
 final readonly class SemanticLogInvoker implements InvokerInterface
 {
-    private const string TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
+    private const TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
 
     private RecordedMethods $recordedMethods;
     private ParamsFilterInterface $paramsFilter;

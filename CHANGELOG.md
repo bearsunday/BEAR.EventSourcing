@@ -14,6 +14,7 @@
 ### Changed
 
 - **BREAKING — `BodyStoreException` is `final`.**
+- Supports PHP 8.2.
 
 ## 0.2.1 - 2026-10-30
 

@@ -76,9 +76,9 @@ use const SORT_STRING;
 final class FileBodyStore implements BodyStoreInterface
 {
     /** File that marks a directory as one this store created and may prune. */
-    public const string MARKER = '.bear-es-bodies';
+    public const MARKER = '.bear-es-bodies';
 
-    private const int DEFAULT_KEEP = 5;
+    private const DEFAULT_KEEP = 5;
 
     private string|null $generationDir = null;
     private int $sequence = 0;
