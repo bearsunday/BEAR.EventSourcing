@@ -14,6 +14,7 @@
 ### Changed
 
 - **BREAKING — `BodyStoreException` is `final`.**
+- **BREAKING — `ResourceNodeFormatter` renders a request as the command that runs it again**, `resource_request post 'app://self/users?id=koriym'` instead of `request="POST app://self/users?id=koriym"`: paste it after `php bin/app.php` (`bin/page.php` for `page://`). Each encoded value over 40 characters is cut unless `--full`, and `vendor/bin/stree` now uses this formatter by itself.
 - Supports PHP 8.2.
 
 ## 0.2.1 - 2026-10-30

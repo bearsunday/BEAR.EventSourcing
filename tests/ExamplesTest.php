@@ -80,10 +80,13 @@ final class ExamplesTest extends TestCase
     {
         $output = self::runExample('tree.php');
 
-        // ResourceNodeFormatter renders the open line as one resource operation;
-        // the close line keeps the body_ref pointer for drilling into detail.
-        // No timestamp noise.
-        $this->assertStringContainsString('request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"', $output);
+        // ResourceNodeFormatter renders the open line as the request BEAR's CLI
+        // takes back; the close line keeps the body_ref pointer for drilling
+        // into detail. No timestamp noise.
+        $this->assertStringContainsString(
+            "resource_request put 'app://self/inventory/SKU-1?sku=SKU-1&quantity=1'",
+            $output,
+        );
         $this->assertStringContainsString(
             '└── resource_response code=201 body_ref=file://var/es/bodies/000002.json',
             $output,
@@ -101,8 +104,11 @@ final class ExamplesTest extends TestCase
 
         // Live wiring, not a fixture: the internal inventory PUT appears as a
         // child node of the POST orders request.
-        $this->assertStringContainsString('request="POST app://self/orders?order_id=O-1000"', $output);
-        $this->assertStringContainsString('├── request="PUT app://self/inventory?sku=SKU-1&quantity=1"', $output);
+        $this->assertStringContainsString("resource_request post 'app://self/orders?order_id=O-1000'", $output);
+        $this->assertStringContainsString(
+            "├── resource_request put 'app://self/inventory?sku=SKU-1&quantity=1'",
+            $output,
+        );
         $this->assertStringContainsString('code=409', $output);
         $this->assertStringContainsString('Bodies behind body_ref (4 file(s))', $output);
 

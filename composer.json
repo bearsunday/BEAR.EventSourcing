@@ -69,5 +69,12 @@
     },
     "config": {
         "sort-packages": true
+    },
+    "extra": {
+        "stree": {
+            "formatters": {
+                "resource_request": "BEAR\\EventSourcing\\Resource\\Stree\\ResourceNodeFormatter"
+            }
+        }
     }
 }

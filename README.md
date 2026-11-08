@@ -401,19 +401,19 @@ var/es/bodies/20260922-143059-482913-a1b2c3d4/000002.json
 
 `bodyDir` is the shared root `FileBodyStore` creates generation subdirectories under; nothing is created until the first body is stored, and each session's generation is uniquely named so multiple sessions or processes can point at the same `bodyDir` without their sequences colliding (see "For local AI/debug work" above for `keep`). Pruning removes only generations carrying the ownership marker (`FileBodyStore::MARKER`), so nothing else under `bodyDir` is touched. Files 0.2.0 wrote directly into `bodyDir` are not generations, so pruning leaves them in place until you delete them. A failed render is recorded as an `exception` in the close context, not written as an empty body file.
 
-**The Semantic Logger log**, a nested open/close tree held in memory until you call `$logger->flush()`. Render it as a readable tree — far smaller than the raw JSON, for both humans and AI. `Resource\Stree\ResourceNodeFormatter` renders each node as one resource operation, so a `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` reads as intent in, result out:
+**The Semantic Logger log**, a nested open/close tree held in memory until you call `$logger->flush()`. Render it as a readable tree — far smaller than the raw JSON, for both humans and AI. `Resource\Stree\ResourceNodeFormatter` renders each request as the command that runs it again, so a `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` reads as intent in, result out:
 
 ```text
-request="POST app://self/orders?order_id=O-1000"
-├── request="PUT app://self/inventory/SKU-1?sku=SKU-1&quantity=1"
+resource_request post 'app://self/orders?order_id=O-1000'
+├── resource_request put 'app://self/inventory/SKU-1?sku=SKU-1&quantity=1'
 │   ├── media_query name=inventory_reserve durationMs=0.42 [event]
-│   └── code=200 body_ref=file://var/es/bodies/000001.json
-└── code=201 body_ref=file://var/es/bodies/000002.json
+│   └── resource_response code=200 body_ref=file://var/es/bodies/000001.json
+└── resource_response code=201 body_ref=file://var/es/bodies/000002.json
 ```
 
-The request line is the intent (`method` on a `uri` with its params as a query string); the `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent — a resource calling a resource, and a resource embedding a non-resource operation such as a media query, recorded as a leaf event with its intent and wall time (see the Ray.MediaQuery observation below). Every node follows one rule: the intent is inline, the heavy detail sits behind a `*_ref` pointer. The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `*_ref` to its file for the full detail.
+The request line is the intent in the form BEAR's CLI takes: paste `post 'app://self/orders?order_id=O-1000'` after `php bin/app.php` (`bin/page.php` for `page://`) to run it again. Each value is cut at 40 characters of its encoded form (`...(+N)`) unless `--full`; every parameter name stays. The `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent — a resource calling a resource, and a resource embedding a non-resource operation such as a media query, recorded as a leaf event with its intent and wall time (see the Ray.MediaQuery observation below). Every node follows one rule: the intent is inline, the heavy detail sits behind a `*_ref` pointer. The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `*_ref` to its file for the full detail.
 
-Render it with `TreeRenderer` and a `FormatterRegistry` that registers `ResourceNodeFormatter` for the `resource_request` type — `examples/tree.php` builds a `DevLogModule`-style log (`body_ref` pointers) and renders it, and `examples/semantic-tree.txt` is its output. The bundled `vendor/bin/stree dev-log.json` works too, but renders the generic form (type label plus a raw `timestamp`) since the CLI does not load custom formatters. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson` of the extraction examples.
+`vendor/bin/stree` renders it this way on its own: this package declares the formatter under `extra.stree.formatters` in its `composer.json`, which stree reads from Composer's `installed.json`. In process, register `ResourceNodeFormatter` for the `resource_request` type in the `FormatterRegistry` you give `TreeRenderer` — `examples/tree.php` builds a `DevLogModule`-style log (`body_ref` pointers) and renders it, and `examples/semantic-tree.txt` is its output. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson` of the extraction examples.
 
 ### Ray.MediaQuery observation (optional)
 
