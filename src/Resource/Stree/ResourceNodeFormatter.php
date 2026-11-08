@@ -44,7 +44,7 @@ final class ResourceNodeFormatter implements NodeFormatterInterface
         // POSIX single quotes by hand: escapeshellarg() changes with the platform and the locale
         $line .= " '" . str_replace("'", "'\\''", $request) . "'";
 
-        // A filtered credential is in the query as its placeholder, so the request cannot simply be run again.
+        // The recorder judged it non-replayable (a withheld credential, say), so it cannot simply run again
         return ($context['replayable'] ?? null) === false ? $line . ' [not replayable]' : $line;
     }
 
