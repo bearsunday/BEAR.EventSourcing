@@ -24,7 +24,7 @@ use Ray\Di\Scope;
  */
 final class DevObservationModule extends AbstractModule
 {
-    private const string INVOKER = 'bear_event_sourcing_dev_invoker';
+    private const INVOKER = 'bear_event_sourcing_dev_invoker';
 
     /** @param int $keep sessions and body generations retained, one count for both */
     public function __construct(

@@ -234,14 +234,14 @@ composer tree
 コールドの GET:
 
 ```text
-resource_request uri=page://self/orders method=GET params=[order_id]
+resource_request get 'page://self/orders?order_id=O-1'
 ├── get uri=page://self/orders?order_id=O-1
 │   ├── pre_write_cleanup uri=page://self/orders?order_id=O-1 [event]
 │   ├── invalidate tags=[_orders_order_id=O-1] roPool=invalidated etagPool=invalidated cdn=skipped [event]
 │   ├── cache_policy uri=page://self/orders?order_id=O-1 expiry=never resolvedTtl=31536000 [event]
 │   ├── save_etag uri=page://self/orders?order_id=O-1 etag="3620929378" tags=[_orders_order_id=O-1] requestedTtl=31536000 (+1 more) [event]
 │   ├── save_value uri=page://self/orders?order_id=O-1 tags=[_orders_order_id=O-1] requestedTtl=31536000 saved=true [event]
-│   ├── resource_request uri=app://self/orders method=GET params=[orderId]
+│   ├── resource_request get 'app://self/orders?orderId=O-1'
 │   │   ├── get uri=app://self/orders?orderId=O-1
 │   │   │   └── cache_miss layer=resource durationMs=2.818
 │   │   └── resource_response code=200
@@ -252,11 +252,15 @@ resource_request uri=page://self/orders method=GET params=[order_id]
 同じ URI の 2 回目:
 
 ```text
-resource_request uri=page://self/orders method=GET params=[order_id]
+resource_request get 'page://self/orders?order_id=O-1'
 ├── get uri=page://self/orders?order_id=O-1
 │   └── cache_hit layer=resource durationMs=0.296
 └── resource_response code=200 durationMs=0.93
 ```
+
+`resource_request` の行は、BEAR の CLI がそのまま受け取る形をしている。`get '…'` を `php bin/page.php`(`app://` なら
+`bin/app.php`)の後ろに貼れば、同じリクエストを叩き直せる。値は符号化した形で 1 つずつ 40 文字に切る(`...(+N)`)ので、切れた行は
+`stree --full` から写す。末尾に `[not replayable]` が付いた行は `replayable: false` と記録された要求(伏せた資格情報を含むものなど)なので、そのままでは叩き直せない。
 
 木の文法は 3 つだけ:
 
