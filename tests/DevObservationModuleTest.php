@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\Tests;
 
 use BEAR\EventSourcing\Filtered;
-use BEAR\EventSourcing\Module\DevEventSourcingModule;
+use BEAR\EventSourcing\Module\DevObservationModule;
 use BEAR\EventSourcing\Resource\FilteredParams;
 use BEAR\EventSourcing\Resource\ParamsFilterInterface;
 use BEAR\EventSourcing\Tests\Fixture\DevContextChainModule;
@@ -31,7 +31,7 @@ use const JSON_THROW_ON_ERROR;
  * @psalm-suppress NoInterfaceProperties,MixedFunctionCall,MixedMethodCall,MixedAssignment
  *     The resource client is driven through its magic verb properties.
  */
-final class DevEventSourcingModuleTest extends TestCase
+final class DevObservationModuleTest extends TestCase
 {
     use RemovesDirectoryTree;
 
@@ -99,7 +99,7 @@ final class DevEventSourcingModuleTest extends TestCase
 
             protected function configure(): void
             {
-                $this->install(new DevEventSourcingModule($this->logDir . '/events', 10));
+                $this->install(new DevObservationModule($this->logDir . '/events', 10));
                 if ($this->app === null) {
                     return;
                 }

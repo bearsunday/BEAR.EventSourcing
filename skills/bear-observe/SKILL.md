@@ -10,7 +10,7 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 テストは緑のまま、遅いだけ、あるいは古いだけになる。見るのはコードではなくログで、順番は決まっている。
 
 ```text
-1. 設置     DevModule に DevEventSourcingModule を 1 行で入れる
+1. 設置     DevModule に DevObservationModule を 1 行で入れる
 2. 実証     1 回叩いて、木の形で配線を確かめる
 3. 観測     リクエストを 1 本流して木を読む           (composer tree / vendor/bin/stree)
 4. 照合     宣言した意図が、どのイベント列で現れるか
@@ -87,11 +87,11 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 flush する `LogSinkInterface` を**両方**束縛する(片方だけだとセッションを共有するか、排出されずに溜まる)。
 根拠は BEAR.QueryRepository の
 [docs/what-the-log-proves.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/what-the-log-proves.md)
-"Concurrent sessions"。`DevEventSourcingModule` はそれを束縛しない。
+"Concurrent sessions"。`DevObservationModule` はそれを束縛しない。
 
 EventSourcing のイベント抽出だけなら常駐ホストでも使えるが、`DevModule` のままでは使えない。invoker は
 `#[CacheLog]` の logger に記録するので、sink が拒否すると `resource_request` も記録されない。
-`DevEventSourcingModule` を使わない別の配線で、`EventCollector` をランタイムの request end から呼ぶ
+`DevObservationModule` を使わない別の配線で、`EventCollector` をランタイムの request end から呼ぶ
 (README "The application owns the flush")。
 
 `SafeSemanticLogger` の "Safe" は、セッションをリクエストごとに解決し、直列化の境界を越えて持ち越さず、
@@ -109,14 +109,14 @@ sink が拒否したら黙る、という意味。並行実行時にセッショ
 
 | 見えたもの | すること |
 |---|---|
-| `DevEventSourcingModule` を install している | 設置済み。§2 へ |
+| `DevObservationModule` を install している | 設置済み。§2 へ |
 | `DevModule` が無い | 下の 1 行だけの `DevModule` を書く。何を書くかを先に 1 行で言う |
-| ある、`DevEventSourcingModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める)。その行で `keep` を変えていたなら、同じ数を `DevEventSourcingModule` の第 2 引数に渡す(ボディは 1 世代以上を残すので、0 なら 1)。第 3 引数でモジュールを包んでいたなら、そのモジュールは `DevEventSourcingModule` の行の後に `install()` して残す。古い置き場所を読む `tree` スクリプトがあれば、下の形に直す |
+| ある、`DevObservationModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める)。その行で `keep` を変えていたなら、同じ数を `DevObservationModule` の第 2 引数に渡す(ボディは 1 世代以上を残すので、0 なら 1)。第 3 引数でモジュールを包んでいたなら、そのモジュールは `DevObservationModule` の行の後に `install()` して残す。古い置き場所を読む `tree` スクリプトがあれば、下の形に直す |
 
 書くのはこの 1 行だけ。invoker の包み方、logger、書き出し、body の保存はモジュールの中にある:
 
 ```php
-$this->install(new DevEventSourcingModule($this->appMeta->logDir . '/events'));
+$this->install(new DevObservationModule($this->appMeta->logDir . '/events'));
 ```
 
 木もボディも `var/log/<context>/events/` に落ちる(ボディは `bodies/` の下。直近 10 セッション分を残す)。
@@ -167,7 +167,7 @@ CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に�
 
 ## 2. 実証 — 「入れた」で終わらせない
 
-観測の失敗は全部無音だ。アプリは正しく答え、ログが薄くなるだけになる。叩く前と後で、`DevEventSourcingModule` に渡した
+観測の失敗は全部無音だ。アプリは正しく答え、ログが薄くなるだけになる。叩く前と後で、`DevObservationModule` に渡した
 ディレクトリ(テンプレートどおりなら `var/log/<context>/events`)のいちばん新しいセッション
 (`ls var/log/<context>/events | grep -E '^[0-9]{8}-' | tail -1`)の名前を比べ、変わってから木の形で確かめる。
 セッションの名前は UTC の時刻とマイクロ秒なので、名前の順が書いた順になる。何も記録されないとファイルは
@@ -178,7 +178,7 @@ CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に�
 | 根が `resource_request`(キャッシュするリソースなら、その中に `get` などのスコープ) | 配線は生きている |
 | いちばん新しいセッションの名前が変わらない(`latest.json` も無いか、前のまま) | その文脈に `DevModule` が載っていない(文脈名に `dev` が無い)か、sink が書き出しを拒否した。何も記録されなかったセッションはファイルにならないので、invoker が包まれておらず叩いたリソースにキャッシュの宣言も無いときも変わらない(次の行の原因を見る) |
 | 根に `resource_request` が無く、キャッシュのスコープが宙に浮く | invoker が包まれていないか、別の logger に記録している |
-| 木が `DevEventSourcingModule` に渡したディレクトリではなく、別の場所(`query-repository/` など)に出る | 先に install された `DevQueryRepositoryLogModule` の行が残っている。その行を消す |
+| 木が `DevObservationModule` に渡したディレクトリではなく、別の場所(`query-repository/` など)に出る | 先に install された `DevQueryRepositoryLogModule` の行が残っている。その行を消す |
 
 崩れているなら、アプリの `AppModule` が `InvokerInterface` か `#[CacheLog]` の logger を後から上書きしていないかを見る
 (`install()` は既存を上書きしないが、`bind()` は上書きする)。到達しない理由が束縛に無ければ
@@ -267,7 +267,7 @@ resource_request uri=page://self/orders method=GET params=[order_id]
 
 ### ファイルが無い現場もある
 
-テストやオラクルは `DevEventSourcingModule` を使わず、`SemanticLoggerInterface` `#[CacheLog]` に
+テストやオラクルは `DevObservationModule` を使わず、`SemanticLoggerInterface` `#[CacheLog]` に
 `SafeSemanticLogger`(sink 無し)を束縛して、自分で `flush()` を受け取るのが普通だ。この形では
 `var/log` に何も作られない。観測する側が sink になるので、読み方はファイルではなく戻り値:
 
