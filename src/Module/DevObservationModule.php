@@ -22,7 +22,7 @@ use Ray\Di\Scope;
  *
  * It installs DevQueryRepositoryLogModule there; an app installing that module too gets the first one's directory.
  */
-final class DevEventSourcingModule extends AbstractModule
+final class DevObservationModule extends AbstractModule
 {
     private const string INVOKER = 'bear_event_sourcing_dev_invoker';
 

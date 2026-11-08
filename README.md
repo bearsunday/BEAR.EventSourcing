@@ -343,7 +343,7 @@ $injector = new Injector(new DevLogModule(
 ));
 ```
 
-One `bodyDir` can be shared across sessions or processes: each `FileBodyStore` instance names its own generation, so their sequences never collide. After creating a generation, the store prunes sibling generations it marked itself down to `keep` (default 5, oldest first) — pass `keep:` to `DevLogModule` to change it. Anything under `bodyDir` without `FileBodyStore::MARKER` is left alone and never counted toward that cap. Retention counts generations, not live sessions: give `keep` room for the sessions you expect to overlap, or a generation can be pruned while its session is still writing. When a log writer keeps its own count beside it (`DevQueryRepositoryLogModule`'s `keep`), give both the same number, so no retained log points at a pruned body; `DevEventSourcingModule` does this. Pruning is best effort: a generation that cannot be removed raises an `E_USER_WARNING` and is skipped, and the write still succeeds.
+One `bodyDir` can be shared across sessions or processes: each `FileBodyStore` instance names its own generation, so their sequences never collide. After creating a generation, the store prunes sibling generations it marked itself down to `keep` (default 5, oldest first) — pass `keep:` to `DevLogModule` to change it. Anything under `bodyDir` without `FileBodyStore::MARKER` is left alone and never counted toward that cap. Retention counts generations, not live sessions: give `keep` room for the sessions you expect to overlap, or a generation can be pruned while its session is still writing. When a log writer keeps its own count beside it (`DevQueryRepositoryLogModule`'s `keep`), give both the same number, so no retained log points at a pruned body; `DevObservationModule` does this. Pruning is best effort: a generation that cannot be removed raises an `E_USER_WARNING` and is skipped, and the write still succeeds.
 
 ### Wiring inside a BEAR.Sunday context
 
@@ -355,7 +355,7 @@ final class DevModule extends AbstractAppModule
     #[Override]
     protected function configure(): void
     {
-        $bodyDir = $this->appMeta->logDir . '/events/bodies';
+        $bodyDir = $this->appMeta->logDir . '/events';
 
         $this->rename(InvokerInterface::class, 'original_invoker');
         $this->bind(InvokerInterface::class)
@@ -462,17 +462,17 @@ $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toI
 
 Share the instance with `toInstance()`: two separate `to(...)->in(Scope::SINGLETON)` bindings would create one singleton per binding key and split the tree in two. Extraction stays safe in the merged tree — only `resource_request` entries become events, so cache scopes are never misread as state changes. `tests/UnifiedLogTest.php` proves both properties.
 
-Under a compiled injector (a BEAR.Sunday context), do not share an instance — the compiler would serialize it and each process would get its own copy, splitting the tree again. Install `DevEventSourcingModule` instead. It installs `DevQueryRepositoryLogModule` in the directory it is given, records every resource request into that module's `#[CacheLog]` logger, and stores response bodies under `bodies/` there; one `keep` covers both, so no retained log points at a pruned body:
+Under a compiled injector (a BEAR.Sunday context), do not share an instance — the compiler would serialize it and each process would get its own copy, splitting the tree again. Install `DevObservationModule` instead. It installs `DevQueryRepositoryLogModule` in the directory it is given, records every resource request into that module's `#[CacheLog]` logger, and stores response bodies under `bodies/` there; one `keep` covers both, so no retained log points at a pruned body:
 
 ```php
-use BEAR\EventSourcing\Module\DevEventSourcingModule;
+use BEAR\EventSourcing\Module\DevObservationModule;
 
-$this->install(new DevEventSourcingModule($this->appMeta->logDir . '/events'));
+$this->install(new DevObservationModule($this->appMeta->logDir . '/events'));
 ```
 
 Drop a separate `DevQueryRepositoryLogModule` line: with both installed, the first one decides where the tree goes.
 
-`DevEventSourcingModule` decorates BEAR.Resource's `Invoker` directly, so an application that decorates `InvokerInterface` itself wires `SemanticLogInvoker` by hand instead, as in "Wiring inside a BEAR.Sunday context", passing `'logger' => CacheLog::class`.
+`DevObservationModule` decorates BEAR.Resource's `Invoker` directly. An application whose app chain binds `InvokerInterface` to a class of its own — a decorator or a replacement — copies `DevObservationModule::configure()` into its own context module, where `rename()` reaches the app chain, with its log directory, retention count and a name of its own in place of `$this->dir`, `$this->keep` and `self::INVOKER`. It replaces the line binding that name to `Invoker` with `$this->rename(InvokerInterface::class, <that name>)`; the recording then wraps the application's invoker. `rename()` does not reach a module installed in the same context module, such as BEAR.DevTools' `HaloModule` installed in `DevModule`: observe in a context without that module.
 
 `MediaQueryObservationModule` records through the unqualified `SemanticLoggerInterface`, which this wiring leaves unbound. To put `media_query` events in the same tree, bind the media query logger the same way instead of installing the module:
 
@@ -490,15 +490,13 @@ $this->bind(MediaQueryLoggerInterface::class)
 
 ## Agent skill: bear-observe
 
-`skills/bear-observe/` is a Claude Code skill that writes the wiring above into an application, proves it from the bindings, renders one request as a tree, and reads that tree: the cache event vocabulary, what each `#[Cacheable]`-family declaration is supposed to look like in the log, and app-vs-library triage. Install it into a project:
+`skills/bear-observe/` is a Claude Code skill that installs `DevObservationModule` in an application's `DevModule`, runs one request in the dev context, and reads the tree: the cache event vocabulary, what each `#[Cacheable]`-family declaration is supposed to look like in the log, and app-vs-library triage. Install it into a project:
 
 ```bash
 mkdir -p .claude/skills && cp -r vendor/bear/event-sourcing/skills/bear-observe .claude/skills/
 ```
 
-Then ask an agent to read the log. It runs `harness/setup.php` only when observation is not already working, so an application that is already wired is left alone.
-
-Its `DevModule` template is that one line; the tree lands in `var/log/<context>/events/latest.json`.
+Then ask an agent 「ツリーログを見て」 ("show me the tree log"). The tree lands in `var/log/<context>/events/latest.json`; `vendor/bin/stree` renders it, and a `tree` script in the application's `composer.json` makes that `composer tree`. For the agent to reach for the skill every time rather than reading the files on its own, add one line to the application's `CLAUDE.md`: 「ツリーログを見て」と言われたら、bear-observe スキルを使う。
 
 ## Boundaries
 
