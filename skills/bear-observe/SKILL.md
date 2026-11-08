@@ -27,7 +27,7 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 
 1. **読める木があるなら、まず読む。** アプリに `composer tree` があり、`composer.json` で `stree` を呼ぶと確かめたらそれで、無いか失敗したら
    `ls -t var/log/*/*/latest.json` で最新を選んで `vendor/bin/stree <そのパス>` で読む(`events/` のほか、キャッシュの
-   ログだけのアプリは `query-repository/`、以前のテンプレートは `observe/` に書いている。以下、その `latest.json` のあるディレクトリを「木のディレクトリ」と呼ぶ)。木の時刻を言い、どの
+   ログだけのアプリは `query-repository/`、以前のテンプレートは `observe/` に書いている)。どちらの道でも、読んだ `latest.json` のあるディレクトリを、以下「木のディレクトリ」と呼ぶ(`composer tree` なら、そのスクリプトが選ぶパスを `composer.json` で見る)。木の時刻を言い、どの
    リクエストの木かはユーザーに確かめるまで決めつけない。前回見たときから新しいセッションが増えていなければ
    (§2)、**そう言う** — 古い木を新しい実行の証拠にしない。根が `resource_request` なら設置は済んでいるので §1 は飛ばす。キャッシュの
    スコープしか無い木なら、リソースの回数や入れ子が要るとき §1 で設置する
@@ -219,7 +219,7 @@ php bin/page.php get '/orders?order_id=O-1'
 composer tree
 ```
 
-`composer tree` が無いか別の用途なら(§1)、`vendor/bin/stree <木のディレクトリ>/latest.json`。`latest.json` は直近の
+`composer tree` が無いか、別の用途か、失敗したなら(手順 1・§1)、`vendor/bin/stree <木のディレクトリ>/latest.json`。`latest.json` は直近の
 セッションで、`ls -t <木のディレクトリ>/*.json` で過去のセッションが新しい順に並ぶ。`body_ref` は応答
 ボディのファイルを `file://` の絶対パスで指す(長いと省略される。全部見るなら `stree --full`)。
 閉じの行は、開いたときから変わったキーを先頭から 2 つだけ出し、残りは印を付けずに落とす(body を保存した
