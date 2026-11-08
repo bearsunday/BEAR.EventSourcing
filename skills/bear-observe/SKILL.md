@@ -129,7 +129,9 @@ namespace は `composer.json` の psr-4 で `src/` に対応する接頭辞に `
 install したモジュールも束縛する — BEAR.DevTools の `HaloModule` は `DevInvoker` に束縛する)なら、この 1 行とは
 両立しない — モジュールは内側に素の `Invoker` を名指しするので、その束縛か記録のどちらかが外れる。効いている束縛は、
 1 行を入れる前の文脈で `get_class($injector->getInstance(InvokerInterface::class))` が `BEAR\Resource\Invoker` 以外を
-返すかで見る。その場合は README "One tree with BEAR.QueryRepository" の手順で、自分の文脈モジュールに配線する。
+返すかで見る。束縛がアプリの鎖(`AppModule` 側)にあるなら、README "One tree with BEAR.QueryRepository" の手順で
+自分の文脈モジュールに配線する。同じ文脈モジュールに install したモジュール(`DevModule` の `HaloModule` など)の
+束縛にはその手順の `rename()` が届かないので、そのモジュールを入れない文脈で観測する。
 
 **dev 文脈で叩く。** 文脈名はアプリの文脈の前に `dev-` を付けたもの(`cli-hal-app` なら `dev-cli-hal-app`)。
 CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に確かめる:
