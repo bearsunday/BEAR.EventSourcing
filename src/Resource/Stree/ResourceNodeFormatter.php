@@ -9,6 +9,7 @@ use Koriym\SemanticLogger\Stree\RenderConfig;
 use Koriym\SemanticLogger\Stree\TreeNode;
 
 use function array_map;
+use function escapeshellarg;
 use function explode;
 use function get_object_vars;
 use function http_build_query;
@@ -24,7 +25,7 @@ use function substr;
 /**
  * Renders a `resource_request` as the request BEAR's CLI takes back:
  * `resource_request post 'app://self/users?id=koriym'`. The method stays lowercase, the only case for which
- * the CLI reads the query, and the quotes keep `?` and `&` from the shell.
+ * the CLI reads the query, and escapeshellarg() quotes the URI for the shell.
  *
  * @psalm-suppress MixedAssignment Semantic Logger context values are schema-defined but mixed.
  */
@@ -41,7 +42,7 @@ final class ResourceNodeFormatter implements NodeFormatterInterface
 
         $request = self::stringValue($context, 'uri') . self::queryString($context, $config->showFullTree);
 
-        return $line . " '" . $request . "'";
+        return $line . ' ' . escapeshellarg($request);
     }
 
     /** @param array<string, mixed> $context */

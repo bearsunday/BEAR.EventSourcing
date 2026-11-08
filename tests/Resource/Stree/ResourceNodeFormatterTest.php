@@ -58,6 +58,17 @@ final class ResourceNodeFormatterTest extends TestCase
         $this->assertSame($expected, $line);
     }
 
+    public function testNeverCutsInsideAPercentEscape(): void
+    {
+        $line = self::format([
+            'uri' => 'app://self/notes',
+            'method' => 'GET',
+            'params' => ['note' => str_repeat('a', 38) . '秋'],
+        ]);
+
+        $this->assertSame("resource_request get 'app://self/notes?note=" . str_repeat('a', 38) . "...(+9)'", $line);
+    }
+
     public function testFullKeepsEveryValueWhole(): void
     {
         $line = self::format([
