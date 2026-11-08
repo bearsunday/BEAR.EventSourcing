@@ -9,7 +9,6 @@ use Koriym\SemanticLogger\Stree\RenderConfig;
 use Koriym\SemanticLogger\Stree\TreeNode;
 
 use function array_map;
-use function escapeshellarg;
 use function explode;
 use function get_object_vars;
 use function http_build_query;
@@ -17,6 +16,7 @@ use function implode;
 use function is_array;
 use function is_object;
 use function is_string;
+use function str_replace;
 use function strlen;
 use function strrpos;
 use function strtolower;
@@ -25,7 +25,7 @@ use function substr;
 /**
  * Renders a `resource_request` as the request BEAR's CLI takes back:
  * `resource_request post 'app://self/users?id=koriym'`. The method stays lowercase, the only case for which
- * the CLI reads the query, and escapeshellarg() quotes the URI for the shell.
+ * the CLI reads the query, and the URI is single-quoted for a POSIX shell.
  *
  * @psalm-suppress MixedAssignment Semantic Logger context values are schema-defined but mixed.
  */
@@ -41,8 +41,11 @@ final class ResourceNodeFormatter implements NodeFormatterInterface
         $line = $method === '' ? $node->getDisplayName() : $node->getDisplayName() . ' ' . $method;
 
         $request = self::stringValue($context, 'uri') . self::queryString($context, $config->showFullTree);
+        // POSIX single quotes by hand: escapeshellarg() changes with the platform and the locale
+        $line .= " '" . str_replace("'", "'\\''", $request) . "'";
 
-        return $line . ' ' . escapeshellarg($request);
+        // A filtered credential is in the query as its placeholder, so the request cannot simply be run again.
+        return ($context['replayable'] ?? null) === false ? $line . ' [not replayable]' : $line;
     }
 
     /** @param array<string, mixed> $context */
@@ -62,7 +65,7 @@ final class ResourceNodeFormatter implements NodeFormatterInterface
             $params = get_object_vars($params);
         }
 
-        $query = is_array($params) ? http_build_query($params) : '';
+        $query = is_array($params) ? http_build_query($params, '', '&') : '';
         if ($query === '' || $full) {
             return $query === '' ? '' : '?' . $query;
         }

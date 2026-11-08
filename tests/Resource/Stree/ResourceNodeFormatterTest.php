@@ -76,6 +76,19 @@ final class ResourceNodeFormatterTest extends TestCase
         $this->assertSame("resource_request get 'app://self/users/O'\\''Reilly'", $line);
     }
 
+    public function testMarksARequestThatCannotBeReplayed(): void
+    {
+        $line = self::format([
+            'uri' => 'page://self/login',
+            'method' => 'POST',
+            'params' => ['loginId' => 'admin', 'password' => '[FILTERED]'],
+            'replayable' => false,
+        ]);
+
+        $expected = "resource_request post 'page://self/login?loginId=admin&password=%5BFILTERED%5D' [not replayable]";
+        $this->assertSame($expected, $line);
+    }
+
     public function testFullKeepsEveryValueWhole(): void
     {
         $line = self::format([

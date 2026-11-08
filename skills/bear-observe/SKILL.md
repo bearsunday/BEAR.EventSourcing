@@ -260,7 +260,7 @@ resource_request get 'page://self/orders?order_id=O-1'
 
 `resource_request` の行は、BEAR の CLI がそのまま受け取る形をしている。`get '…'` を `php bin/page.php`(`app://` なら
 `bin/app.php`)の後ろに貼れば、同じリクエストを叩き直せる。値は符号化した形で 1 つずつ 40 文字に切る(`...(+N)`)ので、切れた行は
-`stree --full` から写す。
+`stree --full` から写す。末尾に `[not replayable]` が付いた行は、伏せた値(`[FILTERED]`)を含むので、そのままでは叩き直せない。
 
 木の文法は 3 つだけ:
 

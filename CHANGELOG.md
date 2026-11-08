@@ -14,7 +14,7 @@
 ### Changed
 
 - **BREAKING — `BodyStoreException` is `final`.**
-- **BREAKING — `ResourceNodeFormatter` renders a request as the command that runs it again**, `resource_request post 'app://self/users?id=koriym'` instead of `request="POST app://self/users?id=koriym"`: paste the part after `resource_request` behind `php bin/app.php` (`bin/page.php` for `page://`). Each encoded value over 40 characters is cut unless `--full`. `vendor/bin/stree` uses this formatter by itself with a koriym/semantic-logger that reads `extra.stree.formatters` (koriym/Koriym.SemanticLogger#63).
+- **BREAKING — `ResourceNodeFormatter` renders a request as the command that runs it again**, `resource_request post 'app://self/users?id=koriym'` instead of `request="POST app://self/users?id=koriym"`: paste the part after `resource_request` behind `php bin/app.php` (`bin/page.php` for `page://`). Each encoded value over 40 characters is cut unless `--full`, and a request whose credential was filtered ends with `[not replayable]`. `vendor/bin/stree` uses this formatter by itself with a koriym/semantic-logger that reads `extra.stree.formatters` (koriym/Koriym.SemanticLogger#63).
 - Supports PHP 8.2.
 
 ## 0.2.1 - 2026-10-30
