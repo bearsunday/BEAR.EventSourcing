@@ -25,6 +25,7 @@ use function file_get_contents;
 use function file_put_contents;
 use function getmyuid;
 use function is_dir;
+use function json_decode;
 use function mkdir;
 use function range;
 use function restore_error_handler;
@@ -109,7 +110,13 @@ final class FileBodyStoreTest extends TestCase
             Method::GET,
         );
 
-        (new FileBodyStore($dir))($request, $ro);
+        $bodyRef = (new FileBodyStore($dir))($request, $ro);
+
+        $this->assertNotNull($bodyRef);
+        $stored = json_decode((string) file_get_contents(self::pathFromRef($bodyRef)), true);
+        $this->assertIsArray($stored);
+        $this->assertSame(1, $stored['id']);
+        $this->assertArrayHasKey('_links', $stored, 'the stored body is the rendered representation');
 
         $this->assertSame($body, $ro->body, 'HalRenderer casts an object body to an array');
         $this->assertArrayNotHasKey('Content-Type', $ro->headers, 'HalRenderer sets its media type');
