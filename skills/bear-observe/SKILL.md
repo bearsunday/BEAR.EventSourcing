@@ -25,7 +25,7 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 
 「ツリーログを見て」「キャッシュログを確認して」「何が起きたか見て」「遅い理由を調べて」で入る。
 
-1. **読める木があるなら、まず読む。** アプリに `composer tree` があればそれで、無ければ
+1. **読める木があるなら、まず読む。** アプリに `composer tree` があり、`composer.json` で `stree` を呼ぶと確かめたらそれで、無ければ
    `ls -t var/log/*/*/latest.json` で最新を選んで `vendor/bin/stree <そのパス>` で読む(`events/` のほか、キャッシュの
    ログだけのアプリは `query-repository/`、以前のテンプレートは `observe/` に書いている)。木の時刻を言い、どの
    リクエストの木かはユーザーに確かめるまで決めつけない。前回見たときから新しいセッションが増えていなければ
@@ -111,7 +111,7 @@ sink が拒否したら黙る、という意味。並行実行時にセッショ
 |---|---|
 | `DevEventSourcingModule` を install している | 設置済み。§2 へ |
 | `DevModule` が無い | 下の 1 行だけの `DevModule` を書く。何を書くかを先に 1 行で言う |
-| ある、`DevEventSourcingModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める)。その行で `keep` を変えていたなら、同じ数を `DevEventSourcingModule` の第 2 引数に渡す(ボディは 1 世代以上を残すので、0 なら 1)。第 3 引数でモジュールを包んでいたなら、そのモジュールは `DevEventSourcingModule` の行の後に `install()` して残す |
+| ある、`DevEventSourcingModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める)。その行で `keep` を変えていたなら、同じ数を `DevEventSourcingModule` の第 2 引数に渡す(ボディは 1 世代以上を残すので、0 なら 1)。第 3 引数でモジュールを包んでいたなら、そのモジュールは `DevEventSourcingModule` の行の後に `install()` して残す。古い置き場所を読む `tree` スクリプトがあれば、下の形に直す |
 
 書くのはこの 1 行だけ。invoker の包み方、logger、書き出し、body の保存はモジュールの中にある:
 
@@ -140,7 +140,7 @@ CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に�
 
 以下の例の `php bin/page.php` は、dev 文脈で動く入口を指す。
 
-**読む口を 1 つ用意する。** アプリの `composer.json` の `scripts` に `tree` が無ければ足す。以降は `composer tree` で、
+**読む口を 1 つ用意する。** アプリの `composer.json` の `scripts` に `tree` が無ければ足す(別の用途の `tree` があれば触らず、`vendor/bin/stree` を直接使う)。以降は `composer tree` で、
 文脈を変えてもいちばん新しい木を読める:
 
 ```json
@@ -167,7 +167,8 @@ CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に�
 
 ## 2. 実証 — 「入れた」で終わらせない
 
-観測の失敗は全部無音だ。アプリは正しく答え、ログが薄くなるだけになる。叩く前と後で、いちばん新しいセッション
+観測の失敗は全部無音だ。アプリは正しく答え、ログが薄くなるだけになる。叩く前と後で、`DevEventSourcingModule` に渡した
+ディレクトリ(テンプレートどおりなら `var/log/<context>/events`)のいちばん新しいセッション
 (`ls var/log/<context>/events | grep -E '^[0-9]{8}-' | tail -1`)の名前を比べ、変わってから木の形で確かめる。
 セッションの名前は UTC の時刻とマイクロ秒なので、名前の順が書いた順になる。何も記録されないとファイルは
 書かれず、前のセッションの `latest.json` が残る(mtime は分解能が粗いと、書かれても同じに見える):
