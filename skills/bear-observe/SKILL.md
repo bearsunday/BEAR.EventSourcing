@@ -25,9 +25,9 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 
 「ツリーログを見て」「キャッシュログを確認して」「何が起きたか見て」「遅い理由を調べて」で入る。
 
-1. **読める木があるなら、まず読む。** アプリに `composer tree` があり、`composer.json` で `stree` を呼ぶと確かめたらそれで、無ければ
+1. **読める木があるなら、まず読む。** アプリに `composer tree` があり、`composer.json` で `stree` を呼ぶと確かめたらそれで、無いか失敗したら
    `ls -t var/log/*/*/latest.json` で最新を選んで `vendor/bin/stree <そのパス>` で読む(`events/` のほか、キャッシュの
-   ログだけのアプリは `query-repository/`、以前のテンプレートは `observe/` に書いている)。木の時刻を言い、どの
+   ログだけのアプリは `query-repository/`、以前のテンプレートは `observe/` に書いている。以下、その `latest.json` のあるディレクトリを「木のディレクトリ」と呼ぶ)。木の時刻を言い、どの
    リクエストの木かはユーザーに確かめるまで決めつけない。前回見たときから新しいセッションが増えていなければ
    (§2)、**そう言う** — 古い木を新しい実行の証拠にしない。根が `resource_request` なら設置は済んでいるので §1 は飛ばす。キャッシュの
    スコープしか無い木なら、リソースの回数や入れ子が要るとき §1 で設置する
@@ -125,9 +125,11 @@ namespace は `composer.json` の psr-4 で `src/` に対応する接頭辞に `
 `public/index.php` は**変えない**。flush はキャッシュログモジュールの shutdown sink が持つので、
 アプリが自分で書き出す行は要らない。
 
-アプリが `InvokerInterface` を自前のクラスで包んでいる(`src/Module` で `bind(InvokerInterface::class)` している)
-なら、この 1 行はその包みを外す — モジュールは内側に素の `Invoker` を名指しするため。その場合は README
-"One tree with BEAR.QueryRepository" の手順で、自分の文脈モジュールに配線する。
+`InvokerInterface` がアプリの文脈で自前のクラスに束縛されている(`src/Module` の `bind(InvokerInterface::class)` のほか、
+install したモジュールも束縛する — BEAR.DevTools の `HaloModule` は `DevInvoker` に束縛する)なら、この 1 行とは
+両立しない — モジュールは内側に素の `Invoker` を名指しするので、その束縛か記録のどちらかが外れる。効いている束縛は、
+1 行を入れる前の文脈で `get_class($injector->getInstance(InvokerInterface::class))` が `BEAR\Resource\Invoker` 以外を
+返すかで見る。その場合は README "One tree with BEAR.QueryRepository" の手順で、自分の文脈モジュールに配線する。
 
 **dev 文脈で叩く。** 文脈名はアプリの文脈の前に `dev-` を付けたもの(`cli-hal-app` なら `dev-cli-hal-app`)。
 CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に確かめる:
@@ -167,9 +169,9 @@ CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に�
 
 ## 2. 実証 — 「入れた」で終わらせない
 
-観測の失敗は全部無音だ。アプリは正しく答え、ログが薄くなるだけになる。叩く前と後で、`DevObservationModule` に渡した
-ディレクトリ(テンプレートどおりなら `var/log/<context>/events`)のいちばん新しいセッション
-(`ls var/log/<context>/events | grep -E '^[0-9]{8}-' | tail -1`)の名前を比べ、変わってから木の形で確かめる。
+観測の失敗は全部無音だ。アプリは正しく答え、ログが薄くなるだけになる。叩く前と後で、木のディレクトリ(§1 の 1 行を
+入れたなら `var/log/<context>/events`、設置を飛ばしたなら木を見つけたディレクトリ)のいちばん新しいセッション
+(`ls <木のディレクトリ> | grep -E '^[0-9]{8}-' | tail -1`)の名前を比べ、変わってから木の形で確かめる。
 セッションの名前は UTC の時刻とマイクロ秒なので、名前の順が書いた順になる。何も記録されないとファイルは
 書かれず、前のセッションの `latest.json` が残る(mtime は分解能が粗いと、書かれても同じに見える):
 
@@ -178,7 +180,7 @@ CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に�
 | 根が `resource_request`(キャッシュするリソースなら、その中に `get` などのスコープ) | 配線は生きている |
 | いちばん新しいセッションの名前が変わらない(`latest.json` も無いか、前のまま) | その文脈に `DevModule` が載っていない(文脈名に `dev` が無い)か、sink が書き出しを拒否した。何も記録されなかったセッションはファイルにならないので、invoker が包まれておらず叩いたリソースにキャッシュの宣言も無いときも変わらない(次の行の原因を見る) |
 | 根に `resource_request` が無く、キャッシュのスコープが宙に浮く | invoker が包まれていないか、別の logger に記録している |
-| 木が `DevObservationModule` に渡したディレクトリではなく、別の場所(`query-repository/` など)に出る | 先に install された `DevQueryRepositoryLogModule` の行が残っている。その行を消す |
+| 木が `DevObservationModule` に渡したディレクトリではなく、別の場所(`query-repository/` など)に出る | 先に install された `DevQueryRepositoryLogModule` の行が残っている。その行を消す(第 3 引数で包んでいたモジュールは、§1 のとおり `install()` して残す) |
 
 崩れているなら、アプリの `AppModule` が `InvokerInterface` か `#[CacheLog]` の logger を後から上書きしていないかを見る
 (`install()` は既存を上書きしないが、`bind()` は上書きする)。到達しない理由が束縛に無ければ
@@ -215,8 +217,8 @@ php bin/page.php get '/orders?order_id=O-1'
 composer tree
 ```
 
-`composer tree` が無ければ `vendor/bin/stree var/log/<context>/events/latest.json`。`latest.json` は直近の
-セッションで、`ls -t var/log/<context>/events/*.json` で過去のセッションが新しい順に並ぶ。`body_ref` は応答
+`composer tree` が無いか別の用途なら(§1)、`vendor/bin/stree <木のディレクトリ>/latest.json`。`latest.json` は直近の
+セッションで、`ls -t <木のディレクトリ>/*.json` で過去のセッションが新しい順に並ぶ。`body_ref` は応答
 ボディのファイルを `file://` の絶対パスで指す(長いと省略される。全部見るなら `stree --full`)。
 閉じの行は、開いたときから変わったキーを先頭から 2 つだけ出し、残りは印を付けずに落とす(body を保存した
 `resource_response` は `code` と `body_ref` が出て `durationMs` が落ちる)。「記録されていない」と言う前に

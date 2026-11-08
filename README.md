@@ -472,7 +472,7 @@ $this->install(new DevObservationModule($this->appMeta->logDir . '/events'));
 
 Drop a separate `DevQueryRepositoryLogModule` line: with both installed, the first one decides where the tree goes.
 
-`DevObservationModule` decorates BEAR.Resource's `Invoker` directly. An application that decorates `InvokerInterface` itself copies `DevObservationModule::configure()` into its own context module, where `rename()` reaches the app chain, with its log directory, retention count and a name of its own in place of `$this->dir`, `$this->keep` and `self::INVOKER`. It replaces the line binding that name to `Invoker` with `$this->rename(InvokerInterface::class, <that name>)`; the recording then wraps the application's decorator.
+`DevObservationModule` decorates BEAR.Resource's `Invoker` directly. An application whose context binds `InvokerInterface` to a class of its own — a decorator, a replacement, or one bound by an installed module such as BEAR.DevTools' `HaloModule` — copies `DevObservationModule::configure()` into its own context module, where `rename()` reaches the app chain, with its log directory, retention count and a name of its own in place of `$this->dir`, `$this->keep` and `self::INVOKER`. It replaces the line binding that name to `Invoker` with `$this->rename(InvokerInterface::class, <that name>)`; the recording then wraps the application's invoker.
 
 `MediaQueryObservationModule` records through the unqualified `SemanticLoggerInterface`, which this wiring leaves unbound. To put `media_query` events in the same tree, bind the media query logger the same way instead of installing the module:
 
