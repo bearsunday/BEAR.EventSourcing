@@ -69,6 +69,13 @@ final class ResourceNodeFormatterTest extends TestCase
         $this->assertSame("resource_request get 'app://self/notes?note=" . str_repeat('a', 38) . "...(+9)'", $line);
     }
 
+    public function testQuotesAUriThatHoldsASingleQuoteForTheShell(): void
+    {
+        $line = self::format(['uri' => "app://self/users/O'Reilly", 'method' => 'GET']);
+
+        $this->assertSame("resource_request get 'app://self/users/O'\\''Reilly'", $line);
+    }
+
     public function testFullKeepsEveryValueWhole(): void
     {
         $line = self::format([
