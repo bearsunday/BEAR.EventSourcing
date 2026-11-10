@@ -261,6 +261,8 @@ resource_request get 'page://self/orders?order_id=O-1'
 `resource_request` の行は、BEAR の CLI がそのまま受け取る形をしている。`get '…'` を `php bin/page.php`(`app://` なら
 `bin/app.php`)の後ろに貼れば、同じリクエストを叩き直せる。値は符号化した形で 1 つずつ 40 文字に切る(`...(+N)`)ので、切れた行は
 `stree --full` から写す。末尾に `[not replayable]` が付いた行は `replayable: false` と記録された要求(伏せた資格情報を含むものなど)なので、そのままでは叩き直せない。
+`← src/Resource/Page/Index.php:22` はその要求を出した場所で、ライブラリの外の最初の呼び出し元(埋め込まれた要求なら、それを
+走らせたテンプレート)。`stree --full` では絶対パスと関数名も出る。
 
 木の文法は 3 つだけ:
 

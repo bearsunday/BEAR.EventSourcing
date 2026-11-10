@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace BEAR\EventSourcing\Resource;
 
 use BEAR\EventSourcing\SemanticLogExtractor;
+use JsonSerializable;
 use Koriym\SemanticLogger\AbstractContext;
 
-final class ResourceRequestContext extends AbstractContext
+final class ResourceRequestContext extends AbstractContext implements JsonSerializable
 {
     /** @psalm-suppress InvalidClassConstantType */
     public const TYPE = SemanticLogExtractor::RESOURCE_REQUEST_TYPE;
@@ -15,7 +16,10 @@ final class ResourceRequestContext extends AbstractContext
     /** @psalm-suppress InvalidClassConstantType */
     public const SCHEMA_URL = 'https://bearsunday.github.io/BEAR.EventSourcing/schemas/resource-request.json';
 
-    /** @param array<string, mixed> $params */
+    /**
+     * @param array<string, mixed>                                   $params
+     * @param array{file: string, line: int, function?: string}|null $caller
+     */
     public function __construct(
         public readonly string $uri,
         public readonly string $method,
@@ -30,6 +34,25 @@ final class ResourceRequestContext extends AbstractContext
          * request it cannot re-execute faithfully.
          */
         public readonly bool $replayable = true,
+        /** The first call site outside library code; observation only, never part of the event. */
+        public readonly array|null $caller = null,
     ) {
+    }
+
+    /** @return array<string, mixed> */
+    public function jsonSerialize(): array
+    {
+        $context = [
+            'uri' => $this->uri,
+            'method' => $this->method,
+            'params' => $this->params,
+            'timestamp' => $this->timestamp,
+            'replayable' => $this->replayable,
+        ];
+        if ($this->caller !== null) {
+            $context['caller'] = $this->caller;
+        }
+
+        return $context;
     }
 }

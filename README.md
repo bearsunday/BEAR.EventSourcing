@@ -363,8 +363,10 @@ final class DevModule extends AbstractAppModule
                 'invoker' => 'original_invoker',
                 'recordedMethods' => Recorded::class,
                 'paramsFilter' => Filtered::class,
+                'recordCaller' => SemanticLogInvoker::RECORD_CALLER,
             ])
             ->in(Scope::SINGLETON);
+        $this->bind()->annotatedWith(SemanticLogInvoker::RECORD_CALLER)->toInstance(true);
         $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)
             ->toInstance(new RecordedMethods(RecordedMethods::WITH_READS));
         $this->bind(BodyStoreInterface::class)->toInstance(new FileBodyStore($bodyDir));
@@ -375,6 +377,8 @@ final class DevModule extends AbstractAppModule
 ```
 
 Do **not** re-provide the package bindings there — `override(new DevLogModule(module: new PackageModule()))` registers the framework pointcuts a second time and every interceptor runs twice. The cache log makes the double execution visible as a `get` scope nested in itself; without a log it is invisible.
+
+`DevLogModule`, `DevObservationModule` and the wiring above bind `SemanticLogInvoker::RECORD_CALLER` to `true`, so each `resource_request` also records `caller: {file, line, function}`, the first call site outside the vendor directory and this package: the entry point, the method that made the request, or the template that ran an embedded one (no `function` there). A call made inside an AOP-woven method points at the declaration of the method it overrides. Unbound, as under `ResourceObservationModule` alone, nothing is recorded and no backtrace is taken. `caller` is observation only and never reaches an event.
 
 Recording and extraction stay separate policies (`#[Recorded]` / `#[Extracted]`): the `WITH_READS` recording above does not widen the extractor's writes-only default.
 
@@ -411,7 +415,7 @@ resource_request post 'app://self/orders?order_id=O-1000'
 └── resource_response code=201 body_ref=file://var/es/bodies/000002.json
 ```
 
-The request line is the intent in the form BEAR's CLI takes: paste `post 'app://self/orders?order_id=O-1000'` after `php bin/app.php` (`bin/page.php` for `page://`) to run it again. Each value is cut at 40 characters of its encoded form (`...(+N)`) unless `--full`; every parameter name stays. A request recorded `replayable: false` (one holding a withheld credential, for example) ends with `[not replayable]`. The `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent — a resource calling a resource, and a resource embedding a non-resource operation such as a media query, recorded as a leaf event with its intent and wall time (see the Ray.MediaQuery observation below). Every node follows one rule: the intent is inline, the heavy detail sits behind a `*_ref` pointer. The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `*_ref` to its file for the full detail.
+The request line is the intent in the form BEAR's CLI takes: paste `post 'app://self/orders?order_id=O-1000'` after `php bin/app.php` (`bin/page.php` for `page://`) to run it again. Each value is cut at 40 characters of its encoded form (`...(+N)`) unless `--full`; every parameter name stays. A request recorded `replayable: false` (one holding a withheld credential, for example) ends with `[not replayable]`. A request recorded with a `caller` shows where it was made before that, ` ← src/Resource/Page/Index.php:22`, relative to the working directory; `--full` gives the absolute path and the function. The `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent — a resource calling a resource, and a resource embedding a non-resource operation such as a media query, recorded as a leaf event with its intent and wall time (see the Ray.MediaQuery observation below). Every node follows one rule: the intent is inline, the heavy detail sits behind a `*_ref` pointer. The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `*_ref` to its file for the full detail.
 
 `vendor/bin/stree` renders it this way on its own once koriym/semantic-logger reads `extra.stree.formatters` (koriym/Koriym.SemanticLogger#63): this package declares the formatter there in its `composer.json`, which stree reads from Composer's `installed.json`. In process, register `ResourceNodeFormatter` for the `resource_request` type in the `FormatterRegistry` you give `TreeRenderer` — `examples/tree.php` builds a `DevLogModule`-style log (`body_ref` pointers) and renders it, and `examples/semantic-tree.txt` is its output. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson` of the extraction examples.
 

@@ -45,10 +45,12 @@ final class DevObservationModule extends AbstractModule
                 'logger' => CacheLog::class,
                 'recordedMethods' => Recorded::class,
                 'paramsFilter' => Filtered::class,
+                'recordCaller' => SemanticLogInvoker::RECORD_CALLER,
             ])
             ->in(Scope::SINGLETON);
         $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)
             ->toInstance(new RecordedMethods(RecordedMethods::WITH_READS));
         $this->bind(BodyStoreInterface::class)->toInstance(new FileBodyStore($this->dir . '/bodies', $this->keep));
+        $this->bind()->annotatedWith(SemanticLogInvoker::RECORD_CALLER)->toInstance(true);
     }
 }

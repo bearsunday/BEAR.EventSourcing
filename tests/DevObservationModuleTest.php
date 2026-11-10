@@ -59,6 +59,9 @@ final class DevObservationModuleTest extends TestCase
         $this->assertTrue(self::subtreeHasType($root, 'get'), 'the cache scope nests inside the resource request');
         $bodies = glob($this->logDir . '/events/bodies/*/*.json');
         $this->assertNotSame([], $bodies, 'the response body is stored under the given directory');
+        /** @psalm-suppress MixedArrayAccess The canonical JSON view is untyped by design. */
+        $caller = $root['context']['caller']['file'] ?? null;
+        $this->assertSame(__FILE__, $caller, 'the request records where it was made');
     }
 
     public function testAnAppBoundParamsFilterReachesTheInvoker(): void

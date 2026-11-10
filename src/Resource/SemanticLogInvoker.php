@@ -12,11 +12,26 @@ use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\ResourceObject;
 use DateTimeImmutable;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Ray\Aop\WeavedInterface;
+use ReflectionClass;
+use ReflectionMethod;
 use Throwable;
+
+use function debug_backtrace;
+use function dirname;
+use function get_parent_class;
+use function in_array;
+use function is_a;
+use function str_starts_with;
+
+use const DEBUG_BACKTRACE_IGNORE_ARGS;
 
 final readonly class SemanticLogInvoker implements InvokerInterface
 {
+    /** Binding name for the bool that adds the caller to each resource_request; off unless bound true. */
+    public const RECORD_CALLER = 'bear_event_sourcing_record_caller';
     private const TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
+    private const INCLUDES = ['include', 'include_once', 'require', 'require_once'];
 
     private RecordedMethods $recordedMethods;
     private ParamsFilterInterface $paramsFilter;
@@ -27,6 +42,7 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         private BodyStoreInterface $bodyStore,
         #[Recorded] RecordedMethods|null $recordedMethods = null,
         #[Filtered] ParamsFilterInterface|null $paramsFilter = null,
+        private bool $recordCaller = false,
     ) {
         $this->recordedMethods = $recordedMethods ?? new RecordedMethods();
         // Secure by default: an application opts out of redaction by binding its own
@@ -48,6 +64,7 @@ final readonly class SemanticLogInvoker implements InvokerInterface
             params: $filtered->params,
             timestamp: (new DateTimeImmutable())->format(self::TIMESTAMP_FORMAT),
             replayable: $filtered->replayable,
+            caller: $this->recordCaller ? self::caller() : null,
         ));
 
         $start = hrtime(true);
@@ -184,6 +201,79 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         }
 
         return ResourceResponseContext::success($ro->code, $bodyRef, durationMs: $durationMs);
+    }
+
+    /**
+     * The first call site outside the vendor directory and this package.
+     *
+     * A call made from a woven (AOP) method is reported as the declaration of the method it overrides.
+     *
+     * @return array{file: string, line: int, function?: string}|null
+     */
+    private static function caller(): array|null
+    {
+        try {
+            $libraryDirs = [
+                dirname((string) (new ReflectionClass(ResourceObject::class))->getFileName(), 4) . '/',
+                dirname(__DIR__) . '/',
+            ];
+            $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+            foreach ($trace as $i => $frame) {
+                $file = $frame['file'] ?? null;
+                if ($file === null || self::isUnder($file, $libraryDirs)) {
+                    continue;
+                }
+
+                $outer = $trace[$i + 1] ?? null;
+
+                return self::callSite($file, $frame['line'] ?? 0, $outer['function'] ?? null, $outer['class'] ?? null);
+            }
+        } catch (Throwable) {
+            // The caller is a debugging aid; losing it must not lose the request entry.
+        }
+
+        return null;
+    }
+
+    /**
+     * @param class-string|null $class
+     *
+     * @return array{file: string, line: int, function?: string}
+     */
+    private static function callSite(string $file, int $line, string|null $function, string|null $class): array
+    {
+        if ($function === null || in_array($function, self::INCLUDES, true)) {
+            return ['file' => $file, 'line' => $line];
+        }
+
+        if ($class === null) {
+            return ['file' => $file, 'line' => $line, 'function' => $function];
+        }
+
+        $parent = get_parent_class($class);
+        if ($parent !== false && is_a($class, WeavedInterface::class, true)) {
+            $method = new ReflectionMethod($parent, $function);
+
+            return [
+                'file' => (string) $method->getFileName(),
+                'line' => (int) $method->getStartLine(),
+                'function' => $method->class . '::' . $method->name,
+            ];
+        }
+
+        return ['file' => $file, 'line' => $line, 'function' => $class . '::' . $function];
+    }
+
+    /** @param list<string> $dirs */
+    private static function isUnder(string $file, array $dirs): bool
+    {
+        foreach ($dirs as $dir) {
+            if (str_starts_with($file, $dir)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function elapsedMs(int|float $start): float

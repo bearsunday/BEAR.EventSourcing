@@ -11,6 +11,7 @@ use PHPUnit\Framework\TestCase;
 
 use function dirname;
 use function file_get_contents;
+use function getcwd;
 use function json_decode;
 use function str_repeat;
 
@@ -105,6 +106,46 @@ final class ResourceNodeFormatterTest extends TestCase
         $line = self::format(['uri' => 'app://self/users', 'method' => 'POST', 'query' => ['id' => 'koriym']]);
 
         $this->assertSame("resource_request post 'app://self/users?id=koriym'", $line);
+    }
+
+    public function testEndsWithTheCallerRelativeToTheWorkingDirectory(): void
+    {
+        $line = self::format([
+            'uri' => 'app://self/nav',
+            'method' => 'GET',
+            'caller' => [
+                'file' => (string) getcwd() . '/src/Service/Nav.php',
+                'line' => 10,
+                'function' => 'Vendor\\Nav::read',
+            ],
+        ]);
+
+        $this->assertSame("resource_request get 'app://self/nav' ← src/Service/Nav.php:10", $line);
+    }
+
+    public function testFullShowsTheAbsoluteCallerAndItsFunction(): void
+    {
+        $file = (string) getcwd() . '/src/Service/Nav.php';
+        $line = self::format([
+            'uri' => 'app://self/nav',
+            'method' => 'GET',
+            'caller' => (object) ['file' => $file, 'line' => 10, 'function' => 'Vendor\\Nav::read'],
+        ], full: true);
+
+        $this->assertSame("resource_request get 'app://self/nav' ← {$file}:10 in Vendor\\Nav::read", $line);
+    }
+
+    public function testKeepsACallerOutsideTheWorkingDirectoryAbsolute(): void
+    {
+        $line = self::format([
+            'uri' => 'page://self/login',
+            'method' => 'POST',
+            'replayable' => false,
+            'caller' => ['file' => '/elsewhere/bin/page.php', 'line' => 3],
+        ]);
+
+        $expected = "resource_request post 'page://self/login' ← /elsewhere/bin/page.php:3 [not replayable]";
+        $this->assertSame($expected, $line);
     }
 
     public function testComposerJsonDeclaresThisFormatterForStree(): void
