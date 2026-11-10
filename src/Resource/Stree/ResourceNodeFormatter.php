@@ -11,12 +11,15 @@ use Koriym\SemanticLogger\Stree\TreeNode;
 use function array_map;
 use function explode;
 use function get_object_vars;
+use function getcwd;
 use function http_build_query;
 use function implode;
 use function is_array;
+use function is_int;
 use function is_object;
 use function is_string;
 use function str_replace;
+use function str_starts_with;
 use function strlen;
 use function strrpos;
 use function strtolower;
@@ -26,6 +29,7 @@ use function substr;
  * Renders a `resource_request` as the request BEAR's CLI takes back:
  * `resource_request post 'app://self/users?id=koriym'`. The method stays lowercase, the only case for which
  * the CLI reads the query, and the URI is single-quoted for a POSIX shell.
+ * A recorded caller follows as ` ← file:line`, relative to the working directory unless `--full`.
  *
  * @psalm-suppress MixedAssignment Semantic Logger context values are schema-defined but mixed.
  */
@@ -42,7 +46,7 @@ final class ResourceNodeFormatter implements NodeFormatterInterface
 
         $request = self::stringValue($context, 'uri') . self::queryString($context, $config->showFullTree);
         // POSIX single quotes by hand: escapeshellarg() changes with the platform and the locale
-        $line .= " '" . str_replace("'", "'\\''", $request) . "'";
+        $line .= " '" . str_replace("'", "'\\''", $request) . "'" . self::caller($context, $config->showFullTree);
 
         // The recorder judged it non-replayable (a withheld credential, say), so it cannot simply run again
         return ($context['replayable'] ?? null) === false ? $line . ' [not replayable]' : $line;
@@ -54,6 +58,35 @@ final class ResourceNodeFormatter implements NodeFormatterInterface
         $value = $context[$key] ?? null;
 
         return is_string($value) ? $value : '';
+    }
+
+    /** @param array<string, mixed> $context */
+    private static function caller(array $context, bool $full): string
+    {
+        $caller = $context['caller'] ?? null;
+        if (is_object($caller)) {
+            $caller = get_object_vars($caller);
+        }
+
+        if (! is_array($caller)) {
+            return '';
+        }
+
+        $file = $caller['file'] ?? null;
+        $line = $caller['line'] ?? null;
+        if (! is_string($file) || ! is_int($line)) {
+            return '';
+        }
+
+        $cwd = getcwd();
+        if (! $full && $cwd !== false && str_starts_with($file, $cwd . '/')) {
+            $file = substr($file, strlen($cwd) + 1);
+        }
+
+        $function = $caller['function'] ?? null;
+        $in = $full && is_string($function) ? ' in ' . $function : '';
+
+        return " ← {$file}:{$line}{$in}";
     }
 
     /** @param array<string, mixed> $context */

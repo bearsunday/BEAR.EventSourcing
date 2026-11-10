@@ -330,7 +330,7 @@ Note that the bundled `ResourceResponseContext` records `code`, `body_ref`, `exc
 
 When a resource invocation throws, `SemanticLogInvoker` still closes the observation — with `exception: {class, message}` and, unless the exception's own `getCode()` is a valid HTTP status (`400`-`599`), no `code` at all. The invoker runs ahead of the application's error handler, so it does not know the status the client will actually receive (a `ProductNotFoundException` an application maps to `404` still has `getCode() === 0` here); recording a guessed `500` would log a status nobody sent. `SemanticLogExtractor` reads a missing `code` paired with a present `exception` as a confirmed failure — exactly as it would read `code: 500` — so this close is excluded from the event stream either way; the difference is that the log no longer asserts a specific wrong status.
 
-For local AI/debug work, use `DevLogModule`. Constructing it writes nothing to disk; the first stored body creates a uniquely named generation directory under `bodyDir` and stores rendered bodies as files through `FileBodyStore`, keeping `GET` as well as write methods:
+For local AI/debug work, use `DevLogModule`. Constructing it writes nothing to disk; the first stored body creates a uniquely named generation directory under `bodyDir` and stores response bodies as JSON files through `FileBodyStore`, keeping `GET` as well as write methods:
 
 ```php
 use BEAR\EventSourcing\Resource\DevLogModule;
@@ -363,8 +363,10 @@ final class DevModule extends AbstractAppModule
                 'invoker' => 'original_invoker',
                 'recordedMethods' => Recorded::class,
                 'paramsFilter' => Filtered::class,
+                'recordCaller' => SemanticLogInvoker::RECORD_CALLER,
             ])
             ->in(Scope::SINGLETON);
+        $this->bind()->annotatedWith(SemanticLogInvoker::RECORD_CALLER)->toInstance(true);
         $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)
             ->toInstance(new RecordedMethods(RecordedMethods::WITH_READS));
         $this->bind(BodyStoreInterface::class)->toInstance(new FileBodyStore($bodyDir));
@@ -376,6 +378,8 @@ final class DevModule extends AbstractAppModule
 
 Do **not** re-provide the package bindings there — `override(new DevLogModule(module: new PackageModule()))` registers the framework pointcuts a second time and every interceptor runs twice. The cache log makes the double execution visible as a `get` scope nested in itself; without a log it is invisible.
 
+`DevLogModule`, `DevObservationModule` and the wiring above bind `SemanticLogInvoker::RECORD_CALLER` to `true`, so each `resource_request` also records `caller: {file, line, function}`, the first call site outside the installed Composer packages (the root package excepted; a symlinked path repository counts by its real path): the entry point, the method that made the request, or the template that ran an embedded one (no `function` there). A call made inside an AOP-woven method points at the declaration of the method it overrides. Unbound, as under `ResourceObservationModule` alone, nothing is recorded and no backtrace is taken. `caller` is observation only and never reaches an event.
+
 Recording and extraction stay separate policies (`#[Recorded]` / `#[Extracted]`): the `WITH_READS` recording above does not widen the extractor's writes-only default.
 
 A `BodyStoreInterface` records a `body_ref` in the close context:
@@ -384,7 +388,7 @@ A `BodyStoreInterface` records a `body_ref` in the close context:
 {"code": 200, "body_ref": "file:///path/to/var/es/bodies/20260922-143059-482913-a1b2c3d4/000001.json", "durationMs": 0.42}
 ```
 
-`body_ref` is a reference to a stored rendered body. It stays in the Semantic Log for inspection and is **not** extracted into `Event::$result` — the event's `result` comes from `close.context.body`. A bridge log that records only `body_ref` therefore yields an event with a `null` result; the payload lives in the externalized body, not in the event. The same domain operation produces the same event regardless of which `BodyStoreInterface` the bridge uses.
+`body_ref` is a reference to a stored body. It stays in the Semantic Log for inspection and is **not** extracted into `Event::$result` — the event's `result` comes from `close.context.body`. A bridge log that records only `body_ref` therefore yields an event with a `null` result; the payload lives in the externalized body, not in the event. The same domain operation produces the same event regardless of which `BodyStoreInterface` the bridge uses.
 
 `durationMs` is the wall time of the invocation, children included. It is observation data: it stays in the close context and is never part of event identity, for the same reason `result` is excluded — the same domain operation is the same event regardless of how long it took. The log answers *which* request was slow and *where* in the tree; *why* remains the profiler's job.
 
@@ -395,11 +399,11 @@ With `DevLogModule` active you read two artifacts:
 **Body files** under `bodyDir`, one per recorded operation, numbered in invocation order within the generation subdirectory `FileBodyStore` created for the run:
 
 ```text
-var/es/bodies/20260922-143059-482913-a1b2c3d4/000001.json   # rendered body of the first recorded operation, i.e. $ro->toString()
+var/es/bodies/20260922-143059-482913-a1b2c3d4/000001.json   # $ro->body of the first recorded operation as JSON
 var/es/bodies/20260922-143059-482913-a1b2c3d4/000002.json
 ```
 
-`bodyDir` is the shared root `FileBodyStore` creates generation subdirectories under; nothing is created until the first body is stored, and each session's generation is uniquely named so multiple sessions or processes can point at the same `bodyDir` without their sequences colliding (see "For local AI/debug work" above for `keep`). Pruning removes only generations carrying the ownership marker (`FileBodyStore::MARKER`), so nothing else under `bodyDir` is touched. Files 0.2.0 wrote directly into `bodyDir` are not generations, so pruning leaves them in place until you delete them. A failed render is recorded as an `exception` in the close context, not written as an empty body file.
+`bodyDir` is the shared root `FileBodyStore` creates generation subdirectories under; nothing is created until the first body is stored, and each session's generation is uniquely named so multiple sessions or processes can point at the same `bodyDir` without their sequences colliding (see "For local AI/debug work" above for `keep`). Pruning removes only generations carrying the ownership marker (`FileBodyStore::MARKER`), so nothing else under `bodyDir` is touched. Files 0.2.0 wrote directly into `bodyDir` are not generations, so pruning leaves them in place until you delete them. A body file is `$ro->body` as JSON, not what the client received: the renderer is never called, and a request embedded in the body is not run but written as `{"$request": {"method": "GET", "uri": "app://self/child", "params": {...}}}` — what it returned is in the `body_ref` of that request's own node. Objects are read without calling them, except `jsonSerialize()`: an object of the application shows its private and protected properties too, an object of an installed Composer package only its public ones, and one with nothing to show or already being written is `{"$object": "Vendor\\Class"}`. Nesting past 64 levels is written as `{"$truncated": "depth"}`, and what follows the first 50,000 values of a body as `{"$truncated": "size"}`. A body that cannot be encoded as JSON is recorded as an `exception` in the close context, not written as a file.
 
 **The Semantic Logger log**, a nested open/close tree held in memory until you call `$logger->flush()`. Render it as a readable tree — far smaller than the raw JSON, for both humans and AI. `Resource\Stree\ResourceNodeFormatter` renders each request as the command that runs it again, so a `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` reads as intent in, result out:
 
@@ -411,7 +415,7 @@ resource_request post 'app://self/orders?order_id=O-1000'
 └── resource_response code=201 body_ref=file://var/es/bodies/000002.json
 ```
 
-The request line is the intent in the form BEAR's CLI takes: paste `post 'app://self/orders?order_id=O-1000'` after `php bin/app.php` (`bin/page.php` for `page://`) to run it again. Each value is cut at 40 characters of its encoded form (`...(+N)`) unless `--full`; every parameter name stays. A request recorded `replayable: false` (one holding a withheld credential, for example) ends with `[not replayable]`. The `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent — a resource calling a resource, and a resource embedding a non-resource operation such as a media query, recorded as a leaf event with its intent and wall time (see the Ray.MediaQuery observation below). Every node follows one rule: the intent is inline, the heavy detail sits behind a `*_ref` pointer. The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `*_ref` to its file for the full detail.
+The request line is the intent in the form BEAR's CLI takes: paste `post 'app://self/orders?order_id=O-1000'` after `php bin/app.php` (`bin/page.php` for `page://`) to run it again. Each value is cut at 40 characters of its encoded form (`...(+N)`) unless `--full`; every parameter name stays. A request recorded `replayable: false` (one holding a withheld credential, for example) ends with `[not replayable]`. A request recorded with a `caller` shows where it was made before that, ` ← src/Resource/Page/Index.php:22`, relative to the working directory; `--full` gives the absolute path and the function. The `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent — a resource calling a resource, and a resource embedding a non-resource operation such as a media query, recorded as a leaf event with its intent and wall time (see the Ray.MediaQuery observation below). Every node follows one rule: the intent is inline, the heavy detail sits behind a `*_ref` pointer. The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `*_ref` to its file for the full detail.
 
 `vendor/bin/stree` renders it this way on its own once koriym/semantic-logger reads `extra.stree.formatters` (koriym/Koriym.SemanticLogger#63): this package declares the formatter there in its `composer.json`, which stree reads from Composer's `installed.json`. In process, register `ResourceNodeFormatter` for the `resource_request` type in the `FormatterRegistry` you give `TreeRenderer` — `examples/tree.php` builds a `DevLogModule`-style log (`body_ref` pointers) and renders it, and `examples/semantic-tree.txt` is its output. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson` of the extraction examples.
 

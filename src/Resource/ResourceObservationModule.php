@@ -52,6 +52,7 @@ final class ResourceObservationModule extends AbstractModule
                 'invoker' => self::INVOKER,
                 'recordedMethods' => Recorded::class,
                 'paramsFilter' => Filtered::class,
+                'recordCaller' => SemanticLogInvoker::RECORD_CALLER,
             ])
             ->in(Scope::SINGLETON);
     }

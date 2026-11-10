@@ -6,15 +6,21 @@ namespace BEAR\EventSourcing\Tests\Resource;
 
 use BEAR\EventSourcing\Resource\FileBodyStore;
 use BEAR\EventSourcing\Resource\BodyStoreException;
+use BEAR\EventSourcing\Tests\Fixture\Body\EntryList;
+use BEAR\EventSourcing\Tests\Fixture\Body\Kind;
+use BEAR\EventSourcing\Tests\Fixture\Body\Pager;
+use BEAR\EventSourcing\Tests\Fixture\Body\Serialized;
 use BEAR\EventSourcing\Tests\RemovesDirectoryTree;
 use BEAR\Resource\HalLinker;
 use BEAR\Resource\HalRenderer;
-use BEAR\Resource\JsonRenderer;
 use BEAR\Resource\Method;
 use BEAR\Resource\NullReverseLinker;
 use BEAR\Resource\Request;
+use Composer\InstalledVersions;
+use JsonSerializable;
+use PHPUnit\Framework\Attributes\RequiresPhp;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
+use ReflectionClass;
 use stdClass;
 
 use function assert;
@@ -23,9 +29,9 @@ use function dirname;
 use function file_exists;
 use function file_get_contents;
 use function file_put_contents;
+use function filesize;
 use function getmyuid;
 use function is_dir;
-use function json_decode;
 use function mkdir;
 use function range;
 use function restore_error_handler;
@@ -34,6 +40,8 @@ use function scandir;
 use function set_error_handler;
 use function sort;
 use function str_ends_with;
+use function str_contains;
+use function str_replace;
 use function str_starts_with;
 use function strlen;
 use function substr;
@@ -44,12 +52,13 @@ use function unlink;
 use function usleep;
 
 use const E_USER_WARNING;
+use const NAN;
 
 final class FileBodyStoreTest extends TestCase
 {
     use RemovesDirectoryTree;
 
-    public function testStoresRenderedBodyAndReturnsFileRef(): void
+    public function testStoresBodyAndReturnsFileRef(): void
     {
         $dir = self::newBodyDir();
         $store = new FileBodyStore($dir);
@@ -94,10 +103,7 @@ final class FileBodyStoreTest extends TestCase
         self::removeTree($dir);
     }
 
-    /**
-     * Storing renders a copy: the caller keeps reading the response the renderer would rewrite
-     */
-    public function testStoringLeavesTheLiveResponseAsTheCallerReadsIt(): void
+    public function testStoresTheBodyWithoutTheRendererOrTouchingTheResponse(): void
     {
         $dir = self::newBodyDir();
         $body = new stdClass();
@@ -113,13 +119,273 @@ final class FileBodyStoreTest extends TestCase
         $bodyRef = (new FileBodyStore($dir))($request, $ro);
 
         $this->assertNotNull($bodyRef);
-        $stored = json_decode((string) file_get_contents(self::pathFromRef($bodyRef)), true);
-        $this->assertIsArray($stored);
-        $this->assertSame(1, $stored['id']);
-        $this->assertArrayHasKey('_links', $stored, 'the stored body is the rendered representation');
+        $this->assertSame('{"id":1}', file_get_contents(self::pathFromRef($bodyRef)));
+        $this->assertSame($body, $ro->body);
+        $this->assertArrayNotHasKey('Content-Type', $ro->headers);
 
-        $this->assertSame($body, $ro->body, 'HalRenderer casts an object body to an array');
-        $this->assertArrayNotHasKey('Content-Type', $ro->headers, 'HalRenderer sets its media type');
+        self::removeTree($dir);
+    }
+
+    public function testStoresAnUnrunRequestAsARequestMarkerWithoutRunningIt(): void
+    {
+        $dir = self::newBodyDir();
+        $runs = 0;
+        $child = new FakeResourceObject('app://self/child?ignored=1');
+        $lazy = new Request(
+            new CallbackInvoker(static function () use (&$runs, $child): FakeResourceObject {
+                $runs++;
+
+                return $child;
+            }),
+            $child,
+            Method::GET,
+            ['id' => 'lazy'],
+        );
+        $nested = new FakeResourceObject('app://self/nav', ['items' => ['a', 'b']]);
+        $ro = new FakeResourceObject('page://self/index', ['title' => 'index', 'nav' => $nested, 'child' => $lazy]);
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
+
+        $bodyRef = (new FileBodyStore($dir))($request, $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertSame(0, $runs);
+        $this->assertSame(
+            '{"title":"index","nav":{"items":["a","b"]},'
+            . '"child":{"$request":{"method":"GET","uri":"app://self/child","params":{"id":"lazy"}}}}',
+            file_get_contents(self::pathFromRef($bodyRef)),
+        );
+        $this->assertSame(['title' => 'index', 'nav' => $nested, 'child' => $lazy], $ro->body);
+
+        self::removeTree($dir);
+    }
+
+    public function testStoresTheParamsOfAnUnrunRequestTheWayItStoresABody(): void
+    {
+        $dir = self::newBodyDir();
+        $child = new FakeResourceObject('app://self/child');
+        $lazy = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $child),
+            $child,
+            Method::GET,
+            ['kind' => Kind::News],
+        );
+        $ro = new FakeResourceObject('page://self/index', ['child' => $lazy]);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertSame(
+            '{"child":{"$request":{"method":"GET","uri":"app://self/child","params":{"kind":"News"}}}}',
+            file_get_contents(self::pathFromRef($bodyRef)),
+        );
+
+        self::removeTree($dir);
+    }
+
+    public function testStoresTheNonPublicStateOfAnApplicationObject(): void
+    {
+        $dir = self::newBodyDir();
+        $runs = 0;
+        $child = new FakeResourceObject('app://self/child');
+        $lazy = new Request(
+            new CallbackInvoker(static function () use (&$runs, $child): FakeResourceObject {
+                $runs++;
+
+                return $child;
+            }),
+            $child,
+            Method::GET,
+        );
+        $ro = new FakeResourceObject(body: [
+            'list' => new EntryList([['id' => 1], $lazy], new Pager(1, 3)),
+            'serialized' => new Serialized(['child' => $lazy, 'kind' => Kind::News]),
+        ]);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertSame(0, $runs);
+        $marker = '{"$request":{"method":"GET","uri":"app://self/child","params":[]}}';
+        $this->assertSame(
+            '{"list":{"previous":null,"items":[{"id":1},' . $marker . '],'
+            . '"pager":{"current":1,"last":3},"service":null},"serialized":{"child":' . $marker . ',"kind":"News"}}',
+            file_get_contents(self::pathFromRef($bodyRef)),
+        );
+
+        self::removeTree($dir);
+    }
+
+    public function testNamesTheClassOfAnObjectItDoesNotOpenOrHasAlreadyEntered(): void
+    {
+        $dir = self::newBodyDir();
+        $list = new EntryList([], new Pager(1, 1), new HalLinker(new NullReverseLinker()));
+        $list->previous = $list;
+        $ro = new FakeResourceObject(body: ['list' => $list, 'callback' => static fn (): int => 1]);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertSame(
+            '{"list":{"previous":{"$object":"' . self::jsonClass(EntryList::class) . '"},"items":[],'
+            . '"pager":{"current":1,"last":1},"service":{"$object":"' . self::jsonClass(HalLinker::class) . '"}},'
+            . '"callback":{"$object":"Closure"}}',
+            file_get_contents(self::pathFromRef($bodyRef)),
+        );
+
+        self::removeTree($dir);
+    }
+
+    /** @psalm-suppress UndefinedMethod newLazyGhost() is PHP 8.4 */
+    #[RequiresPhp('>= 8.4')]
+    public function testReadsAPackageObjectWithoutRunningItsHooksOrInitializingIt(): void
+    {
+        $dir = self::newBodyDir();
+        $class = 'AcmeHooked\\Hooked';
+        $packageDir = $dir . '/vendor/acme/hooked';
+        mkdir($packageDir, 0777, true);
+        file_put_contents($packageDir . '/Hooked.php', <<<'PHP'
+            <?php
+            namespace AcmeHooked;
+            final class Hooked
+            {
+                public int $count { get { throw new \LogicException('hook ran'); } set => $value; }
+                private string $secret = 'hidden';
+                public function __construct() { $this->count = 1; }
+            }
+            PHP);
+        $installed = InstalledVersions::getAllRawData()[0];
+        InstalledVersions::reload([
+            'root' => $installed['root'],
+            'versions' => ['acme/hooked' => ['install_path' => $packageDir, 'dev_requirement' => false]],
+        ]);
+        try {
+            /** @psalm-suppress UnresolvableInclude */
+            require $packageDir . '/Hooked.php';
+            $store = new FileBodyStore($dir . '/bodies');
+        } finally {
+            InstalledVersions::reload($installed);
+        }
+
+        $initialized = 0;
+        /** @var class-string $class */
+        $reflection = new ReflectionClass($class);
+        /** @var object $ghost */
+        $ghost = $reflection->newLazyGhost(static function () use (&$initialized): void {
+            $initialized++;
+        });
+        $ro = new FakeResourceObject(body: ['hooked' => $reflection->newInstance(), 'ghost' => $ghost]);
+
+        $bodyRef = $store(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertSame(0, $initialized);
+        $this->assertSame(
+            '{"hooked":{"count":1},"ghost":{"$object":"AcmeHooked\\\\Hooked"}}',
+            file_get_contents(self::pathFromRef($bodyRef)),
+        );
+
+        self::removeTree($dir);
+    }
+
+    public function testCutsASelfReferencingArrayAtADepth(): void
+    {
+        $dir = self::newBodyDir();
+        $loop = ['id' => 1];
+        $loop['self'] = &$loop;
+        $ro = new FakeResourceObject(body: $loop);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertStringContainsString(
+            '"self":{"$truncated":"depth"}',
+            (string) file_get_contents(self::pathFromRef($bodyRef)),
+        );
+
+        self::removeTree($dir);
+    }
+
+    public function testStopsAGraphThatSharesOneChildManyTimes(): void
+    {
+        $dir = self::newBodyDir();
+        $node = ['leaf' => 1];
+        for ($i = 0; $i < 20; $i++) {
+            $node = ['left' => $node, 'right' => $node];
+        }
+
+        $ro = new FakeResourceObject(body: $node);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $file = self::pathFromRef($bodyRef);
+        $this->assertLessThan(2_000_000, filesize($file));
+        $this->assertTrue(str_contains((string) file_get_contents($file), '{"$truncated":"size"}'));
+
+        self::removeTree($dir);
+    }
+
+    public function testKeepsAChainOfObjectsAsDeepAsItsJson(): void
+    {
+        $dir = self::newBodyDir();
+        $node = (object) ['id' => 'innermost'];
+        for ($i = 0; $i < 59; $i++) {
+            $node = (object) ['next' => $node];
+        }
+
+        $ro = new FakeResourceObject(body: ['chain' => $node]);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $stored = (string) file_get_contents(self::pathFromRef($bodyRef));
+        $this->assertStringContainsString('"id":"innermost"', $stored);
+        $this->assertStringNotContainsString('$truncated', $stored);
+
+        self::removeTree($dir);
+    }
+
+    public function testStopsAJsonSerializeThatReturnsANewInstanceEachTime(): void
+    {
+        $dir = self::newBodyDir();
+        $endless = new class implements JsonSerializable {
+            public function jsonSerialize(): mixed
+            {
+                return new self();
+            }
+        };
+        $ro = new FakeResourceObject(body: ['endless' => $endless]);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertStringContainsString(
+            '{"$truncated":"depth"}',
+            (string) file_get_contents(self::pathFromRef($bodyRef)),
+        );
+
+        self::removeTree($dir);
+    }
+
+    public function testStopsAChainOfResourceObjectBodiesAtTheDepthLimit(): void
+    {
+        $dir = self::newBodyDir();
+        $ro = new FakeResourceObject(body: ['id' => 'innermost']);
+        for ($i = 0; $i < 3000; $i++) {
+            $ro = new FakeResourceObject(body: $ro);
+        }
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertStringContainsString(
+            '{"$truncated":"depth"}',
+            (string) file_get_contents(self::pathFromRef($bodyRef)),
+        );
 
         self::removeTree($dir);
     }
@@ -446,38 +712,11 @@ final class FileBodyStoreTest extends TestCase
         new FileBodyStore('//');
     }
 
-    public function testRenderFailurePropagatesAndWritesNoEmptyFile(): void
+    public function testNeverCallsTheRenderer(): void
     {
         $dir = self::newBodyDir();
-        $store = new FileBodyStore($dir);
         $ro = new FakeResourceObject(body: ['id' => 1]);
         $ro->setRenderer(new ThrowingRenderer());
-        $request = new Request(
-            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
-            $ro,
-            Method::POST,
-        );
-
-        try {
-            $store($request, $ro);
-            $this->fail('Expected the render exception to propagate.');
-        } catch (RuntimeException) {
-            $this->assertSame(
-                [],
-                self::subdirectories($dir),
-                'a failed render must create no generation directory (costs nothing until a body is stored)',
-            );
-        } finally {
-            self::removeTree($dir);
-        }
-    }
-
-    public function testObservationRestoresTheResponseView(): void
-    {
-        $dir = self::newBodyDir();
-        $store = new FileBodyStore($dir);
-        $ro = new FakeResourceObject(body: ['name' => 'before']);
-        $ro->setRenderer(new JsonRenderer());
         $priorView = $ro->view;
         $request = new Request(
             new CallbackInvoker(static fn (): FakeResourceObject => $ro),
@@ -485,14 +724,44 @@ final class FileBodyStoreTest extends TestCase
             Method::POST,
         );
 
-        $bodyRef = $store($request, $ro);
+        $bodyRef = (new FileBodyStore($dir))($request, $ro);
 
-        // Rendering the body for storage must not cache the view: it is restored to
-        // its prior value so later stages still render the current body.
         $this->assertNotNull($bodyRef);
+        $this->assertSame('{"id":1}', file_get_contents(self::pathFromRef($bodyRef)));
         $this->assertSame($priorView, $ro->view);
 
         self::removeTree($dir);
+    }
+
+    public function testUnencodableBodyThrowsAndCreatesNoGeneration(): void
+    {
+        $dir = self::newBodyDir();
+        $ro = new FakeResourceObject(body: ['ratio' => NAN]);
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
+
+        try {
+            (new FileBodyStore($dir))($request, $ro);
+            $this->fail('Expected a BodyStoreException.');
+        } catch (BodyStoreException) {
+            $this->assertSame([], self::subdirectories($dir));
+        } finally {
+            self::removeTree($dir);
+        }
+    }
+
+    private static function requestOf(FakeResourceObject $ro): Request
+    {
+        return new Request(new CallbackInvoker(static fn (): FakeResourceObject => $ro), $ro, Method::GET);
+    }
+
+    /** @param class-string $class */
+    private static function jsonClass(string $class): string
+    {
+        return str_replace('\\', '\\\\', $class);
     }
 
     private static function newBodyDir(): string

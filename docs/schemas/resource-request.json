@@ -25,6 +25,26 @@
         "replayable": {
             "type": "boolean",
             "description": "False when a ParamsFilterInterface withheld a value from params (a credential, typically). SemanticLogExtractor extracts the request either way and carries the flag onto Event::$replayable for the replay engine to read. Optional and defaults to true — an entry recorded before this field existed, or written by a hand-built context, is treated as replayable; a non-boolean value is treated as not replayable."
+        },
+        "caller": {
+            "type": "object",
+            "description": "Where the request was made: the first call site outside the installed Composer packages other than the root package, matched by real path. Recorded only when SemanticLogInvoker::RECORD_CALLER is bound to true (the dev modules do). A call inside an AOP-woven method is reported as the declaration of the method it overrides; function is absent for a call from an included file such as a template. Observation only: never part of an event.",
+            "required": ["file", "line"],
+            "properties": {
+                "file": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "line": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "function": {
+                    "type": "string",
+                    "description": "Class::method, or a function name."
+                }
+            },
+            "additionalProperties": false
         }
     },
     "additionalProperties": false

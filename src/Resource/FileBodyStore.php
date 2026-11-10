@@ -6,21 +6,32 @@ namespace BEAR\EventSourcing\Resource;
 
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
+use BackedEnum;
+use DateTimeInterface;
 use FilesystemIterator;
+use JsonException;
+use JsonSerializable;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use ReflectionObject;
 use SplFileInfo;
 use UnexpectedValueException;
+use UnitEnum;
 
+use function array_key_exists;
 use function bin2hex;
 use function count;
 use function explode;
 use function file_exists;
 use function file_put_contents;
+use function get_mangled_object_vars;
 use function gmdate;
+use function is_array;
 use function is_dir;
 use function is_file;
 use function is_link;
+use function is_object;
+use function json_encode;
 use function microtime;
 use function mkdir;
 use function random_bytes;
@@ -28,19 +39,36 @@ use function realpath;
 use function rmdir;
 use function round;
 use function sort;
+use function spl_object_id;
 use function sprintf;
 use function str_starts_with;
+use function strrpos;
+use function strtoupper;
+use function substr;
 use function trigger_error;
 use function trim;
 use function unlink;
 
 use const DIRECTORY_SEPARATOR;
 use const E_USER_WARNING;
+use const JSON_INVALID_UTF8_SUBSTITUTE;
+use const JSON_PRESERVE_ZERO_FRACTION;
+use const JSON_THROW_ON_ERROR;
+use const JSON_UNESCAPED_SLASHES;
+use const JSON_UNESCAPED_UNICODE;
 use const LOCK_EX;
 use const SORT_STRING;
 
 /**
  * Development-time body store: one numbered file per recorded operation.
+ *
+ * A file holds the response body as JSON, never rendered: an embedded request
+ * is written as a `{"$request": {method, uri, params}}` marker and never run.
+ * An object of the application is written with its non-public properties too;
+ * an object of an installed package with its public ones only. One with no
+ * property to write, or one already being written, becomes `{"$object": class}`.
+ * Nesting past 64 levels becomes `{"$truncated": "depth"}`, and what follows
+ * the first 50,000 values of a body `{"$truncated": "size"}`.
  *
  * Construction writes nothing to disk — the first stored body creates a
  * fresh, uniquely named generation directory under `$dir` and marks it
@@ -79,9 +107,16 @@ final class FileBodyStore implements BodyStoreInterface
     public const MARKER = '.bear-es-bodies';
 
     private const DEFAULT_KEEP = 5;
+    private const MAX_DEPTH = 64;
+    private const MAX_VALUES = 50_000;
+    private const JSON_FLAGS = JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+        | JSON_PRESERVE_ZERO_FRACTION | JSON_INVALID_UTF8_SUBSTITUTE;
 
     private string|null $generationDir = null;
     private int $sequence = 0;
+    private int $remaining = 0;
+    /** Null treats every object as one of an installed package */
+    private readonly InstalledPackageDirs|null $packageDirs;
 
     public function __construct(
         private readonly string $dir,
@@ -91,17 +126,19 @@ final class FileBodyStore implements BodyStoreInterface
         if ($this->keep < 1) {
             throw new BodyStoreException(sprintf('FileBodyStore keep must be at least 1, got %d.', $this->keep));
         }
+
+        $this->packageDirs = InstalledPackageDirs::find();
     }
 
     public function __invoke(AbstractRequest $request, ResourceObject $ro): string|null
     {
-        // Render before creating anything: a failed render must leave no trace —
-        // no generation directory consuming a $keep slot for a body never stored.
-        // toString(), not (string) $ro: the latter swallows a render failure and
-        // returns '', which would write an empty file behind a valid body_ref.
-        // Render a copy: a renderer may rewrite the body, headers or view (HalRenderer
-        // casts an object body to an array), and the caller keeps reading the live response.
-        $body = (clone $ro)->toString();
+        // Encode before creating anything: a body that cannot be stored must not consume a $keep slot.
+        try {
+            $this->remaining = self::MAX_VALUES;
+            $body = json_encode($this->normalize($ro->body, [], 0), self::JSON_FLAGS);
+        } catch (JsonException $e) {
+            throw new BodyStoreException(sprintf('Failed to encode body of %s: %s', $ro->uri, $e->getMessage()), 0, $e);
+        }
 
         $generationDir = $this->generationDir ??= self::createGeneration($this->dir, $this->keep);
         $file = $generationDir . DIRECTORY_SEPARATOR . sprintf('%06d.json', ++$this->sequence);
@@ -112,6 +149,103 @@ final class FileBodyStore implements BodyStoreInterface
         }
 
         return 'file://' . $file;
+    }
+
+    /**
+     * Never runs an AbstractRequest: json_encode() would, through its jsonSerialize().
+     *
+     * @param array<int, true> $path ids of the objects being written around $value
+     *
+     * @psalm-suppress MixedAssignment a body is untyped
+     */
+    private function normalize(mixed $value, array $path, int $depth): mixed
+    {
+        if ($this->remaining-- <= 0) {
+            return ['$truncated' => 'size'];
+        }
+
+        if ((is_array($value) || is_object($value)) && $depth > self::MAX_DEPTH) {
+            return ['$truncated' => 'depth'];
+        }
+
+        if (is_array($value)) {
+            $normalized = [];
+            foreach ($value as $key => $item) {
+                if ($this->remaining <= 0) {
+                    $normalized[$key] = ['$truncated' => 'size'];
+                    break;
+                }
+
+                $normalized[$key] = $this->normalize($item, $path, $depth + 1);
+            }
+
+            return $normalized;
+        }
+
+        if (! is_object($value) || $value instanceof DateTimeInterface) {
+            return $value;
+        }
+
+        if ($value instanceof AbstractRequest) {
+            $uri = $value->resourceObject->uri;
+
+            return ['$request' => [
+                'method' => strtoupper($value->method->value),
+                'uri' => "{$uri->scheme}://{$uri->host}{$uri->path}",
+                'params' => $this->normalize($value->query, $path, $depth + 2),
+            ]];
+        }
+
+        if ($value instanceof UnitEnum) {
+            return $value instanceof BackedEnum ? $value->value : $value->name;
+        }
+
+        $id = spl_object_id($value);
+        if (isset($path[$id])) {
+            return ['$object' => $value::class];
+        }
+
+        $path[$id] = true;
+        if ($value instanceof ResourceObject || $value instanceof JsonSerializable) {
+            $inner = $value instanceof ResourceObject ? $value->body : $value->jsonSerialize();
+
+            // An object handed back still counts a level, so a chain of them ends at the depth limit.
+            return $this->normalize($inner, $path, is_object($inner) ? $depth + 1 : $depth);
+        }
+
+        $properties = $this->properties($value);
+
+        return $properties === [] ? ['$object' => $value::class] : $this->normalize($properties, $path, $depth);
+    }
+
+    /**
+     * Reads the state without calling the object: no getter, no __get(), no property hook, and a
+     * lazy object is left uninitialized.
+     *
+     * @return array<array-key, mixed>
+     *
+     * @psalm-suppress MixedAssignment
+     */
+    private function properties(object $object): array
+    {
+        $file = (new ReflectionObject($object))->getFileName();
+        $ofApplication = $this->packageDirs !== null && $file !== false && ! $this->packageDirs->contains($file);
+
+        $properties = [];
+        foreach (get_mangled_object_vars($object) as $name => $property) {
+            $name = (string) $name;
+            $marker = strrpos($name, "\0");
+            if ($marker !== false && ! $ofApplication) {
+                continue;
+            }
+
+            $plain = $marker === false ? $name : substr($name, $marker + 1);
+            if (! array_key_exists($plain, $properties)) {
+                $properties[$plain] = $property;
+            }
+        }
+
+        return $properties;
     }
 
     /**

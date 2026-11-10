@@ -221,7 +221,7 @@ composer tree
 
 `composer tree` が無いか、別の用途か、失敗したなら(手順 1・§1)、`vendor/bin/stree <木のディレクトリ>/latest.json`。`latest.json` は直近の
 セッションで、`ls -t <木のディレクトリ>/*.json` で過去のセッションが新しい順に並ぶ。`body_ref` は応答
-ボディのファイルを `file://` の絶対パスで指す(長いと省略される。全部見るなら `stree --full`)。
+ボディ(描画前の `$ro->body` の JSON)のファイルを `file://` の絶対パスで指す(長いと省略される。全部見るなら `stree --full`)。
 閉じの行は、開いたときから変わったキーを先頭から 2 つだけ出し、残りは印を付けずに落とす(body を保存した
 `resource_response` は `code` と `body_ref` が出て `durationMs` が落ちる)。「記録されていない」と言う前に
 `stree --full` で確かめる。
@@ -261,6 +261,8 @@ resource_request get 'page://self/orders?order_id=O-1'
 `resource_request` の行は、BEAR の CLI がそのまま受け取る形をしている。`get '…'` を `php bin/page.php`(`app://` なら
 `bin/app.php`)の後ろに貼れば、同じリクエストを叩き直せる。値は符号化した形で 1 つずつ 40 文字に切る(`...(+N)`)ので、切れた行は
 `stree --full` から写す。末尾に `[not replayable]` が付いた行は `replayable: false` と記録された要求(伏せた資格情報を含むものなど)なので、そのままでは叩き直せない。
+`← src/Resource/Page/Index.php:22` はその要求を出した場所で、ライブラリの外の最初の呼び出し元(埋め込まれた要求なら、それを
+走らせたテンプレート)。`stree --full` では絶対パスと関数名も出る。
 
 木の文法は 3 つだけ:
 
@@ -305,7 +307,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 | 依存の伝播 | `save_*` の `tags` ↔ `invalidate` の `tags` の突き合わせ。`depends_on` を出すのは `#[Cacheable]` の親だけで、donut の親は出さない(§4) |
 | 何回リソースが走ったか | `resource_request` の数。N+1 は同じ URI の兄弟が並ぶ形で出る |
 | どこで時間を使ったか | `durationMs`。親から子を引いた残りがその層の自前のコスト |
-| 何を返したか | `body_ref` のファイル(`var/log/<context>/events/bodies/<generation>/`。`<generation>` は初回保存時に作られるディレクトリ) |
+| 何を返したか | `body_ref` のファイル(`var/log/<context>/events/bodies/<generation>/`。`<generation>` は初回保存時に作られるディレクトリ)。描画した HTML ではなく body。埋め込みは `{"$request": …}` の目印で、中身はそのリクエストのノードの `body_ref`。アプリのオブジェクトは private も含めて、パッケージのオブジェクトは public だけ書き、書けないものや循環は `{"$object": クラス名}`。64 段より深い入れ子は `{"$truncated": "depth"}`、1 つの body で 50,000 値を超えた先は `{"$truncated": "size"}` |
 
 読み間違えやすい 4 点(いずれも実測):
 

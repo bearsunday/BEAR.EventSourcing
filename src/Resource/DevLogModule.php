@@ -33,5 +33,6 @@ final class DevLogModule extends AbstractModule
             module: $this->module,
             paramsFilter: $this->paramsFilter,
         ));
+        $this->bind()->annotatedWith(SemanticLogInvoker::RECORD_CALLER)->toInstance(true);
     }
 }
