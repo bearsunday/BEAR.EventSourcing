@@ -10,22 +10,16 @@ use BEAR\EventSourcing\RecordedMethods;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\ResourceObject;
-use Composer\InstalledVersions;
 use DateTimeImmutable;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Ray\Aop\WeavedInterface;
-use ReflectionClass;
 use ReflectionMethod;
 use Throwable;
 
-use function array_keys;
 use function debug_backtrace;
-use function dirname;
 use function get_parent_class;
 use function in_array;
 use function is_a;
-use function realpath;
-use function str_starts_with;
 
 use const DEBUG_BACKTRACE_IGNORE_ARGS;
 
@@ -38,8 +32,8 @@ final readonly class SemanticLogInvoker implements InvokerInterface
 
     private RecordedMethods $recordedMethods;
     private ParamsFilterInterface $paramsFilter;
-    /** @var list<string>|null null when they could not be found: no caller is recorded */
-    private array|null $libraryDirs;
+    /** Null records no caller */
+    private InstalledPackageDirs|null $libraryDirs;
 
     public function __construct(
         private InvokerInterface $invoker,
@@ -53,7 +47,7 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         // Secure by default: an application opts out of redaction by binding its own
         // #[Filtered] ParamsFilterInterface, never opts in to get it.
         $this->paramsFilter = $paramsFilter ?? new SensitiveParamsFilter();
-        $this->libraryDirs = $recordCaller ? self::libraryDirs() : null;
+        $this->libraryDirs = $recordCaller ? InstalledPackageDirs::find() : null;
     }
 
     public function invoke(AbstractRequest $request): ResourceObject
@@ -214,17 +208,15 @@ final readonly class SemanticLogInvoker implements InvokerInterface
      *
      * A call made from a woven (AOP) method is reported as the declaration of the method it overrides.
      *
-     * @param list<string> $libraryDirs
-     *
      * @return array{file: string, line: int, function?: string}|null
      */
-    private static function caller(array $libraryDirs): array|null
+    private static function caller(InstalledPackageDirs $libraryDirs): array|null
     {
         try {
             $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
             foreach ($trace as $i => $frame) {
                 $file = $frame['file'] ?? null;
-                if ($file === null || self::isUnder($file, $libraryDirs)) {
+                if ($file === null || $libraryDirs->contains($file)) {
                     continue;
                 }
 
@@ -237,39 +229,6 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         }
 
         return null;
-    }
-
-    /**
-     * Real paths: PHP reports a file loaded through a symlinked package (a Composer path repository)
-     * by its real path.
-     *
-     * @return list<string>|null
-     */
-    private static function libraryDirs(): array|null
-    {
-        try {
-            $vendorDir = dirname((string) (new ReflectionClass(InstalledVersions::class))->getFileName(), 2);
-            $dirs = [dirname(__DIR__), $vendorDir];
-            $root = InstalledVersions::getRootPackage()['name'];
-            foreach (InstalledVersions::getInstalledPackages() as $package) {
-                $path = $package === $root ? null : InstalledVersions::getInstallPath($package);
-                if ($path !== null) {
-                    $dirs[] = $path;
-                }
-            }
-        } catch (Throwable) {
-            return null;
-        }
-
-        $realDirs = [];
-        foreach ($dirs as $dir) {
-            $real = realpath($dir);
-            if ($real !== false) {
-                $realDirs[$real . '/'] = true;
-            }
-        }
-
-        return array_keys($realDirs);
     }
 
     /**
@@ -299,18 +258,6 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         }
 
         return ['file' => $file, 'line' => $line, 'function' => $class . '::' . $function];
-    }
-
-    /** @param list<string> $dirs */
-    private static function isUnder(string $file, array $dirs): bool
-    {
-        foreach ($dirs as $dir) {
-            if (str_starts_with($file, $dir)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static function elapsedMs(int|float $start): float

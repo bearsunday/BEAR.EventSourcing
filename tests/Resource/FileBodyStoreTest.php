@@ -6,6 +6,10 @@ namespace BEAR\EventSourcing\Tests\Resource;
 
 use BEAR\EventSourcing\Resource\FileBodyStore;
 use BEAR\EventSourcing\Resource\BodyStoreException;
+use BEAR\EventSourcing\Tests\Fixture\Body\EntryList;
+use BEAR\EventSourcing\Tests\Fixture\Body\Kind;
+use BEAR\EventSourcing\Tests\Fixture\Body\Pager;
+use BEAR\EventSourcing\Tests\Fixture\Body\Serialized;
 use BEAR\EventSourcing\Tests\RemovesDirectoryTree;
 use BEAR\Resource\HalLinker;
 use BEAR\Resource\HalRenderer;
@@ -31,6 +35,7 @@ use function scandir;
 use function set_error_handler;
 use function sort;
 use function str_ends_with;
+use function str_replace;
 use function str_starts_with;
 use function strlen;
 use function substr;
@@ -148,6 +153,59 @@ final class FileBodyStoreTest extends TestCase
             file_get_contents(self::pathFromRef($bodyRef)),
         );
         $this->assertSame(['title' => 'index', 'nav' => $nested, 'child' => $lazy], $ro->body);
+
+        self::removeTree($dir);
+    }
+
+    public function testStoresTheNonPublicStateOfAnApplicationObject(): void
+    {
+        $dir = self::newBodyDir();
+        $runs = 0;
+        $child = new FakeResourceObject('app://self/child');
+        $lazy = new Request(
+            new CallbackInvoker(static function () use (&$runs, $child): FakeResourceObject {
+                $runs++;
+
+                return $child;
+            }),
+            $child,
+            Method::GET,
+        );
+        $ro = new FakeResourceObject(body: [
+            'list' => new EntryList([['id' => 1], $lazy], new Pager(1, 3)),
+            'serialized' => new Serialized(['child' => $lazy, 'kind' => Kind::News]),
+        ]);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertSame(0, $runs);
+        $marker = '{"$request":{"method":"GET","uri":"app://self/child","params":[]}}';
+        $this->assertSame(
+            '{"list":{"previous":null,"items":[{"id":1},' . $marker . '],'
+            . '"pager":{"current":1,"last":3},"service":null},"serialized":{"child":' . $marker . ',"kind":"News"}}',
+            file_get_contents(self::pathFromRef($bodyRef)),
+        );
+
+        self::removeTree($dir);
+    }
+
+    public function testNamesTheClassOfAnObjectItDoesNotOpenOrHasAlreadyEntered(): void
+    {
+        $dir = self::newBodyDir();
+        $list = new EntryList([], new Pager(1, 1), new HalLinker(new NullReverseLinker()));
+        $list->previous = $list;
+        $ro = new FakeResourceObject(body: ['list' => $list, 'callback' => static fn (): int => 1]);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertSame(
+            '{"list":{"previous":{"$object":"' . self::jsonClass(EntryList::class) . '"},"items":[],'
+            . '"pager":{"current":1,"last":1},"service":{"$object":"' . self::jsonClass(HalLinker::class) . '"}},'
+            . '"callback":{"$object":"Closure"}}',
+            file_get_contents(self::pathFromRef($bodyRef)),
+        );
 
         self::removeTree($dir);
     }
@@ -513,6 +571,17 @@ final class FileBodyStoreTest extends TestCase
         } finally {
             self::removeTree($dir);
         }
+    }
+
+    private static function requestOf(FakeResourceObject $ro): Request
+    {
+        return new Request(new CallbackInvoker(static fn (): FakeResourceObject => $ro), $ro, Method::GET);
+    }
+
+    /** @param class-string $class */
+    private static function jsonClass(string $class): string
+    {
+        return str_replace('\\', '\\\\', $class);
     }
 
     private static function newBodyDir(): string

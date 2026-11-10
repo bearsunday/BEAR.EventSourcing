@@ -6,24 +6,32 @@ namespace BEAR\EventSourcing\Resource;
 
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
+use BackedEnum;
+use DateTimeInterface;
 use FilesystemIterator;
 use JsonException;
+use JsonSerializable;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use ReflectionObject;
 use SplFileInfo;
 use UnexpectedValueException;
+use UnitEnum;
 
-use function array_map;
+use function array_key_exists;
 use function bin2hex;
 use function count;
 use function explode;
 use function file_exists;
 use function file_put_contents;
+use function get_mangled_object_vars;
+use function get_object_vars;
 use function gmdate;
 use function is_array;
 use function is_dir;
 use function is_file;
 use function is_link;
+use function is_object;
 use function json_encode;
 use function microtime;
 use function mkdir;
@@ -32,9 +40,12 @@ use function realpath;
 use function rmdir;
 use function round;
 use function sort;
+use function spl_object_id;
 use function sprintf;
 use function str_starts_with;
+use function strrpos;
 use function strtoupper;
+use function substr;
 use function trigger_error;
 use function trim;
 use function unlink;
@@ -54,6 +65,9 @@ use const SORT_STRING;
  *
  * A file holds the response body as JSON, never rendered: an embedded request
  * is written as a `{"$request": {method, uri, params}}` marker and never run.
+ * An object of the application is written with its non-public properties too;
+ * an object of an installed package with its public ones only. One with no
+ * property to write, or one already being written, becomes `{"$object": class}`.
  *
  * Construction writes nothing to disk — the first stored body creates a
  * fresh, uniquely named generation directory under `$dir` and marks it
@@ -97,6 +111,8 @@ final class FileBodyStore implements BodyStoreInterface
 
     private string|null $generationDir = null;
     private int $sequence = 0;
+    /** Null treats every object as one of an installed package */
+    private readonly InstalledPackageDirs|null $packageDirs;
 
     public function __construct(
         private readonly string $dir,
@@ -106,13 +122,15 @@ final class FileBodyStore implements BodyStoreInterface
         if ($this->keep < 1) {
             throw new BodyStoreException(sprintf('FileBodyStore keep must be at least 1, got %d.', $this->keep));
         }
+
+        $this->packageDirs = InstalledPackageDirs::find();
     }
 
     public function __invoke(AbstractRequest $request, ResourceObject $ro): string|null
     {
         // Encode before creating anything: a body that cannot be stored must not consume a $keep slot.
         try {
-            $body = json_encode(self::normalize($ro->body), self::JSON_FLAGS);
+            $body = json_encode($this->normalize($ro->body, []), self::JSON_FLAGS);
         } catch (JsonException $e) {
             throw new BodyStoreException(sprintf('Failed to encode body of %s: %s', $ro->uri, $e->getMessage()), 0, $e);
         }
@@ -130,9 +148,26 @@ final class FileBodyStore implements BodyStoreInterface
 
     /**
      * Never runs an AbstractRequest: json_encode() would, through its jsonSerialize().
+     *
+     * @param array<int, true> $path ids of the objects being written around $value
+     *
+     * @psalm-suppress MixedAssignment a body is untyped
      */
-    private static function normalize(mixed $value): mixed
+    private function normalize(mixed $value, array $path): mixed
     {
+        if (is_array($value)) {
+            $normalized = [];
+            foreach ($value as $key => $item) {
+                $normalized[$key] = $this->normalize($item, $path);
+            }
+
+            return $normalized;
+        }
+
+        if (! is_object($value) || $value instanceof DateTimeInterface) {
+            return $value;
+        }
+
         if ($value instanceof AbstractRequest) {
             $uri = $value->resourceObject->uri;
 
@@ -143,15 +178,54 @@ final class FileBodyStore implements BodyStoreInterface
             ]];
         }
 
+        if ($value instanceof UnitEnum) {
+            return $value instanceof BackedEnum ? $value->value : $value->name;
+        }
+
+        $id = spl_object_id($value);
+        if (isset($path[$id])) {
+            return ['$object' => $value::class];
+        }
+
+        $path[$id] = true;
         if ($value instanceof ResourceObject) {
-            return self::normalize($value->body);
+            return $this->normalize($value->body, $path);
         }
 
-        if (is_array($value)) {
-            return array_map(self::normalize(...), $value);
+        if ($value instanceof JsonSerializable) {
+            return $this->normalize($value->jsonSerialize(), $path);
         }
 
-        return $value;
+        $properties = $this->properties($value);
+
+        return $properties === [] ? ['$object' => $value::class] : $this->normalize($properties, $path);
+    }
+
+    /**
+     * Reads the state without calling the object: no getter, no __get().
+     *
+     * @return array<array-key, mixed>
+     *
+     * @psalm-suppress MixedAssignment
+     */
+    private function properties(object $object): array
+    {
+        $file = (new ReflectionObject($object))->getFileName();
+        if ($this->packageDirs === null || $file === false || $this->packageDirs->contains($file)) {
+            return get_object_vars($object);
+        }
+
+        $properties = [];
+        foreach (get_mangled_object_vars($object) as $name => $property) {
+            $name = (string) $name;
+            $marker = strrpos($name, "\0");
+            $plain = $marker === false ? $name : substr($name, $marker + 1);
+            if (! array_key_exists($plain, $properties)) {
+                $properties[$plain] = $property;
+            }
+        }
+
+        return $properties;
     }
 
     /**

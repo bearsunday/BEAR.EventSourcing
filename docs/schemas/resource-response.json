@@ -14,7 +14,7 @@
         "body_ref": {
             "type": "string",
             "minLength": 1,
-            "description": "Storage pointer to the externalized body: the resource body as JSON, never rendered, with an embedded request written as a {\"$request\": {method, uri, params}} marker. Stays in the log for inspection only."
+            "description": "Storage pointer to the externalized body: the resource body as JSON, never rendered, with an embedded request written as a {\"$request\": {method, uri, params}} marker and an object that is not opened, or is already being written, as {\"$object\": class}. Stays in the log for inspection only."
         },
         "exception": {
             "type": "object",
