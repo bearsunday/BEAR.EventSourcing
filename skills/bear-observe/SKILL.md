@@ -358,7 +358,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 | `#[Cacheable]` | `depends_on` + `save_value` / `save_view` と `save_etag` の `tags` に子の URI タグ | close `cache_miss` — 値ごと作り直す |
 | donut のデータ依存 — `onGet()` が読んだ子(`#[CacheableResponse]` / `#[DonutCache]` 共通) | `depends_on`(`put_donut` の**前**、`DonutRepository::classifyMaterials()` が記録)+ `save_donut`(テンプレート)の `tags` に子の URI タグ。`#[CacheableResponse]` はさらに `save_donut_view` / `save_etag` にも | close `cache_miss` — **テンプレートごと**作り直す。`#[Cacheable]` と同じ形で、`refresh_donut` は出ない |
 | donut の描画中の `depends()` — テンプレートのヘルパーなどが `CacheDependencyInterface::depends($page, $child)` を自分で呼ぶ | `depends_on`(`put_donut` の**後**、`save_*` の**前**)+ 上と同じ `tags` | 上と同じ — close `cache_miss` |
-| donut の穴 — テンプレートだけが読み、`onGet()` は読まない | `dependency_skipped` を記録し、`save_donut` には**乗らない**。子のタグは `#[CacheableResponse]` なら `save_donut_view` / `save_etag` に、`#[DonutCache]` なら応答の `Surrogate-Key`(`cdn_headers` の `surrogateKeys`)にだけ乗る | close は `cache_hit{layer: donut-view}` のまま。中に `refresh_donut` と子の入れ子 `get`(`cache_miss`)が現れる。**`refresh_donut` が依存の証拠** |
+| donut の穴 — テンプレートだけが読み、`onGet()` は読まない | `dependency_skipped` を記録し、`save_donut` には**乗らない**。子のタグは `#[CacheableResponse]` なら `save_donut_view` / `save_etag` に、`#[DonutCache]` なら応答の `Surrogate-Key`(`cdn_headers` の `surrogateKeys`)にだけ乗る | close は `cache_hit{layer: donut-view}` のまま。中に `refresh_donut` と子の入れ子 `get` が現れる。`refresh_donut` は `#[DonutCache]` なら warm な read でも毎回出るので証拠にならない。**子の入れ子 `get` が `cache_miss` で閉じ、子の `save_*` の `tags` と `invalidate` の `tags` が交わり、子の `ttl` が切れていない**ことが証拠 |
 
 `#[DonutCache]` の穴について「依存が無い」と欠陥として報告するのは誤り。穴はテンプレートに入らないので
 落とすものが無く、毎回組み直すのが設計判断だ。同じ `#[DonutCache]` でも、データ依存と描画中の `depends()` の
@@ -374,7 +374,8 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 2. 子の URI を purge する(`QueryRepositoryInterface::purge(new Uri(...))`)
 3. 親をもう一度読む。`#[Cacheable]` と、データ依存または描画中の `depends()` の donut 親は
    **`cache_miss` で閉じれば依存は生きている**。穴だけは**閉じる型が `cache_hit` のまま**で、
-   `refresh_donut` と子の入れ子 `get` があれば生きている
+   子の入れ子 `get` が `cache_miss` で閉じ、子の `save_*` の `tags` が `invalidate` の `tags` と交わり、
+   子の `ttl` が切れていなければ purge は穴に届いている(`refresh_donut` だけでは足りない)
 
 `#[Cacheable]` では `depends_on` が 1 の裏付け、2→3 が実証。効果だけ(値が変わった)で判定すると、
 TTL で落ちただけの場合と区別できない。
@@ -382,22 +383,23 @@ TTL で落ちただけの場合と区別できない。
 **入れ子の `get` スコープは依存の証拠にならない。** 親のスコープの中に子のスコープが現れるのは、
 親の実行中に子を読んだという事実だけを言う。`ResourceInterface` を注入して手で読んでも同じ形になり、
 `depends_on` もタグ伝播も起きない。見るのは入れ子ではなく、`#[Cacheable]` と、データ依存または描画中の
-`depends()` の donut 親なら `depends_on` と `save_donut` を含む `tags`、穴なら `tags` と `refresh_donut`。
+`depends()` の donut 親なら `depends_on` と `save_donut` を含む `tags`、穴なら子の入れ子 `get` の close と、
+子の `tags` と `invalidate` の交わり、子の `ttl`。
 
 **`#[Embed]` を付けただけでは足りない。** データ依存を登録するのは `#[Cacheable]` では
 `QueryRepository::setCacheDependency()`、donut では `DonutRepository::classifyMaterials()`(`put_donut`
 の前に `$ro->body` を走査する)で、どちらも保存時に **`$ro->body` に `AbstractRequest` のインスタンスが
 残っているものだけ**を辿る。埋め込んだ値をスカラーに解決して body を作り直すと、その時点で Request は
-body から消えており、宣言がどれでも依存は登録されない。body に Request(または ResourceObject)を残すか、
-announce 側で解決する。描画中の `depends()` は自動では登録されず、アプリ自身がテンプレートの
-ヘルパーなどから `CacheDependencyInterface::depends($page, $child)` を呼んで初めて記録される。穴は
-`ResourceDonut::create()` が `DonutRequest` でプレースホルダに包んで遅延実行するだけで、依存としては
-登録されない。
+body から消えており、宣言がどれでも依存は登録されない。body に Request を残すか、announce 側で解決する。
+`ResourceObject` を body に置いても辿られないので、その子は `CacheDependencyInterface::depends($page, $child)`
+を明示的に呼ぶ。描画中の `depends()` は自動では登録されず、アプリ自身がテンプレートのヘルパーなどから
+`CacheDependencyInterface::depends($page, $child)` を呼んで初めて記録される。穴は `ResourceDonut::create()`
+が `DonutRequest` でプレースホルダに包んで遅延実行するだけで、依存としては登録されない。
 
-`#[Cacheable]` にはもう 1 つ条件がある。`setCacheDependency()` は子を走らせたあと、子に `ETag` ヘッダが
-無ければ `continue` する — 子自身にキャッシュ宣言が無く ETag を持たなければ、Request が残っていても
-`depends_on` は出ない。donut の `classifyMaterials()` も同じで、子に `ETag` も `Surrogate-Key` も無ければ
-`dependency_skipped` を記録して `continue` する。その条件を満たしたデータ依存の子のタグは
+もう 1 つ条件がある。`#[Cacheable]` の `setCacheDependency()` は子を走らせたあと、子に `ETag` も
+`Surrogate-Key` も無ければ `dependency_skipped` を記録して `continue` する — どちらか一方があれば足りるが、
+子自身にキャッシュ宣言が無くどちらも持たなければ、Request が残っていても `depends_on` は出ない。donut の
+`classifyMaterials()` も同じ条件で `continue` する。その条件を満たしたデータ依存の子のタグは
 `#[CacheableResponse]` でも `#[DonutCache]` でも `save_donut`(テンプレート)に残り、`#[CacheableResponse]`
 はさらに `save_etag` / `save_donut_view` にも残す。店の `save_donut` に残らないのは穴のタグだけで、
 `#[DonutCache]` の穴は応答の `Surrogate-Key` に載せて終わる。
@@ -423,7 +425,7 @@ announce 側で解決する。描画中の `depends()` は自動では登録さ�
 |---|---|---|---|
 | 期待した `get` スコープが無い(miss すら出ない。木全体が空とは限らず、その 1 本だけ欠けることがある) | `final`(`ReflectionClass::isFinal()` が true)、属性そのものが無い、文脈が店を束縛していない | sink が arm を拒否 | 織られたか(`get_class`)→ 真なら `isFinal()` と属性の有無で二分 / `error_log` |
 | 期待した `save_*` が無い | `put_skipped` の `reason` がアプリ由来(自前 ETag・非 200) | `put_skipped` も無いのに保存されない | `put_skipped` の有無と `reason` |
-| `save_*` の `tags` に子が無い | 値をコピーしている(`#[Embed]` でない)、`#[Cacheable]` の子が `ETag` を持たない(子自身にキャッシュ宣言が無い)、donut のデータ依存の子が `ETag` も `Surrogate-Key` も持たない、または子が穴で `onGet()` が読んでいない(`save_donut` に乗らないのが仕様) | 伝播の欠陥 — `#[Cacheable]` で `depends_on` はあるのにタグが乗らない、donut のデータ依存または描画中の `depends()` で `depends_on` はあるのに `save_donut` にタグが乗らない(`CacheDependency::depends()` が親の `Surrogate-Key` に子タグを積む) | まず親と子の関係。`#[Cacheable]`、またはデータ依存か描画中の `depends()` の donut 親なら `depends_on` の有無と `save_donut` の `tags`。穴なら `save_donut` には最初から乗らない仕様なので、`cdn_headers` の `surrogateKeys` と(`#[CacheableResponse]` のみ)`save_donut_view` / `save_etag` の `tags` を並べる: `surrogateKeys` にあって `tags` に無い = ライブラリ側、どちらにも無い = アプリ側(Request が body に残っていない) |
+| `save_*` の `tags` に子が無い | 値をコピーしている(`#[Embed]` でない)、`#[Cacheable]` または donut のデータ依存の子が `ETag` も `Surrogate-Key` も持たない(子自身にキャッシュ宣言が無い。`dependency_skipped` が出る)、または子が穴で `onGet()` が読んでいない(`save_donut` に乗らないのが仕様) | 伝播の欠陥 — `#[Cacheable]` で `depends_on` はあるのにタグが乗らない、donut のデータ依存または描画中の `depends()` で `depends_on` はあるのに `save_donut` にタグが乗らない(`CacheDependency::depends()` が親の `Surrogate-Key` に子タグを積む) | まず親と子の関係。`#[Cacheable]` なら `depends_on` の有無と `save_value` / `save_view`(と `save_etag`)の `tags`。データ依存か描画中の `depends()` の donut 親なら `depends_on` の有無と `save_donut` の `tags`。穴なら `save_donut` には最初から乗らない仕様なので、`cdn_headers` の `surrogateKeys` と(`#[CacheableResponse]` のみ)`save_donut_view` / `save_etag` の `tags` を並べる: `surrogateKeys` にあって `tags` に無い = ライブラリ側、どちらにも無い = アプリ側(Request が body に残っていない) |
 | 書き込みが `invalidate` を出さない | 書き込み経路に `#[Refresh]`/`#[Purge]` が無い | 属性はあるのにマッチャがそのメソッドを拾わない | 織られたオブジェクトの `bindings` にそのメソッドがあるか |
 | `invalidate` は出るが親が hit のまま | タグの選び方が違う(URI タグと共有サロゲートキーの混同) | タグ集合の交差計算の欠陥 | 2 つのタグ集合を並べて交わりを見る |
 | `invalidate` のタグがどのリソースの宣言とも一致しない | **手書きの `invalidateTags()` が定数からドリフトしている** — リソースは `SURROGATE_KEY` 定数を宣言し、無効化側は生文字列を持ったまま取り残された | — | `invalidate` の `tags` を、リソースが宣言する定数の実値と 1 文字ずつ突き合わせる。docblock だけ正しいことがある |
