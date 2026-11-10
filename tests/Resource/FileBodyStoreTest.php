@@ -7,11 +7,15 @@ namespace BEAR\EventSourcing\Tests\Resource;
 use BEAR\EventSourcing\Resource\FileBodyStore;
 use BEAR\EventSourcing\Resource\BodyStoreException;
 use BEAR\EventSourcing\Tests\RemovesDirectoryTree;
+use BEAR\Resource\HalLinker;
+use BEAR\Resource\HalRenderer;
 use BEAR\Resource\JsonRenderer;
 use BEAR\Resource\Method;
+use BEAR\Resource\NullReverseLinker;
 use BEAR\Resource\Request;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use stdClass;
 
 use function assert;
 use function chmod;
@@ -21,6 +25,7 @@ use function file_get_contents;
 use function file_put_contents;
 use function getmyuid;
 use function is_dir;
+use function json_decode;
 use function mkdir;
 use function range;
 use function restore_error_handler;
@@ -85,6 +90,36 @@ final class FileBodyStoreTest extends TestCase
         $this->assertTrue(str_ends_with($second, '/000002.json'));
         // Same generation directory: both files sit next to each other.
         $this->assertSame(dirname(self::pathFromRef($first)), dirname(self::pathFromRef($second)));
+
+        self::removeTree($dir);
+    }
+
+    /**
+     * Storing renders a copy: the caller keeps reading the response the renderer would rewrite
+     */
+    public function testStoringLeavesTheLiveResponseAsTheCallerReadsIt(): void
+    {
+        $dir = self::newBodyDir();
+        $body = new stdClass();
+        $body->id = 1;
+        $ro = new FakeResourceObject(body: $body);
+        $ro->setRenderer(new HalRenderer(new HalLinker(new NullReverseLinker())));
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
+
+        $bodyRef = (new FileBodyStore($dir))($request, $ro);
+
+        $this->assertNotNull($bodyRef);
+        $stored = json_decode((string) file_get_contents(self::pathFromRef($bodyRef)), true);
+        $this->assertIsArray($stored);
+        $this->assertSame(1, $stored['id']);
+        $this->assertArrayHasKey('_links', $stored, 'the stored body is the rendered representation');
+
+        $this->assertSame($body, $ro->body, 'HalRenderer casts an object body to an array');
+        $this->assertArrayNotHasKey('Content-Type', $ro->headers, 'HalRenderer sets its media type');
 
         self::removeTree($dir);
     }

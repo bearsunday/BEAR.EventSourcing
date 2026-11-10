@@ -99,14 +99,9 @@ final class FileBodyStore implements BodyStoreInterface
         // no generation directory consuming a $keep slot for a body never stored.
         // toString(), not (string) $ro: the latter swallows a render failure and
         // returns '', which would write an empty file behind a valid body_ref.
-        // Restore the view afterwards so observing the body does not freeze the
-        // response representation for later stages of the request.
-        $priorView = $ro->view;
-        try {
-            $body = $ro->toString();
-        } finally {
-            $ro->view = $priorView;
-        }
+        // Render a copy: a renderer may rewrite the body, headers or view (HalRenderer
+        // casts an object body to an array), and the caller keeps reading the live response.
+        $body = (clone $ro)->toString();
 
         $generationDir = $this->generationDir ??= self::createGeneration($this->dir, $this->keep);
         $file = $generationDir . DIRECTORY_SEPARATOR . sprintf('%06d.json', ++$this->sequence);
