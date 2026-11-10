@@ -25,7 +25,6 @@ use function explode;
 use function file_exists;
 use function file_put_contents;
 use function get_mangled_object_vars;
-use function get_object_vars;
 use function gmdate;
 use function is_array;
 use function is_dir;
@@ -202,7 +201,8 @@ final class FileBodyStore implements BodyStoreInterface
     }
 
     /**
-     * Reads the state without calling the object: no getter, no __get().
+     * Reads the state without calling the object: no getter, no __get(), no property hook, and a
+     * lazy object is left uninitialized.
      *
      * @return array<array-key, mixed>
      *
@@ -211,14 +211,16 @@ final class FileBodyStore implements BodyStoreInterface
     private function properties(object $object): array
     {
         $file = (new ReflectionObject($object))->getFileName();
-        if ($this->packageDirs === null || $file === false || $this->packageDirs->contains($file)) {
-            return get_object_vars($object);
-        }
+        $ofApplication = $this->packageDirs !== null && $file !== false && ! $this->packageDirs->contains($file);
 
         $properties = [];
         foreach (get_mangled_object_vars($object) as $name => $property) {
             $name = (string) $name;
             $marker = strrpos($name, "\0");
+            if ($marker !== false && ! $ofApplication) {
+                continue;
+            }
+
             $plain = $marker === false ? $name : substr($name, $marker + 1);
             if (! array_key_exists($plain, $properties)) {
                 $properties[$plain] = $property;

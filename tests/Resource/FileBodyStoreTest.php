@@ -16,7 +16,10 @@ use BEAR\Resource\HalRenderer;
 use BEAR\Resource\Method;
 use BEAR\Resource\NullReverseLinker;
 use BEAR\Resource\Request;
+use Composer\InstalledVersions;
+use PHPUnit\Framework\Attributes\RequiresPhp;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use stdClass;
 
 use function assert;
@@ -25,6 +28,7 @@ use function dirname;
 use function file_exists;
 use function file_get_contents;
 use function file_put_contents;
+use function filesize;
 use function getmyuid;
 use function is_dir;
 use function mkdir;
@@ -35,6 +39,7 @@ use function scandir;
 use function set_error_handler;
 use function sort;
 use function str_ends_with;
+use function str_contains;
 use function str_replace;
 use function str_starts_with;
 use function strlen;
@@ -204,6 +209,58 @@ final class FileBodyStoreTest extends TestCase
             '{"list":{"previous":{"$object":"' . self::jsonClass(EntryList::class) . '"},"items":[],'
             . '"pager":{"current":1,"last":1},"service":{"$object":"' . self::jsonClass(HalLinker::class) . '"}},'
             . '"callback":{"$object":"Closure"}}',
+            file_get_contents(self::pathFromRef($bodyRef)),
+        );
+
+        self::removeTree($dir);
+    }
+
+    /** @psalm-suppress UndefinedMethod newLazyGhost() is PHP 8.4 */
+    #[RequiresPhp('>= 8.4')]
+    public function testReadsAPackageObjectWithoutRunningItsHooksOrInitializingIt(): void
+    {
+        $dir = self::newBodyDir();
+        $class = 'AcmeHooked\\Hooked';
+        $packageDir = $dir . '/vendor/acme/hooked';
+        mkdir($packageDir, 0777, true);
+        file_put_contents($packageDir . '/Hooked.php', <<<'PHP'
+            <?php
+            namespace AcmeHooked;
+            final class Hooked
+            {
+                public int $count { get { throw new \LogicException('hook ran'); } set => $value; }
+                private string $secret = 'hidden';
+                public function __construct() { $this->count = 1; }
+            }
+            PHP);
+        $installed = InstalledVersions::getAllRawData()[0];
+        InstalledVersions::reload([
+            'root' => $installed['root'],
+            'versions' => ['acme/hooked' => ['install_path' => $packageDir, 'dev_requirement' => false]],
+        ]);
+        try {
+            /** @psalm-suppress UnresolvableInclude */
+            require $packageDir . '/Hooked.php';
+            $store = new FileBodyStore($dir . '/bodies');
+        } finally {
+            InstalledVersions::reload($installed);
+        }
+
+        $initialized = 0;
+        /** @var class-string $class */
+        $reflection = new ReflectionClass($class);
+        /** @var object $ghost */
+        $ghost = $reflection->newLazyGhost(static function () use (&$initialized): void {
+            $initialized++;
+        });
+        $ro = new FakeResourceObject(body: ['hooked' => $reflection->newInstance(), 'ghost' => $ghost]);
+
+        $bodyRef = $store(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertSame(0, $initialized);
+        $this->assertSame(
+            '{"hooked":{"count":1},"ghost":{"$object":"AcmeHooked\\\\Hooked"}}',
             file_get_contents(self::pathFromRef($bodyRef)),
         );
 
