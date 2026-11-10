@@ -163,6 +163,29 @@ final class FileBodyStoreTest extends TestCase
         self::removeTree($dir);
     }
 
+    public function testStoresTheParamsOfAnUnrunRequestTheWayItStoresABody(): void
+    {
+        $dir = self::newBodyDir();
+        $child = new FakeResourceObject('app://self/child');
+        $lazy = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $child),
+            $child,
+            Method::GET,
+            ['kind' => Kind::News],
+        );
+        $ro = new FakeResourceObject('page://self/index', ['child' => $lazy]);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertSame(
+            '{"child":{"$request":{"method":"GET","uri":"app://self/child","params":{"kind":"News"}}}}',
+            file_get_contents(self::pathFromRef($bodyRef)),
+        );
+
+        self::removeTree($dir);
+    }
+
     public function testStoresTheNonPublicStateOfAnApplicationObject(): void
     {
         $dir = self::newBodyDir();

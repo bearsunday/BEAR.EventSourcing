@@ -192,7 +192,7 @@ final class FileBodyStore implements BodyStoreInterface
             return ['$request' => [
                 'method' => strtoupper($value->method->value),
                 'uri' => "{$uri->scheme}://{$uri->host}{$uri->path}",
-                'params' => $value->query,
+                'params' => $this->normalize($value->query, $path, $depth + 2),
             ]];
         }
 
