@@ -17,6 +17,7 @@ use BEAR\Resource\Method;
 use BEAR\Resource\NullReverseLinker;
 use BEAR\Resource\Request;
 use Composer\InstalledVersions;
+use JsonSerializable;
 use PHPUnit\Framework\Attributes\RequiresPhp;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -321,6 +322,28 @@ final class FileBodyStoreTest extends TestCase
         $stored = (string) file_get_contents(self::pathFromRef($bodyRef));
         $this->assertStringContainsString('"id":"innermost"', $stored);
         $this->assertStringNotContainsString('$truncated', $stored);
+
+        self::removeTree($dir);
+    }
+
+    public function testStopsAJsonSerializeThatReturnsANewInstanceEachTime(): void
+    {
+        $dir = self::newBodyDir();
+        $endless = new class implements JsonSerializable {
+            public function jsonSerialize(): mixed
+            {
+                return new self();
+            }
+        };
+        $ro = new FakeResourceObject(body: ['endless' => $endless]);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertStringContainsString(
+            '{"$truncated":"depth"}',
+            (string) file_get_contents(self::pathFromRef($bodyRef)),
+        );
 
         self::removeTree($dir);
     }
