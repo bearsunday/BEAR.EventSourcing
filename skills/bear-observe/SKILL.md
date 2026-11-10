@@ -302,7 +302,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 | purge は何を消したか | `invalidate` の `tags` `roPool` `etagPool` `cdn`。`cdn` は `purged`/`failed`/`skipped` の三値、fail-closed |
 | miss は空だったのか、店が読めなかったのか | 同じスコープに `cache_error{operation: read}` があれば縮退。無ければコールド |
 | 誰が書いたか | `command` スコープの `source`。直接呼び出しは `manual_store` / `manual_purge` / `manual_invalidate` |
-| 依存の伝播 | `save_*` の `tags` ↔ `invalidate` の `tags` の突き合わせ。`depends_on` は `#[Cacheable]` の親だけでなく、donut の親もデータ依存の子と描画中の `depends()` 呼び出しについて出す。`ETag` も `Surrogate-Key` も持たない子には代わりに `dependency_skipped` を出し、`reason` は `no_body`(donut ではおおむね穴)か `no_etag_or_surrogate_key`(タグの無いデータ依存の子)(§4) |
+| 依存の伝播 | `save_*` の `tags` ↔ `invalidate` の `tags` の突き合わせ。`depends_on` は `#[Cacheable]` の親だけでなく、donut の親もデータ依存の子と描画中の `depends()` 呼び出しについて出す。`ETag` も `Surrogate-Key` も持たない子には代わりに `dependency_skipped` を出し、`reason` は子の `$body` で決まり、`null` なら `no_body`(donut ではおおむね穴)、値があれば `no_etag_or_surrogate_key`(タグの無いデータ依存の子か、`$body` に既定値を持つ穴)(§4) |
 | 何回リソースが走ったか | `resource_request` の数。N+1 は同じ URI の兄弟が並ぶ形で出る |
 | どこで時間を使ったか | `durationMs`。親から子を引いた残りがその層の自前のコスト |
 | 何を返したか | `body_ref` のファイル(`var/log/<context>/events/bodies/<generation>/`。`<generation>` は初回保存時に作られるディレクトリ) |
@@ -328,7 +328,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 | 宣言 | コールド read | 2 回目 | 自分への書き込み |
 |---|---|---|---|
 | `#[Cacheable]` | close `cache_miss`。`cache_policy{expiry, resolvedTtl}` → `save_value` → `save_etag` | close `cache_hit`、イベント 0 件 | `command{source: CommandInterceptor}` に `purge` → `invalidate`、続いて**入れ子の `get` で再生成**(`RefreshSameCommand`)。close は `command_result` |
-| `#[CacheableResponse]` | 途中に event `cache_miss{layer: donut}`(テンプレート未ヒット)、close は `cache_miss{layer: donut-view}`。データ依存の子があれば `depends_on`(`put_donut` の前)、描画中の `depends()` 呼び出しがあれば同じく `depends_on`(`put_donut` の後)。`put_donut` → `cdn_headers` → **`save_donut_view`** → `save_etag` → `save_donut`(全体を保存し ETag を持つ = 304 が返る) | close `cache_hit{layer: donut-view}`、イベント 0 件。穴が無効化された回だけ `refresh_donut` →(内容が変われば先に `save_donut`)→ `save_donut_view` → `save_etag` | 属性が無くても `command{source: DonutCommandInterceptor}` に `purge` → `invalidate`、続いて入れ子の `get` で再生成(close `cache_miss{layer: donut-view}`)。close は `command_result`、次の read は `cache_hit{layer: donut-view}`。`#[RefreshCache]` も同じ形。`#[Refresh]` / `#[Purge]` はその後に `command{source: RefreshInterceptor}` をもう 1 つ出し、`#[Refresh]` は purge して再生成する(次の read は `cache_hit`)、`#[Purge]` は purge だけ(次の read は `cache_miss{layer: donut-view}`)。**1.16.2 以前は `#[RefreshCache]` だけ書き込みが実行されない**(下の注) |
+| `#[CacheableResponse]` | 途中に event `cache_miss{layer: donut}`(テンプレート未ヒット)、close は `cache_miss{layer: donut-view}`。データ依存の子があれば `depends_on`(`put_donut` の前)、描画中の `depends()` 呼び出しがあれば同じく `depends_on`(`put_donut` の後)。`put_donut` → `cdn_headers` → **`save_donut_view`** → `save_etag` → `save_donut`(全体を保存し ETag を持つ = 304 が返る)。`save_etag` は 200 の応答で `save_donut_view` が `saved: true` のときだけ出る(204・3xx は ETag を持たない) | close `cache_hit{layer: donut-view}`、イベント 0 件。穴が無効化された回だけ `refresh_donut` →(内容が変われば先に `save_donut`)→ `save_donut_view` → `save_etag`(`save_etag` の条件は左と同じ) | 属性が無くても `command{source: DonutCommandInterceptor}` に `purge` → `invalidate`、続いて入れ子の `get` で再生成(close `cache_miss{layer: donut-view}`)。close は `command_result`、次の read は `cache_hit{layer: donut-view}`。`#[RefreshCache]` も同じ形。ただし `onPost` の引数が `onGet` の必須の引数を満たさないときは、この `command` に `cache_error{operation: write}` だけが出て purge も再生成も起きず、書き込みが成功しても既存のページが残る(次の read は `cache_hit{layer: donut-view}`)。`#[Refresh]` / `#[Purge]` はその後に `command{source: RefreshInterceptor}` をもう 1 つ出し、`#[Refresh]` は purge して再生成する(次の read は `cache_hit`)、`#[Purge]` は `uri` の先を purge するだけ。次の read が `cache_miss{layer: donut-view}` になるのは、その `invalidate` の `tags` がこのページのタグと交わるとき(`uri` がこのページを指すなど)で、交わらなければ自動の再生成が残り `cache_hit{layer: donut-view}`。**1.16.2 以前は `#[RefreshCache]` だけ書き込みが実行されない**(下の注) |
 | `#[DonutCache]` | close `cache_miss`。`put_donut` → `cdn_headers` → `save_donut`。**`save_etag` は出ない** — 全体を保存しないので ETag も無く、304 は返らない | close `cache_hit` + `refresh_donut` → `put_skipped{not-cacheable}`。毎回 donut を組み直すのが正常 | 書き込み側に `#[Purge]`/`#[Refresh]`/`#[RefreshCache]` を書かないと、`command` も `invalidate` も出ない |
 | `#[Refresh]` / `#[Purge]` | — | — | `command` スコープに `purge` + `invalidate`。`pre_write_cleanup` 隣接**だけ**なら誰にも告げていない |
 | `#[HttpCache]` | `cdn_headers` に literal ヘッダ | 同じ | — |
@@ -358,13 +358,17 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 | `#[Cacheable]` | `depends_on` + `save_value` / `save_view` と `save_etag` の `tags` に子の URI タグ | close `cache_miss` — 値ごと作り直す |
 | donut のデータ依存 — `onGet()` が読んだ子(`#[CacheableResponse]` / `#[DonutCache]` 共通) | `depends_on`(`put_donut` の**前**。`DonutRepository::classifyMaterials()` が呼ぶ `CacheDependency::depends()` が記録)+ `save_donut`(テンプレート)の `tags` に子の URI タグ。`#[CacheableResponse]` はさらに `save_donut_view` / `save_etag` にも | close `cache_miss` — **テンプレートごと**作り直す。`#[Cacheable]` と同じ形で、`refresh_donut` は出ない |
 | donut の描画中の `depends()` — テンプレートのヘルパーなどが、注入した `CacheDependencyInterface` の `depends($page, $child)` を自分で呼ぶ | `depends_on`(`put_donut` の**後**、`save_*` の**前**)+ 上と同じ `tags` | 上と同じ — close `cache_miss` |
-| donut の穴 — テンプレートだけが読み、`onGet()` は読まない(子のクラスが既定の `ETag` / `Surrogate-Key` ヘッダを持つときは表のすぐ下) | `dependency_skipped{reason: no_body}` を記録し、`save_donut` には**乗らない**。子のタグは `#[CacheableResponse]` なら `save_donut_view` / `save_etag` に、`#[DonutCache]` なら応答の `Surrogate-Key`(`cdn_headers` の `surrogateKeys`)にだけ乗る | close は `cache_hit{layer: donut-view}` のまま。中に `refresh_donut` と子の入れ子 `get` が現れる。`refresh_donut` は `#[DonutCache]` なら warm な read でも毎回出るので証拠にならない。子の入れ子 `get` が `cache_miss` で閉じたうえで、手順 3 の条件がそろえば証拠になる |
+| donut の穴 — テンプレートだけが読み、`onGet()` は読まない(子のクラスが既定の `ETag` / `Surrogate-Key` ヘッダを持つときは表のすぐ下) | `dependency_skipped` を記録し(`reason` は `no_body`。`$body` に既定値を持つ子なら `no_etag_or_surrogate_key`、表のすぐ下)、`save_donut` には**乗らない**。子のタグは `#[CacheableResponse]` なら `save_donut_view` / `save_etag` に、`#[DonutCache]` なら応答の `Surrogate-Key`(`cdn_headers` の `surrogateKeys`)にだけ乗る | close は `cache_hit{layer: donut-view}` のまま。中に `refresh_donut` と子の入れ子 `get` が現れる。`refresh_donut` は `#[DonutCache]` なら warm な read でも毎回出るので証拠にならない。子の入れ子 `get` が `cache_miss` で閉じたうえで、手順 3 の条件がそろえば証拠になる |
 
 テンプレートだけが読む子でも、子のクラスが既定値として `ETag` か `Surrogate-Key` のヘッダを持っていれば、
 穴ではなくデータ依存の行の形になる。`classifyMaterials()` は `put_donut` の前に、その時点で子が持つヘッダで
 分類する。まだ走っていない穴の子が持つのはクラスの既定値だけで、それがあればデータ依存に数えられる。
 `depends_on` が `put_donut` の前に出て、`save_donut` の `tags` に子のタグが乗り、子を purge した後の親は
 `cache_miss` で閉じる。
+
+`dependency_skipped` の `reason` も、まだ走っていない子の `$body`(クラスの既定値)で決まる。既定値が `null` なら
+`no_body`、値があれば `no_etag_or_surrogate_key` になる。どちらでも穴の形は変わらず、`save_donut` に乗らないし、
+子を purge した後の親は `cache_hit{layer: donut-view}` で閉じる。
 
 `#[DonutCache]` の穴について「依存が無い」と欠陥として報告するのは誤り。穴はテンプレートに入らないので
 落とすものが無く、毎回組み直すのが設計判断だ。同じ `#[DonutCache]` でも、データ依存と描画中の `depends()` の
@@ -386,7 +390,9 @@ $log = $logger->flush();                    // その場で受け取る(以降�
    - 1 の子の `save_*` が `saved: true` で、その `tags` が 2 の `invalidate` の `tags` と交わる
    - 2 の `invalidate` の `roPool` が `invalidated`(`failed` ではない)
    - 3 の子の `get` スコープに `cache_error{operation: read}` が無い(あれば店を読めなかっただけ)
-   - 子の `requestedTtl` が `0` / `null`(期限を求めていない)か、1 から 3 までの経過より長い
+   - 子が実際に持つ寿命が、1 の保存から 3 の入れ子の `get` までの経過より長い。`requestedTtl` が `0` / `null`
+     でも期限なしとは限らない — QueryRepository は期限を付けず、pool の既定の寿命(Symfony の adapter の
+     `defaultLifetime`)が効く。既定が `0` なら期限なし
 
 `#[Cacheable]` では `depends_on` が 1 の裏付け、2→3 が実証。効果だけ(値が変わった)で判定すると、
 TTL で落ちただけの場合と区別できない。
@@ -436,7 +442,7 @@ body から消えており、宣言がどれでも依存は登録されない。
 |---|---|---|---|
 | 期待した `get` スコープが無い(miss すら出ない。木全体が空とは限らず、その 1 本だけ欠けることがある) | `final`(`ReflectionClass::isFinal()` が true)、属性そのものが無い、文脈が店を束縛していない | sink が arm を拒否 | 織られたか(`get_class`)→ 真なら `isFinal()` と属性の有無で二分 / `error_log` |
 | 期待した `save_*` が無い | `put_skipped` の `reason` がアプリ由来(自前 ETag・非 200) | `put_skipped` も無いのに保存されない | `put_skipped` の有無と `reason` |
-| `save_*` の `tags` に子が無い | 値をコピーしている(`#[Embed]` でない)、`#[Cacheable]` または donut のデータ依存の子が `ETag` も `Surrogate-Key` も持たない(子自身にキャッシュ宣言が無い。`dependency_skipped{reason: no_etag_or_surrogate_key}` が出る)、または子が穴で `onGet()` が読んでいない(`dependency_skipped{reason: no_body}`。`save_donut` に乗らないのが仕様) | 伝播の欠陥 — `#[Cacheable]` で `depends_on` はあるのにタグが乗らない、donut のデータ依存または描画中の `depends()` で `depends_on` はあるのに `save_donut` にタグが乗らない(`CacheDependency::depends()` が親の `Surrogate-Key` に子タグを積む) | まず親と子の関係。`#[Cacheable]` なら `depends_on` の有無と `save_value` / `save_view`(と `save_etag`)の `tags`。データ依存か描画中の `depends()` の donut 親なら `depends_on` の有無と `save_donut` の `tags`。穴なら `save_donut` には最初から乗らない仕様なので、`cdn_headers` の `surrogateKeys` と(`#[CacheableResponse]` のみ)`save_donut_view` / `save_etag` の `tags` を並べる: `surrogateKeys` にあって `tags` に無い = ライブラリ側、どちらにも無い = アプリ側(Request が body に残っていない) |
+| `save_*` の `tags` に子が無い | 値をコピーしている(`#[Embed]` でない)、`#[Cacheable]` または donut のデータ依存の子が `ETag` も `Surrogate-Key` も持たない(子自身にキャッシュ宣言が無い。`dependency_skipped{reason: no_etag_or_surrogate_key}` が出る)、または子が穴で `onGet()` が読んでいない(`dependency_skipped` の `reason` は `no_body`、`$body` に既定値を持つ子なら `no_etag_or_surrogate_key`。`save_donut` に乗らないのが仕様) | 伝播の欠陥 — `#[Cacheable]` で `depends_on` はあるのにタグが乗らない、donut のデータ依存または描画中の `depends()` で `depends_on` はあるのに `save_donut` にタグが乗らない(`CacheDependency::depends()` が親の `Surrogate-Key` に子タグを積む) | まず親と子の関係。`#[Cacheable]` なら `depends_on` の有無と `save_value` / `save_view`(と `save_etag`)の `tags`。データ依存か描画中の `depends()` の donut 親なら `depends_on` の有無と `save_donut` の `tags`。穴なら `save_donut` には最初から乗らない仕様なので、`cdn_headers` の `surrogateKeys` と(`#[CacheableResponse]` のみ)`save_donut_view` / `save_etag` の `tags` を並べる: `surrogateKeys` にあって `tags` に無い = ライブラリ側、どちらにも無い = アプリ側(Request が body に残っていない) |
 | 書き込みが `invalidate` を出さない | 書き込み経路に `#[Refresh]`/`#[Purge]` が無い | 属性はあるのにマッチャがそのメソッドを拾わない | 織られたオブジェクトの `bindings` にそのメソッドがあるか |
 | `invalidate` は出るが親が hit のまま(子が穴なら正常。§4 の手順 3 で見る) | タグの選び方が違う(URI タグと共有サロゲートキーの混同) | タグ集合の交差計算の欠陥 | 2 つのタグ集合を並べて交わりを見る |
 | `invalidate` のタグがどのリソースの宣言とも一致しない | **手書きの `invalidateTags()` が定数からドリフトしている** — リソースは `SURROGATE_KEY` 定数を宣言し、無効化側は生文字列を持ったまま取り残された | — | `invalidate` の `tags` を、リソースが宣言する定数の実値と 1 文字ずつ突き合わせる。docblock だけ正しいことがある |
