@@ -231,7 +231,7 @@ composer tree
 動かしているなら、`composer tree` はそちらの木を選ぶことがあるので、文脈のパスを `vendor/bin/stree` に直接渡す。
 リポジトリに commit されたサンプル出力を判定に使うと、自分の変更が反映されない結果を測ることになる。
 
-コールドの GET:
+コールドの GET(並び順は版で変わる。§4 の表が基準):
 
 ```text
 resource_request get 'page://self/orders?order_id=O-1'
@@ -357,7 +357,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 |---|---|---|
 | `#[Cacheable]` | `depends_on` + `save_value` / `save_view` と `save_etag` の `tags` に子の URI タグ | close `cache_miss` — 値ごと作り直す |
 | donut のデータ依存 — `onGet()` が読んだ子(`#[CacheableResponse]` / `#[DonutCache]` 共通) | `depends_on`(`put_donut` の**前**。`DonutRepository::classifyMaterials()` が呼ぶ `CacheDependency::depends()` が記録)+ `save_donut`(テンプレート)の `tags` に子の URI タグ。`#[CacheableResponse]` はさらに `save_donut_view` / `save_etag` にも | close `cache_miss` — **テンプレートごと**作り直す。`#[Cacheable]` と同じ形で、`refresh_donut` は出ない |
-| donut の描画中の `depends()` — テンプレートのヘルパーなどが `CacheDependencyInterface::depends($page, $child)` を自分で呼ぶ | `depends_on`(`put_donut` の**後**、`save_*` の**前**)+ 上と同じ `tags` | 上と同じ — close `cache_miss` |
+| donut の描画中の `depends()` — テンプレートのヘルパーなどが、注入した `CacheDependencyInterface` の `depends($page, $child)` を自分で呼ぶ | `depends_on`(`put_donut` の**後**、`save_*` の**前**)+ 上と同じ `tags` | 上と同じ — close `cache_miss` |
 | donut の穴 — テンプレートだけが読み、`onGet()` は読まない(子のクラスが既定の `ETag` / `Surrogate-Key` ヘッダを持つときは表のすぐ下) | `dependency_skipped{reason: no_body}` を記録し、`save_donut` には**乗らない**。子のタグは `#[CacheableResponse]` なら `save_donut_view` / `save_etag` に、`#[DonutCache]` なら応答の `Surrogate-Key`(`cdn_headers` の `surrogateKeys`)にだけ乗る | close は `cache_hit{layer: donut-view}` のまま。中に `refresh_donut` と子の入れ子 `get` が現れる。`refresh_donut` は `#[DonutCache]` なら warm な read でも毎回出るので証拠にならない。子の入れ子 `get` が `cache_miss` で閉じたうえで、手順 3 の条件がそろえば証拠になる |
 
 テンプレートだけが読む子でも、子のクラスが既定値として `ETag` か `Surrogate-Key` のヘッダを持っていれば、
@@ -402,9 +402,9 @@ TTL で落ちただけの場合と区別できない。
 の前に `$ro->body` を走査する)で、どちらも保存時に **`$ro->body` に `AbstractRequest` のインスタンスが
 残っているものだけ**を辿る。埋め込んだ値をスカラーに解決して body を作り直すと、その時点で Request は
 body から消えており、宣言がどれでも依存は登録されない。body に Request を残すか、announce 側で解決する。
-`ResourceObject` を body に置いても辿られないので、その子は `CacheDependencyInterface::depends($page, $child)`
-を明示的に呼ぶ。描画中の `depends()` は自動では登録されず、アプリ自身がテンプレートのヘルパーなどから
-`CacheDependencyInterface::depends($page, $child)` を呼んで初めて記録される。穴は `ResourceDonut::create()`
+`ResourceObject` を body に置いても辿られないので、その子は注入した `CacheDependencyInterface` で
+`$cacheDependency->depends($page, $child)` を明示的に呼ぶ。描画中の `depends()` は自動では登録されず、
+アプリ自身がテンプレートのヘルパーなどから呼んで初めて記録される。穴は `ResourceDonut::create()`
 が `DonutRequest` でプレースホルダに包んで遅延実行するだけで、依存としては登録されない。
 
 もう 1 つ条件がある。`#[Cacheable]` の `setCacheDependency()` は子を走らせたあと、子に `ETag` も
