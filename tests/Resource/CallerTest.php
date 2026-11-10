@@ -16,6 +16,8 @@ use BEAR\EventSourcing\Tests\Fixture\Caller\SiteSetting;
 use BEAR\EventSourcing\Tests\Fixture\UnifiedLogModule;
 use BEAR\EventSourcing\Tests\RemovesDirectoryTree;
 use BEAR\Resource\ResourceInterface;
+use Closure;
+use Composer\InstalledVersions;
 use FakeVendor\Unified\Resource\App\Profile;
 use Koriym\SemanticLogger\SemanticLogger;
 use PHPUnit\Framework\TestCase;
@@ -26,11 +28,13 @@ use ReflectionMethod;
 
 use function dirname;
 use function file;
+use function file_put_contents;
 use function iterator_to_array;
 use function json_decode;
 use function json_encode;
 use function mkdir;
 use function str_contains;
+use function symlink;
 use function sys_get_temp_dir;
 use function uniqid;
 
@@ -104,6 +108,45 @@ final class CallerTest extends TestCase
                 'function' => Profile::class . '::onGet',
             ],
             $callers['app://self/greeting'],
+        );
+    }
+
+    public function testSkipsAComposerPackageInstalledThroughASymlink(): void
+    {
+        mkdir($this->tmpDir . '/linked-lib');
+        mkdir($this->tmpDir . '/vendor/acme', 0777, true);
+        symlink($this->tmpDir . '/linked-lib', $this->tmpDir . '/vendor/acme/lib');
+        file_put_contents(
+            $this->tmpDir . '/linked-lib/nav.php',
+            '<?php return static fn (BEAR\\Resource\\ResourceInterface $r) => $r->get(\'app://self/nav\');',
+        );
+        $installed = InstalledVersions::getAllRawData()[0];
+        InstalledVersions::reload([
+            'root' => $installed['root'],
+            'versions' => [
+                'acme/lib' => ['install_path' => $this->tmpDir . '/vendor/acme/lib', 'dev_requirement' => false],
+            ],
+        ]);
+
+        try {
+            $resource = $this->resource(new DevLogModule(
+                bodyDir: $this->tmpDir . '/bodies',
+                logger: $logger = new SemanticLogger(),
+                module: new CallerAppModule(),
+            ));
+            /**
+             * @var Closure(ResourceInterface): mixed $getNav
+             * @psalm-suppress UnresolvableInclude
+             */
+            $getNav = require $this->tmpDir . '/vendor/acme/lib/nav.php';
+            $getNav($resource);
+        } finally {
+            InstalledVersions::reload($installed);
+        }
+
+        $this->assertSame(
+            ['app://self/nav' => self::at(__FILE__, '$getNav($resource)', __METHOD__)],
+            self::callersByUri(self::flushedRoots($logger)),
         );
     }
 

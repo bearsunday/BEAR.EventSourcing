@@ -10,6 +10,7 @@ use BEAR\EventSourcing\RecordedMethods;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\ResourceObject;
+use Composer\InstalledVersions;
 use DateTimeImmutable;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Ray\Aop\WeavedInterface;
@@ -17,11 +18,13 @@ use ReflectionClass;
 use ReflectionMethod;
 use Throwable;
 
+use function array_keys;
 use function debug_backtrace;
 use function dirname;
 use function get_parent_class;
 use function in_array;
 use function is_a;
+use function realpath;
 use function str_starts_with;
 
 use const DEBUG_BACKTRACE_IGNORE_ARGS;
@@ -35,6 +38,8 @@ final readonly class SemanticLogInvoker implements InvokerInterface
 
     private RecordedMethods $recordedMethods;
     private ParamsFilterInterface $paramsFilter;
+    /** @var list<string>|null null when they could not be found: no caller is recorded */
+    private array|null $libraryDirs;
 
     public function __construct(
         private InvokerInterface $invoker,
@@ -42,12 +47,13 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         private BodyStoreInterface $bodyStore,
         #[Recorded] RecordedMethods|null $recordedMethods = null,
         #[Filtered] ParamsFilterInterface|null $paramsFilter = null,
-        private bool $recordCaller = false,
+        bool $recordCaller = false,
     ) {
         $this->recordedMethods = $recordedMethods ?? new RecordedMethods();
         // Secure by default: an application opts out of redaction by binding its own
         // #[Filtered] ParamsFilterInterface, never opts in to get it.
         $this->paramsFilter = $paramsFilter ?? new SensitiveParamsFilter();
+        $this->libraryDirs = $recordCaller ? self::libraryDirs() : null;
     }
 
     public function invoke(AbstractRequest $request): ResourceObject
@@ -64,7 +70,7 @@ final readonly class SemanticLogInvoker implements InvokerInterface
             params: $filtered->params,
             timestamp: (new DateTimeImmutable())->format(self::TIMESTAMP_FORMAT),
             replayable: $filtered->replayable,
-            caller: $this->recordCaller ? self::caller() : null,
+            caller: $this->libraryDirs === null ? null : self::caller($this->libraryDirs),
         ));
 
         $start = hrtime(true);
@@ -204,19 +210,17 @@ final readonly class SemanticLogInvoker implements InvokerInterface
     }
 
     /**
-     * The first call site outside the vendor directory and this package.
+     * The first call site outside every installed Composer package except the root one.
      *
      * A call made from a woven (AOP) method is reported as the declaration of the method it overrides.
      *
+     * @param list<string> $libraryDirs
+     *
      * @return array{file: string, line: int, function?: string}|null
      */
-    private static function caller(): array|null
+    private static function caller(array $libraryDirs): array|null
     {
         try {
-            $libraryDirs = [
-                dirname((string) (new ReflectionClass(ResourceObject::class))->getFileName(), 4) . '/',
-                dirname(__DIR__) . '/',
-            ];
             $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
             foreach ($trace as $i => $frame) {
                 $file = $frame['file'] ?? null;
@@ -233,6 +237,39 @@ final readonly class SemanticLogInvoker implements InvokerInterface
         }
 
         return null;
+    }
+
+    /**
+     * Real paths: PHP reports a file loaded through a symlinked package (a Composer path repository)
+     * by its real path.
+     *
+     * @return list<string>|null
+     */
+    private static function libraryDirs(): array|null
+    {
+        try {
+            $vendorDir = dirname((string) (new ReflectionClass(InstalledVersions::class))->getFileName(), 2);
+            $dirs = [dirname(__DIR__), $vendorDir];
+            $root = InstalledVersions::getRootPackage()['name'];
+            foreach (InstalledVersions::getInstalledPackages() as $package) {
+                $path = $package === $root ? null : InstalledVersions::getInstallPath($package);
+                if ($path !== null) {
+                    $dirs[] = $path;
+                }
+            }
+        } catch (Throwable) {
+            return null;
+        }
+
+        $realDirs = [];
+        foreach ($dirs as $dir) {
+            $real = realpath($dir);
+            if ($real !== false) {
+                $realDirs[$real . '/'] = true;
+            }
+        }
+
+        return array_keys($realDirs);
     }
 
     /**
