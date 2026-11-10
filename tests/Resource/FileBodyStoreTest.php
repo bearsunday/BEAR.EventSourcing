@@ -267,6 +267,44 @@ final class FileBodyStoreTest extends TestCase
         self::removeTree($dir);
     }
 
+    public function testCutsASelfReferencingArrayAtADepth(): void
+    {
+        $dir = self::newBodyDir();
+        $loop = ['id' => 1];
+        $loop['self'] = &$loop;
+        $ro = new FakeResourceObject(body: $loop);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertStringContainsString(
+            '"self":{"$truncated":"depth"}',
+            (string) file_get_contents(self::pathFromRef($bodyRef)),
+        );
+
+        self::removeTree($dir);
+    }
+
+    public function testStopsAGraphThatSharesOneChildManyTimes(): void
+    {
+        $dir = self::newBodyDir();
+        $node = ['leaf' => 1];
+        for ($i = 0; $i < 20; $i++) {
+            $node = ['left' => $node, 'right' => $node];
+        }
+
+        $ro = new FakeResourceObject(body: $node);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $file = self::pathFromRef($bodyRef);
+        $this->assertLessThan(2_000_000, filesize($file));
+        $this->assertTrue(str_contains((string) file_get_contents($file), '{"$truncated":"size"}'));
+
+        self::removeTree($dir);
+    }
+
     public function testDirectoryCreationIsDeferredUntilFirstStore(): void
     {
         $dir = sys_get_temp_dir() . '/' . uniqid('bear-es-bodies-', true);

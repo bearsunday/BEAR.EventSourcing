@@ -67,6 +67,8 @@ use const SORT_STRING;
  * An object of the application is written with its non-public properties too;
  * an object of an installed package with its public ones only. One with no
  * property to write, or one already being written, becomes `{"$object": class}`.
+ * Nesting past 64 levels becomes `{"$truncated": "depth"}`, and what follows
+ * the first 50,000 values of a body `{"$truncated": "size"}`.
  *
  * Construction writes nothing to disk — the first stored body creates a
  * fresh, uniquely named generation directory under `$dir` and marks it
@@ -105,11 +107,14 @@ final class FileBodyStore implements BodyStoreInterface
     public const MARKER = '.bear-es-bodies';
 
     private const DEFAULT_KEEP = 5;
+    private const MAX_DEPTH = 64;
+    private const MAX_VALUES = 50_000;
     private const JSON_FLAGS = JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
         | JSON_PRESERVE_ZERO_FRACTION | JSON_INVALID_UTF8_SUBSTITUTE;
 
     private string|null $generationDir = null;
     private int $sequence = 0;
+    private int $remaining = 0;
     /** Null treats every object as one of an installed package */
     private readonly InstalledPackageDirs|null $packageDirs;
 
@@ -129,7 +134,8 @@ final class FileBodyStore implements BodyStoreInterface
     {
         // Encode before creating anything: a body that cannot be stored must not consume a $keep slot.
         try {
-            $body = json_encode($this->normalize($ro->body, []), self::JSON_FLAGS);
+            $this->remaining = self::MAX_VALUES;
+            $body = json_encode($this->normalize($ro->body, [], 0), self::JSON_FLAGS);
         } catch (JsonException $e) {
             throw new BodyStoreException(sprintf('Failed to encode body of %s: %s', $ro->uri, $e->getMessage()), 0, $e);
         }
@@ -152,12 +158,25 @@ final class FileBodyStore implements BodyStoreInterface
      *
      * @psalm-suppress MixedAssignment a body is untyped
      */
-    private function normalize(mixed $value, array $path): mixed
+    private function normalize(mixed $value, array $path, int $depth): mixed
     {
+        if ($this->remaining-- <= 0) {
+            return ['$truncated' => 'size'];
+        }
+
+        if ((is_array($value) || is_object($value)) && $depth > self::MAX_DEPTH) {
+            return ['$truncated' => 'depth'];
+        }
+
         if (is_array($value)) {
             $normalized = [];
             foreach ($value as $key => $item) {
-                $normalized[$key] = $this->normalize($item, $path);
+                if ($this->remaining <= 0) {
+                    $normalized[$key] = ['$truncated' => 'size'];
+                    break;
+                }
+
+                $normalized[$key] = $this->normalize($item, $path, $depth + 1);
             }
 
             return $normalized;
@@ -188,16 +207,16 @@ final class FileBodyStore implements BodyStoreInterface
 
         $path[$id] = true;
         if ($value instanceof ResourceObject) {
-            return $this->normalize($value->body, $path);
+            return $this->normalize($value->body, $path, $depth + 1);
         }
 
         if ($value instanceof JsonSerializable) {
-            return $this->normalize($value->jsonSerialize(), $path);
+            return $this->normalize($value->jsonSerialize(), $path, $depth + 1);
         }
 
         $properties = $this->properties($value);
 
-        return $properties === [] ? ['$object' => $value::class] : $this->normalize($properties, $path);
+        return $properties === [] ? ['$object' => $value::class] : $this->normalize($properties, $path, $depth + 1);
     }
 
     /**

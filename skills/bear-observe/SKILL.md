@@ -307,7 +307,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 | 依存の伝播 | `save_*` の `tags` ↔ `invalidate` の `tags` の突き合わせ。`depends_on` を出すのは `#[Cacheable]` の親だけで、donut の親は出さない(§4) |
 | 何回リソースが走ったか | `resource_request` の数。N+1 は同じ URI の兄弟が並ぶ形で出る |
 | どこで時間を使ったか | `durationMs`。親から子を引いた残りがその層の自前のコスト |
-| 何を返したか | `body_ref` のファイル(`var/log/<context>/events/bodies/<generation>/`。`<generation>` は初回保存時に作られるディレクトリ)。描画した HTML ではなく body。埋め込みは `{"$request": …}` の目印で、中身はそのリクエストのノードの `body_ref`。アプリのオブジェクトは private も含めて、パッケージのオブジェクトは public だけ書き、書けないものや循環は `{"$object": クラス名}` |
+| 何を返したか | `body_ref` のファイル(`var/log/<context>/events/bodies/<generation>/`。`<generation>` は初回保存時に作られるディレクトリ)。描画した HTML ではなく body。埋め込みは `{"$request": …}` の目印で、中身はそのリクエストのノードの `body_ref`。アプリのオブジェクトは private も含めて、パッケージのオブジェクトは public だけ書き、書けないものや循環は `{"$object": クラス名}`。64 段より深い入れ子は `{"$truncated": "depth"}`、1 つの body で 50,000 値を超えた先は `{"$truncated": "size"}` |
 
 読み間違えやすい 4 点(いずれも実測):
 
