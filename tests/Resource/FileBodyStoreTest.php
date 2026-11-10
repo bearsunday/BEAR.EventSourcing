@@ -348,6 +348,25 @@ final class FileBodyStoreTest extends TestCase
         self::removeTree($dir);
     }
 
+    public function testStopsAChainOfResourceObjectBodiesAtTheDepthLimit(): void
+    {
+        $dir = self::newBodyDir();
+        $ro = new FakeResourceObject(body: ['id' => 'innermost']);
+        for ($i = 0; $i < 3000; $i++) {
+            $ro = new FakeResourceObject(body: $ro);
+        }
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertStringContainsString(
+            '{"$truncated":"depth"}',
+            (string) file_get_contents(self::pathFromRef($bodyRef)),
+        );
+
+        self::removeTree($dir);
+    }
+
     public function testDirectoryCreationIsDeferredUntilFirstStore(): void
     {
         $dir = sys_get_temp_dir() . '/' . uniqid('bear-es-bodies-', true);
