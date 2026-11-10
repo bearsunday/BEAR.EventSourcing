@@ -16,10 +16,11 @@
 - **BREAKING — `BodyStoreException` is `final`.**
 - **BREAKING — `ResourceNodeFormatter` renders a request as the command that runs it again**, `resource_request post 'app://self/users?id=koriym'` instead of `request="POST app://self/users?id=koriym"`: paste the part after `resource_request` behind `php bin/app.php` (`bin/page.php` for `page://`). Each encoded value over 40 characters is cut unless `--full`, and a request recorded `replayable: false` ends with `[not replayable]`. `vendor/bin/stree` uses this formatter by itself with a koriym/semantic-logger that reads `extra.stree.formatters` (koriym/Koriym.SemanticLogger#63).
 - Supports PHP 8.2.
+- `FileBodyStore` writes `$ro->body` as JSON instead of the rendered representation (HTML, HAL); a request embedded in the body is written as a `{"$request": {"method", "uri", "params"}}` marker. To see the representation, read the application's output.
 
 ### Fixed
 
-- Recording a response body leaves the response object the caller holds untouched. Under `HalRenderer` an object body came back as an array, and embedded requests moved into `_embedded`.
+- Recording a response body neither renders it nor runs the requests embedded in it. The response the caller holds stays untouched, an embedded request runs when the application renders it instead of inside the body store, and an `app://` resource without a template no longer records an `exception`.
 
 ## 0.2.1 - 2026-10-30
 

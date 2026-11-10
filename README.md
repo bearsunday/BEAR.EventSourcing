@@ -330,7 +330,7 @@ Note that the bundled `ResourceResponseContext` records `code`, `body_ref`, `exc
 
 When a resource invocation throws, `SemanticLogInvoker` still closes the observation — with `exception: {class, message}` and, unless the exception's own `getCode()` is a valid HTTP status (`400`-`599`), no `code` at all. The invoker runs ahead of the application's error handler, so it does not know the status the client will actually receive (a `ProductNotFoundException` an application maps to `404` still has `getCode() === 0` here); recording a guessed `500` would log a status nobody sent. `SemanticLogExtractor` reads a missing `code` paired with a present `exception` as a confirmed failure — exactly as it would read `code: 500` — so this close is excluded from the event stream either way; the difference is that the log no longer asserts a specific wrong status.
 
-For local AI/debug work, use `DevLogModule`. Constructing it writes nothing to disk; the first stored body creates a uniquely named generation directory under `bodyDir` and stores rendered bodies as files through `FileBodyStore`, keeping `GET` as well as write methods:
+For local AI/debug work, use `DevLogModule`. Constructing it writes nothing to disk; the first stored body creates a uniquely named generation directory under `bodyDir` and stores response bodies as JSON files through `FileBodyStore`, keeping `GET` as well as write methods:
 
 ```php
 use BEAR\EventSourcing\Resource\DevLogModule;
@@ -384,7 +384,7 @@ A `BodyStoreInterface` records a `body_ref` in the close context:
 {"code": 200, "body_ref": "file:///path/to/var/es/bodies/20260922-143059-482913-a1b2c3d4/000001.json", "durationMs": 0.42}
 ```
 
-`body_ref` is a reference to a stored rendered body. It stays in the Semantic Log for inspection and is **not** extracted into `Event::$result` — the event's `result` comes from `close.context.body`. A bridge log that records only `body_ref` therefore yields an event with a `null` result; the payload lives in the externalized body, not in the event. The same domain operation produces the same event regardless of which `BodyStoreInterface` the bridge uses.
+`body_ref` is a reference to a stored body. It stays in the Semantic Log for inspection and is **not** extracted into `Event::$result` — the event's `result` comes from `close.context.body`. A bridge log that records only `body_ref` therefore yields an event with a `null` result; the payload lives in the externalized body, not in the event. The same domain operation produces the same event regardless of which `BodyStoreInterface` the bridge uses.
 
 `durationMs` is the wall time of the invocation, children included. It is observation data: it stays in the close context and is never part of event identity, for the same reason `result` is excluded — the same domain operation is the same event regardless of how long it took. The log answers *which* request was slow and *where* in the tree; *why* remains the profiler's job.
 
@@ -395,11 +395,11 @@ With `DevLogModule` active you read two artifacts:
 **Body files** under `bodyDir`, one per recorded operation, numbered in invocation order within the generation subdirectory `FileBodyStore` created for the run:
 
 ```text
-var/es/bodies/20260922-143059-482913-a1b2c3d4/000001.json   # rendered body of the first recorded operation, i.e. $ro->toString()
+var/es/bodies/20260922-143059-482913-a1b2c3d4/000001.json   # $ro->body of the first recorded operation as JSON
 var/es/bodies/20260922-143059-482913-a1b2c3d4/000002.json
 ```
 
-`bodyDir` is the shared root `FileBodyStore` creates generation subdirectories under; nothing is created until the first body is stored, and each session's generation is uniquely named so multiple sessions or processes can point at the same `bodyDir` without their sequences colliding (see "For local AI/debug work" above for `keep`). Pruning removes only generations carrying the ownership marker (`FileBodyStore::MARKER`), so nothing else under `bodyDir` is touched. Files 0.2.0 wrote directly into `bodyDir` are not generations, so pruning leaves them in place until you delete them. A failed render is recorded as an `exception` in the close context, not written as an empty body file.
+`bodyDir` is the shared root `FileBodyStore` creates generation subdirectories under; nothing is created until the first body is stored, and each session's generation is uniquely named so multiple sessions or processes can point at the same `bodyDir` without their sequences colliding (see "For local AI/debug work" above for `keep`). Pruning removes only generations carrying the ownership marker (`FileBodyStore::MARKER`), so nothing else under `bodyDir` is touched. Files 0.2.0 wrote directly into `bodyDir` are not generations, so pruning leaves them in place until you delete them. A body file is `$ro->body` as JSON, not what the client received: the renderer is never called, and a request embedded in the body is not run but written as `{"$request": {"method": "GET", "uri": "app://self/child", "params": {...}}}` — what it returned is in the `body_ref` of that request's own node. A body that cannot be encoded as JSON is recorded as an `exception` in the close context, not written as a file.
 
 **The Semantic Logger log**, a nested open/close tree held in memory until you call `$logger->flush()`. Render it as a readable tree — far smaller than the raw JSON, for both humans and AI. `Resource\Stree\ResourceNodeFormatter` renders each request as the command that runs it again, so a `POST app://self/orders` that internally calls `PUT app://self/inventory/SKU-1` reads as intent in, result out:
 

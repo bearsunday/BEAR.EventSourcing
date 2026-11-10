@@ -7,20 +7,24 @@ namespace BEAR\EventSourcing\Resource;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\ResourceObject;
 use FilesystemIterator;
+use JsonException;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
 use UnexpectedValueException;
 
+use function array_map;
 use function bin2hex;
 use function count;
 use function explode;
 use function file_exists;
 use function file_put_contents;
 use function gmdate;
+use function is_array;
 use function is_dir;
 use function is_file;
 use function is_link;
+use function json_encode;
 use function microtime;
 use function mkdir;
 use function random_bytes;
@@ -30,17 +34,26 @@ use function round;
 use function sort;
 use function sprintf;
 use function str_starts_with;
+use function strtoupper;
 use function trigger_error;
 use function trim;
 use function unlink;
 
 use const DIRECTORY_SEPARATOR;
 use const E_USER_WARNING;
+use const JSON_INVALID_UTF8_SUBSTITUTE;
+use const JSON_PRESERVE_ZERO_FRACTION;
+use const JSON_THROW_ON_ERROR;
+use const JSON_UNESCAPED_SLASHES;
+use const JSON_UNESCAPED_UNICODE;
 use const LOCK_EX;
 use const SORT_STRING;
 
 /**
  * Development-time body store: one numbered file per recorded operation.
+ *
+ * A file holds the response body as JSON, never rendered: an embedded request
+ * is written as a `{"$request": {method, uri, params}}` marker and never run.
  *
  * Construction writes nothing to disk — the first stored body creates a
  * fresh, uniquely named generation directory under `$dir` and marks it
@@ -79,6 +92,8 @@ final class FileBodyStore implements BodyStoreInterface
     public const MARKER = '.bear-es-bodies';
 
     private const DEFAULT_KEEP = 5;
+    private const JSON_FLAGS = JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+        | JSON_PRESERVE_ZERO_FRACTION | JSON_INVALID_UTF8_SUBSTITUTE;
 
     private string|null $generationDir = null;
     private int $sequence = 0;
@@ -95,13 +110,12 @@ final class FileBodyStore implements BodyStoreInterface
 
     public function __invoke(AbstractRequest $request, ResourceObject $ro): string|null
     {
-        // Render before creating anything: a failed render must leave no trace —
-        // no generation directory consuming a $keep slot for a body never stored.
-        // toString(), not (string) $ro: the latter swallows a render failure and
-        // returns '', which would write an empty file behind a valid body_ref.
-        // Render a copy: a renderer may rewrite the body, headers or view (HalRenderer
-        // casts an object body to an array), and the caller keeps reading the live response.
-        $body = (clone $ro)->toString();
+        // Encode before creating anything: a body that cannot be stored must not consume a $keep slot.
+        try {
+            $body = json_encode(self::normalize($ro->body), self::JSON_FLAGS);
+        } catch (JsonException $e) {
+            throw new BodyStoreException(sprintf('Failed to encode body of %s: %s', $ro->uri, $e->getMessage()), 0, $e);
+        }
 
         $generationDir = $this->generationDir ??= self::createGeneration($this->dir, $this->keep);
         $file = $generationDir . DIRECTORY_SEPARATOR . sprintf('%06d.json', ++$this->sequence);
@@ -112,6 +126,32 @@ final class FileBodyStore implements BodyStoreInterface
         }
 
         return 'file://' . $file;
+    }
+
+    /**
+     * Never runs an AbstractRequest: json_encode() would, through its jsonSerialize().
+     */
+    private static function normalize(mixed $value): mixed
+    {
+        if ($value instanceof AbstractRequest) {
+            $uri = $value->resourceObject->uri;
+
+            return ['$request' => [
+                'method' => strtoupper($value->method->value),
+                'uri' => "{$uri->scheme}://{$uri->host}{$uri->path}",
+                'params' => $value->query,
+            ]];
+        }
+
+        if ($value instanceof ResourceObject) {
+            return self::normalize($value->body);
+        }
+
+        if (is_array($value)) {
+            return array_map(self::normalize(...), $value);
+        }
+
+        return $value;
     }
 
     /**

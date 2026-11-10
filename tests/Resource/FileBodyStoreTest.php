@@ -9,12 +9,10 @@ use BEAR\EventSourcing\Resource\BodyStoreException;
 use BEAR\EventSourcing\Tests\RemovesDirectoryTree;
 use BEAR\Resource\HalLinker;
 use BEAR\Resource\HalRenderer;
-use BEAR\Resource\JsonRenderer;
 use BEAR\Resource\Method;
 use BEAR\Resource\NullReverseLinker;
 use BEAR\Resource\Request;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 use stdClass;
 
 use function assert;
@@ -25,7 +23,6 @@ use function file_get_contents;
 use function file_put_contents;
 use function getmyuid;
 use function is_dir;
-use function json_decode;
 use function mkdir;
 use function range;
 use function restore_error_handler;
@@ -44,12 +41,13 @@ use function unlink;
 use function usleep;
 
 use const E_USER_WARNING;
+use const NAN;
 
 final class FileBodyStoreTest extends TestCase
 {
     use RemovesDirectoryTree;
 
-    public function testStoresRenderedBodyAndReturnsFileRef(): void
+    public function testStoresBodyAndReturnsFileRef(): void
     {
         $dir = self::newBodyDir();
         $store = new FileBodyStore($dir);
@@ -94,10 +92,7 @@ final class FileBodyStoreTest extends TestCase
         self::removeTree($dir);
     }
 
-    /**
-     * Storing renders a copy: the caller keeps reading the response the renderer would rewrite
-     */
-    public function testStoringLeavesTheLiveResponseAsTheCallerReadsIt(): void
+    public function testStoresTheBodyWithoutTheRendererOrTouchingTheResponse(): void
     {
         $dir = self::newBodyDir();
         $body = new stdClass();
@@ -113,13 +108,46 @@ final class FileBodyStoreTest extends TestCase
         $bodyRef = (new FileBodyStore($dir))($request, $ro);
 
         $this->assertNotNull($bodyRef);
-        $stored = json_decode((string) file_get_contents(self::pathFromRef($bodyRef)), true);
-        $this->assertIsArray($stored);
-        $this->assertSame(1, $stored['id']);
-        $this->assertArrayHasKey('_links', $stored, 'the stored body is the rendered representation');
+        $this->assertSame('{"id":1}', file_get_contents(self::pathFromRef($bodyRef)));
+        $this->assertSame($body, $ro->body);
+        $this->assertArrayNotHasKey('Content-Type', $ro->headers);
 
-        $this->assertSame($body, $ro->body, 'HalRenderer casts an object body to an array');
-        $this->assertArrayNotHasKey('Content-Type', $ro->headers, 'HalRenderer sets its media type');
+        self::removeTree($dir);
+    }
+
+    public function testStoresAnUnrunRequestAsARequestMarkerWithoutRunningIt(): void
+    {
+        $dir = self::newBodyDir();
+        $runs = 0;
+        $child = new FakeResourceObject('app://self/child?ignored=1');
+        $lazy = new Request(
+            new CallbackInvoker(static function () use (&$runs, $child): FakeResourceObject {
+                $runs++;
+
+                return $child;
+            }),
+            $child,
+            Method::GET,
+            ['id' => 'lazy'],
+        );
+        $nested = new FakeResourceObject('app://self/nav', ['items' => ['a', 'b']]);
+        $ro = new FakeResourceObject('page://self/index', ['title' => 'index', 'nav' => $nested, 'child' => $lazy]);
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
+
+        $bodyRef = (new FileBodyStore($dir))($request, $ro);
+
+        $this->assertNotNull($bodyRef);
+        $this->assertSame(0, $runs);
+        $this->assertSame(
+            '{"title":"index","nav":{"items":["a","b"]},'
+            . '"child":{"$request":{"method":"GET","uri":"app://self/child","params":{"id":"lazy"}}}}',
+            file_get_contents(self::pathFromRef($bodyRef)),
+        );
+        $this->assertSame(['title' => 'index', 'nav' => $nested, 'child' => $lazy], $ro->body);
 
         self::removeTree($dir);
     }
@@ -446,38 +474,11 @@ final class FileBodyStoreTest extends TestCase
         new FileBodyStore('//');
     }
 
-    public function testRenderFailurePropagatesAndWritesNoEmptyFile(): void
+    public function testNeverCallsTheRenderer(): void
     {
         $dir = self::newBodyDir();
-        $store = new FileBodyStore($dir);
         $ro = new FakeResourceObject(body: ['id' => 1]);
         $ro->setRenderer(new ThrowingRenderer());
-        $request = new Request(
-            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
-            $ro,
-            Method::POST,
-        );
-
-        try {
-            $store($request, $ro);
-            $this->fail('Expected the render exception to propagate.');
-        } catch (RuntimeException) {
-            $this->assertSame(
-                [],
-                self::subdirectories($dir),
-                'a failed render must create no generation directory (costs nothing until a body is stored)',
-            );
-        } finally {
-            self::removeTree($dir);
-        }
-    }
-
-    public function testObservationRestoresTheResponseView(): void
-    {
-        $dir = self::newBodyDir();
-        $store = new FileBodyStore($dir);
-        $ro = new FakeResourceObject(body: ['name' => 'before']);
-        $ro->setRenderer(new JsonRenderer());
         $priorView = $ro->view;
         $request = new Request(
             new CallbackInvoker(static fn (): FakeResourceObject => $ro),
@@ -485,14 +486,33 @@ final class FileBodyStoreTest extends TestCase
             Method::POST,
         );
 
-        $bodyRef = $store($request, $ro);
+        $bodyRef = (new FileBodyStore($dir))($request, $ro);
 
-        // Rendering the body for storage must not cache the view: it is restored to
-        // its prior value so later stages still render the current body.
         $this->assertNotNull($bodyRef);
+        $this->assertSame('{"id":1}', file_get_contents(self::pathFromRef($bodyRef)));
         $this->assertSame($priorView, $ro->view);
 
         self::removeTree($dir);
+    }
+
+    public function testUnencodableBodyThrowsAndCreatesNoGeneration(): void
+    {
+        $dir = self::newBodyDir();
+        $ro = new FakeResourceObject(body: ['ratio' => NAN]);
+        $request = new Request(
+            new CallbackInvoker(static fn (): FakeResourceObject => $ro),
+            $ro,
+            Method::GET,
+        );
+
+        try {
+            (new FileBodyStore($dir))($request, $ro);
+            $this->fail('Expected a BodyStoreException.');
+        } catch (BodyStoreException) {
+            $this->assertSame([], self::subdirectories($dir));
+        } finally {
+            self::removeTree($dir);
+        }
     }
 
     private static function newBodyDir(): string
