@@ -207,16 +207,19 @@ final class FileBodyStore implements BodyStoreInterface
 
         $path[$id] = true;
         if ($value instanceof ResourceObject) {
-            return $this->normalize($value->body, $path, $depth + 1);
+            return $this->normalize($value->body, $path, $depth);
         }
 
         if ($value instanceof JsonSerializable) {
-            return $this->normalize($value->jsonSerialize(), $path, $depth + 1);
+            $serialized = $value->jsonSerialize();
+
+            // An object handed back still counts a level, so a jsonSerialize() chain ends at the depth limit.
+            return $this->normalize($serialized, $path, is_object($serialized) ? $depth + 1 : $depth);
         }
 
         $properties = $this->properties($value);
 
-        return $properties === [] ? ['$object' => $value::class] : $this->normalize($properties, $path, $depth + 1);
+        return $properties === [] ? ['$object' => $value::class] : $this->normalize($properties, $path, $depth);
     }
 
     /**

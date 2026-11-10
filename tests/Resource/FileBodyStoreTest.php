@@ -305,6 +305,26 @@ final class FileBodyStoreTest extends TestCase
         self::removeTree($dir);
     }
 
+    public function testKeepsAChainOfObjectsAsDeepAsItsJson(): void
+    {
+        $dir = self::newBodyDir();
+        $node = (object) ['id' => 'innermost'];
+        for ($i = 0; $i < 59; $i++) {
+            $node = (object) ['next' => $node];
+        }
+
+        $ro = new FakeResourceObject(body: ['chain' => $node]);
+
+        $bodyRef = (new FileBodyStore($dir))(self::requestOf($ro), $ro);
+
+        $this->assertNotNull($bodyRef);
+        $stored = (string) file_get_contents(self::pathFromRef($bodyRef));
+        $this->assertStringContainsString('"id":"innermost"', $stored);
+        $this->assertStringNotContainsString('$truncated', $stored);
+
+        self::removeTree($dir);
+    }
+
     public function testDirectoryCreationIsDeferredUntilFirstStore(): void
     {
         $dir = sys_get_temp_dir() . '/' . uniqid('bear-es-bodies-', true);
