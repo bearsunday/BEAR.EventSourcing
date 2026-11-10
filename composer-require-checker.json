@@ -6,6 +6,8 @@
         "BEAR\\Resource\\Invoker",
         "BEAR\\Resource\\InvokerInterface",
         "BEAR\\Resource\\ResourceObject",
+        "Composer\\InstalledVersions",
+        "Ray\\Aop\\WeavedInterface",
         "Ray\\MediaQuery\\Annotation\\DbQuery",
         "Ray\\MediaQuery\\MediaQueryLoggerInterface",
         "Ray\\MediaQuery\\Result\\AffectedRows"
