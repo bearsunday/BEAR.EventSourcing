@@ -14,7 +14,8 @@
         "body_ref": {
             "type": "string",
             "minLength": 1,
-            "description": "Storage pointer to the externalized body: the resource body as JSON, never rendered, with an embedded request written as a {\"$request\": {method, uri, params}} marker and an object that is not opened, or is already being written, as {\"$object\": class}, and one nested past 64 levels or past 50,000 values cut with a {\"$truncated\": \"depth\"|\"size\"} marker. Stays in the log for inspection only."
+            "description": "Storage pointer to the externalized body: the resource body as JSON, never rendered, with an embedded request written as a {\"$request\": {method, uri, params}} marker and an object that is not opened, or is already being written, as {\"$object\": class}, and one nested past 64 levels or past 50,000 values cut with a {\"$truncated\": \"depth\"|\"size\"} marker. Stays in the log for inspection only.",
+            "x-volatile": true
         },
         "exception": {
             "type": "object",
@@ -33,7 +34,8 @@
         "durationMs": {
             "type": "number",
             "minimum": 0,
-            "description": "Wall time of the inner invocation in milliseconds, including child operations. Observation data: never part of event identity."
+            "description": "Wall time of the inner invocation in milliseconds, including child operations. Observation data: never part of event identity.",
+            "x-volatile": true
         }
     },
     "additionalProperties": false

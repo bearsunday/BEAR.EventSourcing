@@ -17,7 +17,8 @@
         },
         "durationMs": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0,
+            "x-volatile": true
         },
         "rows_ref": {
             "type": "string",
