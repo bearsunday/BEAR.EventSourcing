@@ -4,6 +4,7 @@
 
 ### Added
 
+- The context schemas mark per-run values (`timestamp`, `body_ref`, `durationMs`) with `"x-volatile": true`, so `stree --snapshot --schema-dir=docs/schemas` renders them as `[volatile]` and the same operation prints the same tree.
 - `DevObservationModule`: writes resource requests and their cache scopes as one tree in the directory it is given, with response bodies under `bodies/` there. It installs `DevQueryRepositoryLogModule`, so an application drops its own line for that module.
 - `resource_request` records `caller: {file, line, function}`, where the request was made, under `DevLogModule` and `DevObservationModule`, and `ResourceNodeFormatter` ends the line with ` ← file:line`. A `DevModule` that wires `SemanticLogInvoker` by hand adds `'recordCaller' => SemanticLogInvoker::RECORD_CALLER` and binds that name to `true`.
 
