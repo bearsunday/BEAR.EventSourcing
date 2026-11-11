@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- `DevObservationModule` keeps one more body generation than log sessions, so the oldest retained log's `body_ref` still resolves while a request is being written and after a session that stored a body but wrote no log. An application pairing `FileBodyStore` with its own log writer should give the store one more than the writer.
+- `DevObservationModule` keeps one more body generation than log sessions, so the oldest retained log's `body_ref` still resolves while a request is being written and after one session that stored a body but wrote no log (each further such session costs one generation). An application pairing `FileBodyStore` with its own log writer should give the store one more than the writer.
 
 ## 0.3.0 - 2026-11-11
 
