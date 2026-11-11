@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "347a33ad62be9c77e837aad200169b6b",
+    "content-hash": "8e35c0ae1b0a966dfeca85b809ffe410",
     "packages": [
         {
             "name": "justinrainbow/json-schema",
@@ -129,16 +129,16 @@
         },
         {
             "name": "koriym/semantic-logger",
-            "version": "0.11.0",
+            "version": "0.11.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/koriym/Koriym.SemanticLogger.git",
-                "reference": "54fa16b28c45461fc380e41d92f6bbd12afad345"
+                "reference": "6a373ac93dbdf53b7da7f5cea644246d71f1c39d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/koriym/Koriym.SemanticLogger/zipball/54fa16b28c45461fc380e41d92f6bbd12afad345",
-                "reference": "54fa16b28c45461fc380e41d92f6bbd12afad345",
+                "url": "https://api.github.com/repos/koriym/Koriym.SemanticLogger/zipball/6a373ac93dbdf53b7da7f5cea644246d71f1c39d",
+                "reference": "6a373ac93dbdf53b7da7f5cea644246d71f1c39d",
                 "shasum": ""
             },
             "require": {
@@ -179,10 +179,10 @@
             "description": "Type-safe structured logging with schema validation and meaningful context",
             "support": {
                 "issues": "https://github.com/koriym/Koriym.SemanticLogger/issues",
-                "source": "https://github.com/koriym/Koriym.SemanticLogger/tree/0.11.0"
+                "source": "https://github.com/koriym/Koriym.SemanticLogger/tree/0.11.1"
             },
-            "time": "2026-10-23T01:01:57+00:00",
-            "published-time": "2026-10-23T01:02:08+00:00"
+            "time": "2026-11-11T01:59:04+00:00",
+            "published-time": "2026-11-11T02:04:09+00:00"
         },
         {
             "name": "marc-mabe/php-enum",
@@ -1421,16 +1421,16 @@
         },
         {
             "name": "bear/query-repository",
-            "version": "1.x-dev",
+            "version": "1.20.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/bearsunday/BEAR.QueryRepository.git",
-                "reference": "f21518810091ab15cf7d3e61b56a6f8429dd33dc"
+                "reference": "8aa4b4f6c1a24b5038a26f9b76c61c3a83db1609"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/bearsunday/BEAR.QueryRepository/zipball/f21518810091ab15cf7d3e61b56a6f8429dd33dc",
-                "reference": "f21518810091ab15cf7d3e61b56a6f8429dd33dc",
+                "url": "https://api.github.com/repos/bearsunday/BEAR.QueryRepository/zipball/8aa4b4f6c1a24b5038a26f9b76c61c3a83db1609",
+                "reference": "8aa4b4f6c1a24b5038a26f9b76c61c3a83db1609",
                 "shasum": ""
             },
             "require": {
@@ -1441,7 +1441,7 @@
                 "psr/cache": "^1.0 || ^2.0 || ^3.0",
                 "psr/log": "^2.0 || ^3.0",
                 "ray/aop": "^2.19.1",
-                "ray/di": "^2.20",
+                "ray/di": "^2.23",
                 "ray/psr-cache-module": "^1.6",
                 "symfony/cache": "^6.0 || ^7.3 || ^8.0",
                 "symfony/polyfill-php83": "^v1.32.0"
@@ -1453,6 +1453,7 @@
                 "mobiledetect/mobiledetectlib": "^3.74 || ^4.8",
                 "phpunit/phpunit": "^11.0",
                 "predis/predis": "^2.4",
+                "ray/compiler": "^1.17",
                 "symfony/process": "^6.1 || ^7.1 || ^8.0",
                 "twig/twig": "^3.4.3"
             },
@@ -1462,7 +1463,6 @@
                 "ext-redis": "Required for Redis cache storage backend",
                 "mobiledetect/mobiledetectlib": "Required for MobileEtagModule (device-aware ETags)"
             },
-            "default-branch": true,
             "type": "library",
             "extra": {
                 "bamarni-bin": {
@@ -1501,10 +1501,10 @@
             ],
             "support": {
                 "issues": "https://github.com/bearsunday/BEAR.QueryRepository/issues",
-                "source": "https://github.com/bearsunday/BEAR.QueryRepository/tree/1.x"
+                "source": "https://github.com/bearsunday/BEAR.QueryRepository/tree/1.20.0"
             },
-            "time": "2026-11-06T23:05:33+00:00",
-            "published-time": "2026-11-06T23:05:39+00:00"
+            "time": "2026-11-11T02:17:44+00:00",
+            "published-time": "2026-11-11T02:20:03+00:00"
         },
         {
             "name": "bear/resource",
@@ -7243,9 +7243,7 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "bear/query-repository": 20
-    },
+    "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {

@@ -18,6 +18,7 @@
 - **BREAKING — `BodyStoreException` is `final`.**
 - **BREAKING — `ResourceNodeFormatter` renders a request as the command that runs it again**, `resource_request post 'app://self/users?id=koriym'` instead of `request="POST app://self/users?id=koriym"`: paste the part after `resource_request` behind `php bin/app.php` (`bin/page.php` for `page://`). Each encoded value over 40 characters is cut unless `--full`, and a request recorded `replayable: false` ends with `[not replayable]`. `vendor/bin/stree` uses this formatter by itself with a koriym/semantic-logger that reads `extra.stree.formatters` (koriym/Koriym.SemanticLogger#63).
 - Supports PHP 8.2.
+- Requires `koriym/semantic-logger` 0.11.1 or later, whose `stree --snapshot --schema-dir` renders the `x-volatile` values.
 - `FileBodyStore` writes `$ro->body` as JSON instead of the rendered representation (HTML, HAL); a request embedded in the body is written as a `{"$request": {"method", "uri", "params"}}` marker. An application object is written with its non-public properties too, and an object it cannot open or has already entered (a package's service, a closure, a cycle) as `{"$object": class}`. A body nested past 64 levels or past 50,000 values is cut with a `{"$truncated": "depth"|"size"}` marker. To see the representation, read the application's output.
 
 ### Fixed
