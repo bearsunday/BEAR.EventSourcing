@@ -26,7 +26,7 @@ final class DevObservationModule extends AbstractModule
 {
     private const INVOKER = 'bear_event_sourcing_dev_invoker';
 
-    /** @param int $keep sessions and body generations retained, one count for both */
+    /** @param int $keep log sessions retained; body generations keep one more, so a retained log's body_ref resolves */
     public function __construct(
         private readonly string $dir,
         private readonly int $keep = 10,
@@ -50,7 +50,9 @@ final class DevObservationModule extends AbstractModule
             ->in(Scope::SINGLETON);
         $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)
             ->toInstance(new RecordedMethods(RecordedMethods::WITH_READS));
-        $this->bind(BodyStoreInterface::class)->toInstance(new FileBodyStore($this->dir . '/bodies', $this->keep));
+        // The store creates a generation, and prunes the oldest, at the first stored body: before this request's log is
+        // written and the oldest log pruned. One generation more than the logs keeps that log's bodies.
+        $this->bind(BodyStoreInterface::class)->toInstance(new FileBodyStore($this->dir . '/bodies', $this->keep + 1));
         $this->bind()->annotatedWith(SemanticLogInvoker::RECORD_CALLER)->toInstance(true);
     }
 }

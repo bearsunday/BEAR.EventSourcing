@@ -88,10 +88,11 @@ use const SORT_STRING;
  * `BodyStoreInterface` failure and records it in the close context rather
  * than propagating it, so this degrades one entry to a missing `body_ref`
  * rather than breaking the request; size `$keep` above the number of
- * sessions you expect to overlap to avoid it. Pairing it with a log writer
- * that keeps its own count (DevQueryRepositoryLogModule's `keep`), give both
- * the same number: a generation pruned before the log that references it
- * leaves that log's `body_ref` dangling.
+ * sessions you expect to overlap to avoid it. Paired with a log writer that
+ * keeps its own count (DevQueryRepositoryLogModule's `keep`), give the store
+ * one more: it prunes at the first stored body, before that request's log is
+ * written and the oldest log pruned, and a generation pruned before the log
+ * that references it leaves that log's `body_ref` dangling.
  *
  * Pruning is best effort. A generation that cannot be removed (permissions,
  * a held file handle, another process removing it first) raises an
