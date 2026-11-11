@@ -60,7 +60,7 @@ BEAR.QueryRepository の `docs/` と `demo/` は `.gitattributes` で `export-ig
 | **語彙全部と読み方(まずこれ)** | [docs/reading-the-log.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/reading-the-log.md) |
 | ログが答える問いと保証の境界 | [docs/what-the-log-proves.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/what-the-log-proves.md) |
 | 設計根拠・コスト実測・既定オフの理由 | [docs/why-the-log-records-everything.md](https://github.com/bearsunday/BEAR.QueryRepository/blob/1.x/docs/why-the-log-records-everything.md) |
-| 各 context のスキーマ(29 種) | [docs/schemas/context/](https://github.com/bearsunday/BEAR.QueryRepository/tree/1.x/docs/schemas/context) — 各イベントの `schemaUrl` が正典 |
+| 各 context のスキーマ | [docs/schemas/context/](https://github.com/bearsunday/BEAR.QueryRepository/tree/1.x/docs/schemas/context) — 各イベントの `schemaUrl` が正典 |
 | 動く実例(自己検証つき) | [demo/](https://github.com/bearsunday/BEAR.QueryRepository/tree/1.x/demo) |
 
 スキーマ検証: `vendor/bin/validate-semantic-log.php <log.json> <schema-dir>`(`--prefer-source` なら
