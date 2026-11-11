@@ -43,10 +43,10 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 composer show bear/event-sourcing bear/query-repository 2>&1 | head -3
 ```
 
-どちらか無ければ入れる(未リリースの間は dev):
+どちらか無ければ入れる:
 
 ```bash
-composer require --dev bear/event-sourcing:1.x-dev bear/query-repository:1.x-dev
+composer require --dev bear/event-sourcing:^0.3 bear/query-repository:^1.20
 ```
 
 ## 正典ドキュメント(推測で補完しない)
@@ -320,10 +320,10 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 
 ## 4. 照合 — 宣言した意図と実際
 
-宣言は意図の表明でしかない。**効いている証拠はイベント列**。下表は BEAR.QueryRepository の PR #274 の head
-(`d7afbe2`)で `demo/run*.php`、`tests/Fake/fake-app/src/Resource/Page/Mx`・`Html` の fixture、
-`tests/DonutMaterialDependencyTest.php` / `tests/DonutQueryInterceptorPurgeTest.php` を実行して得た列 =
-**その版で期待される形**。手元の出力がこれと違えば、それが所見であって表の誤りではない。
+宣言は意図の表明でしかない。**効いている証拠はイベント列**。下表は BEAR.QueryRepository 1.20.0 で期待される列。
+PR #274 の head(`d7afbe2`)で `demo/run*.php`、`tests/Fake/fake-app/src/Resource/Page/Mx`・`Html` の fixture、
+`tests/DonutMaterialDependencyTest.php` / `tests/DonutQueryInterceptorPurgeTest.php` を実行して得た列で、
+1.20.0 でも同じ列になる。手元の出力がこれと違えば、それが所見であって表の誤りではない。
 
 | 宣言 | コールド read | 2 回目 | 自分への書き込み |
 |---|---|---|---|
@@ -339,7 +339,7 @@ $log = $logger->flush();                    // その場で受け取る(以降�
 メソッドを見ていない)。実測: 先に GET してから DELETE すると `onDelete` の本体は **0 回**、応答は宣言した
 204 ではなく **200 + キャッシュ済みの表現**。GET せずに DELETE すれば 1 回走る。
 
-[#215](https://github.com/bearsunday/BEAR.QueryRepository/pull/215) で修正済み(次のリリースに入る)。
+[#215](https://github.com/bearsunday/BEAR.QueryRepository/pull/215) で修正済み(1.17.0 から)。
 古い版を使っているなら書き込みは `#[Purge]` / `#[Refresh]` で宣言する。なお `#[Cacheable]` クラスでは
 `#[RefreshCache]` は何も足さない — `CommandInterceptor` が既に purge して再生成する。
 
