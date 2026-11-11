@@ -32,12 +32,12 @@
         "bear/query-repository": "^1.20",
         "bear/resource": "^1.32",
         "justinrainbow/json-schema": "^6.13",
-        "maglnet/composer-require-checker": "^4.14",
-        "phpunit/phpunit": "^11.5",
+        "maglnet/composer-require-checker": "^4.16",
+        "phpunit/phpunit": "^11.5.50",
         "ray/aura-sql-module": "^1.17",
         "ray/media-query": "^1.1",
-        "squizlabs/php_codesniffer": "^3.11",
-        "vimeo/psalm": "^6.0"
+        "squizlabs/php_codesniffer": "^3.13.6",
+        "vimeo/psalm": "^6.7.1"
     },
     "suggest": {
         "bear/query-repository": "To record resource requests into the cache log's session with DevObservationModule (^1.20)",
