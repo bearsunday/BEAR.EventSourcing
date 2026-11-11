@@ -43,10 +43,10 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 composer show bear/event-sourcing bear/query-repository 2>&1 | head -3
 ```
 
-どちらか無ければ入れる:
+どちらか無ければ入れる(bear/event-sourcing は未リリースの間は dev):
 
 ```bash
-composer require --dev bear/event-sourcing:^0.3 bear/query-repository:^1.20
+composer require --dev bear/event-sourcing:1.x-dev bear/query-repository:^1.20
 ```
 
 ## 正典ドキュメント(推測で補完しない)
@@ -415,8 +415,9 @@ body から消えており、宣言がどれでも依存は登録されない。
 
 もう 1 つ条件がある。`#[Cacheable]` の `setCacheDependency()` は子を走らせたあと、子に `ETag` も
 `Surrogate-Key` も無ければ `dependency_skipped` を記録して `continue` する — どちらか一方があれば足りるが、
-子自身にキャッシュ宣言が無くどちらも持たなければ、Request が残っていても `depends_on` は出ない。donut の
-`classifyMaterials()` も同じ条件で `continue` する。その条件を満たしたデータ依存の子のタグは
+子自身にキャッシュ宣言が無くどちらも持たなければ、Request が残っていても `depends_on` は出ない。ただし
+1.20.0 からは、子(またはその子が走らせた孫)が `#[DependsOn]` を宣言していれば依存に数え、宣言した URI の
+タグが親に乗る。donut の `classifyMaterials()` も同じ条件で `continue` する。その条件を満たしたデータ依存の子のタグは
 `#[CacheableResponse]` でも `#[DonutCache]` でも `save_donut`(テンプレート)に残り、`#[CacheableResponse]`
 はさらに `save_etag` / `save_donut_view` にも残す。店の `save_donut` に残らないのは穴のタグだけで、
 `#[DonutCache]` の穴は応答の `Surrogate-Key` に載せて終わる。
