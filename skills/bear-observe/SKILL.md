@@ -43,10 +43,10 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 composer show bear/event-sourcing bear/query-repository 2>&1 | head -3
 ```
 
-どちらか無ければ入れる(bear/event-sourcing は未リリースの間は dev):
+どちらか無ければ入れる:
 
 ```bash
-composer require --dev bear/event-sourcing:1.x-dev bear/query-repository:^1.20
+composer require --dev bear/event-sourcing:^0.3 bear/query-repository:^1.20
 ```
 
 ## 正典ドキュメント(推測で補完しない)
