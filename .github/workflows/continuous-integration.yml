@@ -22,6 +22,7 @@ jobs:
           - '8.3'
           - '8.4'
           - '8.5'
+          - '8.6'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,6 +49,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-php${{ matrix.php-version }}-composer-
             ${{ runner.os }}-composer-
+
+      - name: Remove QA tools that do not support PHP 8.6
+        if: matrix.php-version == '8.6'
+        run: composer remove --dev --no-update maglnet/composer-require-checker vimeo/psalm
 
       - name: Install dependencies
         run: composer update --no-interaction --no-progress --prefer-dist
