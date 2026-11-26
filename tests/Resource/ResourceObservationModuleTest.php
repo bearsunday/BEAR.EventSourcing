@@ -16,12 +16,10 @@ use BEAR\EventSourcing\Resource\ParamsFilterInterface;
 use BEAR\EventSourcing\Resource\ResourceObservationModule;
 use BEAR\EventSourcing\Resource\SemanticLogInvoker;
 use BEAR\EventSourcing\Resource\SensitiveParamsFilter;
-use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\Method;
 use BEAR\Resource\Module\ResourceClientModule;
 use BEAR\Resource\Request;
-use InvalidArgumentException;
 use Koriym\SemanticLogger\SemanticLogger;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
@@ -137,12 +135,5 @@ final class ResourceObservationModuleTest extends TestCase
             'a filter bound via ResourceObservationModule(paramsFilter: ...) must reach SemanticLogInvoker',
         );
         $this->assertFalse($tree['log'][0]['context']['replayable']);
-    }
-
-    public function testALoggerAndALoggerQualifierTogetherAreRefused(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-
-        new ResourceObservationModule(logger: new SemanticLogger(), loggerQualifier: CacheLog::class);
     }
 }

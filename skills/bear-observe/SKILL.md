@@ -109,14 +109,16 @@ sink が拒否したら黙る、という意味。並行実行時にセッショ
 
 | 見えたもの | すること |
 |---|---|
-| `DevObservationModule` を install している | 設置済み。第 2 引数に `$this->lastModule` が無ければ足す。§2 へ |
-| `DevModule` が無い | 下の 1 行だけの `DevModule` を書く。何を書くかを先に 1 行で言う |
-| ある、`DevObservationModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める)。その行で `keep` を変えていたなら、同じ数を `DevObservationModule` の第 3 引数に渡す(ボディは 1 世代以上を残すので、0 なら 1)。第 3 引数でモジュールを包んでいたなら、そのモジュールは `DevObservationModule` の行の後に `install()` して残す。古い置き場所を読む `tree` スクリプトがあれば、下の形に直す |
+| `DevObservationModule` を install している | 設置済み。`rename()` の 2 行が無ければ足す。§2 へ |
+| `DevModule` が無い | 下の 3 行だけの `DevModule` を書く。何を書くかを先に 1 行で言う |
+| ある、`DevObservationModule` を含まない | アプリ自身の `DevModule`。下の 3 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める)。その行で `keep` を変えていたなら、同じ数を `DevObservationModule` の第 2 引数に渡す(ボディは 1 世代以上を残すので、0 なら 1)。第 3 引数でモジュールを包んでいたなら、そのモジュールは `DevObservationModule` の行の後に `install()` して残す。古い置き場所を読む `tree` スクリプトがあれば、下の形に直す |
 
-書くのはこの 1 行だけ。invoker の包み方、logger、書き出し、body の保存はモジュールの中にある:
+書くのはこの 3 行だけ。包む invoker と linker は `rename()` が決め、logger、書き出し、body の保存はモジュールの中にある:
 
 ```php
-$this->install(new DevObservationModule($this->appMeta->logDir . '/events', $this->lastModule));
+$this->rename(InvokerInterface::class, DevObservationModule::INVOKER);
+$this->rename(LinkerInterface::class, DevObservationModule::LINKER);
+$this->install(new DevObservationModule($this->appMeta->logDir . '/events'));
 ```
 
 木もボディも `var/log/<context>/events/` に落ちる(ボディは `bodies/` の下。直近 10 セッション分を残す)。
@@ -125,13 +127,9 @@ namespace は `composer.json` の psr-4 で `src/` に対応する接頭辞に `
 `public/index.php` は**変えない**。flush はキャッシュログモジュールの shutdown sink が持つので、
 アプリが自分で書き出す行は要らない。
 
-`InvokerInterface` がアプリの文脈で自前のクラスに束縛されている(`src/Module` の `bind(InvokerInterface::class)` のほか、
-install したモジュールも束縛する — BEAR.DevTools の `HaloModule` は `DevInvoker` に束縛する)なら、この 1 行とは
-両立しない — モジュールは内側に素の `Invoker` を名指しするので、その束縛か記録のどちらかが外れる。効いている束縛は、
-1 行を入れる前の文脈で `get_class($injector->getInstance(InvokerInterface::class))` が `BEAR\Resource\Invoker` 以外を
-返すかで見る。束縛がアプリの鎖(`AppModule` 側)にあるなら、README "One tree with BEAR.QueryRepository" の手順で
-自分の文脈モジュールに配線する。同じ文脈モジュールに install したモジュール(`DevModule` の `HaloModule` など)の
-束縛にはその手順の `rename()` が届かないので、そのモジュールを入れない文脈で観測する。
+`rename()` はアプリの鎖(`AppModule` 側)の束縛に届くので、アプリが `InvokerInterface` や `LinkerInterface` を自前のクラスに
+束縛していれば、そのクラスのまま記録される。同じ文脈モジュールに install したモジュール(`DevModule` の `HaloModule` など。
+`HaloModule` は `InvokerInterface` を `DevInvoker` に束縛する)の束縛には届かないので、そのモジュールを入れない文脈で観測する。
 
 **dev 文脈で叩く。** 文脈名はアプリの文脈の前に `dev-` を付けたもの(`cli-hal-app` なら `dev-cli-hal-app`)。
 CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に確かめる:
@@ -184,7 +182,7 @@ CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に�
 | 根に `resource_request` が無く、キャッシュのスコープが宙に浮く | invoker が包まれていないか、別の logger に記録している |
 | 木が `DevObservationModule` に渡したディレクトリではなく、別の場所(`query-repository/` など)に出る | 先に install された `DevQueryRepositoryLogModule` の行が残っている。その行を消す(第 3 引数で包んでいたモジュールは、§1 のとおり `install()` して残す) |
 
-崩れているなら、`DevModule` が `DevObservationModule` の横で `InvokerInterface` を束縛するモジュール(`HaloModule` など)を install していないか、アプリが `#[CacheLog]` の logger を後から上書きしていないかを見る
+崩れているなら、同じ `DevModule` に `InvokerInterface` を束縛するモジュール(`HaloModule` など)を install していないか、アプリが `#[CacheLog]` の logger を後から上書きしていないかを見る
 (`install()` は既存を上書きしないが、`bind()` は上書きする)。到達しない理由が束縛に無ければ
 `error_log`(FPM なら SAPI のエラーログ)を見る。sink の拒否・二重 arm・書けない先は全部そこに出る。
 
