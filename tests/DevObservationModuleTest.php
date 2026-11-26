@@ -133,7 +133,11 @@ final class DevObservationModuleTest extends TestCase
             protected function configure(): void
             {
                 $this->bind(CountingInterceptor::class)->in(Scope::SINGLETON);
-                $this->bindInterceptor($this->matcher->any(), $this->matcher->startsWith('onGet'), [CountingInterceptor::class]);
+                $this->bindInterceptor(
+                    $this->matcher->any(),
+                    $this->matcher->startsWith('onGet'),
+                    [CountingInterceptor::class],
+                );
             }
         };
         $injector = $this->devContext(chain: $chain);
