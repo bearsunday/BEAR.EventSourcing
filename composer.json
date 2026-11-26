@@ -41,7 +41,7 @@
     },
     "suggest": {
         "bear/query-repository": "To record resource requests into the cache log's session with DevObservationModule (^1.20)",
-        "bear/resource": "To observe BEAR.Resource execution with the InvokerInterface bridge (^1.32)",
+        "bear/resource": "To observe BEAR.Resource execution with the InvokerInterface and LinkerInterface bridges (^1.32)",
         "ray/media-query": "To back EventStoreInterface with SQL and to observe media queries as semantic log events (^1.1)"
     },
     "autoload": {
@@ -73,6 +73,7 @@
     "extra": {
         "stree": {
             "formatters": {
+                "link_request": "BEAR\\EventSourcing\\Resource\\Stree\\ResourceNodeFormatter",
                 "resource_request": "BEAR\\EventSourcing\\Resource\\Stree\\ResourceNodeFormatter"
             }
         }

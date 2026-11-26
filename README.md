@@ -56,7 +56,7 @@ Semantic Logger observations -> Events -> optional EventStore
 
 ## What is an event
 
-An `Event` is a successful resource operation observed at the root of a Semantic Logger log: a boundary request, an open/close pair of type `resource_request` with no parent. State-changing methods qualify by default; a root `GET` qualifies only under the opt-in `WITH_READS` policy below. It carries only the facts it observed:
+An `Event` is a successful resource operation observed at the root of a Semantic Logger log: a boundary request, an open/close pair of type `resource_request` with no parent, or directly inside a root `link_request` (see "Requests with links"). State-changing methods qualify by default; a root `GET` qualifies only under the opt-in `WITH_READS` policy below. It carries only the facts it observed:
 
 | Field | Source |
 | --- | --- |
@@ -67,7 +67,7 @@ An `Event` is a successful resource operation observed at the root of a Semantic
 | `timestamp` | request `timestamp` — absolute ISO-8601 with an explicit offset; an entry without one is not extracted |
 | `result` | `close.context.body` when present |
 
-Extraction is deterministic: it never invents facts. There is no fallback clock for a missing `timestamp`, and only root entries of type `resource_request` qualify — another subsystem's open/close pair that happens to carry `method` and `uri` fields is never misread as a state change, and a request nested inside another request is never extracted (see [Recording and observation](#recording-and-observation)). Extracting the same log twice yields the same events.
+Extraction is deterministic: it never invents facts. There is no fallback clock for a missing `timestamp`, and only root entries of type `resource_request`, and those directly in a root `link_request`, qualify — another subsystem's open/close pair that happens to carry `method` and `uri` fields is never misread as a state change, and a request nested inside another request is never extracted (see [Recording and observation](#recording-and-observation)). Extracting the same log twice yields the same events.
 
 Recorded methods by default — `GET` is observation data, not a state change, so it is ignored:
 
@@ -90,7 +90,7 @@ Identity is what makes the store a source of truth. Re-extraction reproduces the
 
 The log and the event stream answer different questions. The event stream records what can be **reproduced**: the boundary write requests (root reads only when opted in), the input a replay re-executes. The log observes what **happened**: every node — reads, failures, nested requests, `durationMs` — for transparency, debugging, and checking a replay against the original run.
 
-Extraction therefore takes root entries only. A `POST app://self/orders` whose handler issues `PUT app://self/inventory/SKU-1` yields one event, the POST. Replaying it re-executes the handler, which issues the PUT again; had the PUT been recorded as well, replay would apply it twice. This is the same boundary MySQL statement-based replication draws when it logs a statement but not the writes its triggers perform. The nested PUT is still in the log, as observation.
+Extraction therefore takes root entries only, and the requests directly in a root `link_request`, which a client made one after another (see [Requests with links](#requests-with-links)). A `POST app://self/orders` whose handler issues `PUT app://self/inventory/SKU-1` yields one event, the POST. Replaying it re-executes the handler, which issues the PUT again; had the PUT been recorded as well, replay would apply it twice. This is the same boundary MySQL statement-based replication draws when it logs a statement but not the writes its triggers perform. The nested PUT is still in the log, as observation.
 
 The mechanism itself is one call, using only `ResourceInterface`'s public, typed surface:
 
@@ -417,7 +417,24 @@ resource_request post 'app://self/orders?order_id=O-1000'
 
 The request line is the intent in the form BEAR's CLI takes: paste `post 'app://self/orders?order_id=O-1000'` after `php bin/app.php` (`bin/page.php` for `page://`) to run it again. Each value is cut at 40 characters of its encoded form (`...(+N)`) unless `--full`; every parameter name stays. A request recorded `replayable: false` (one holding a withheld credential, for example) ends with `[not replayable]`. A request recorded with a `caller` shows where it was made before that, ` ← src/Resource/Page/Index.php:22`, relative to the working directory; `--full` gives the absolute path and the function. The `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent — a resource calling a resource, and a resource embedding a non-resource operation such as a media query, recorded as a leaf event with its intent and wall time (see the Ray.MediaQuery observation below). Every node follows one rule: the intent is inline, the heavy detail sits behind a `*_ref` pointer. The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `*_ref` to its file for the full detail.
 
-`vendor/bin/stree` renders it this way on its own once koriym/semantic-logger reads `extra.stree.formatters` (koriym/Koriym.SemanticLogger#63): this package declares the formatter there in its `composer.json`, which stree reads from Composer's `installed.json`. In process, register `ResourceNodeFormatter` for the `resource_request` type in the `FormatterRegistry` you give `TreeRenderer` — `examples/tree.php` builds a `DevLogModule`-style log (`body_ref` pointers) and renders it, and `examples/semantic-tree.txt` is its output. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson` of the extraction examples.
+`vendor/bin/stree` renders it this way on its own once koriym/semantic-logger reads `extra.stree.formatters` (koriym/Koriym.SemanticLogger#63): this package declares the formatter there in its `composer.json`, which stree reads from Composer's `installed.json`. In process, register `ResourceNodeFormatter` for the `resource_request` and `link_request` types in the `FormatterRegistry` you give `TreeRenderer` — `examples/tree.php` builds a `DevLogModule`-style log (`body_ref` pointers) and renders it, and `examples/semantic-tree.txt` is its output. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson` of the extraction examples.
+
+### Requests with links
+
+`ResourceObservationModule` decorates `LinkerInterface` when the wrapped module binds one, and `DevObservationModule` always decorates the core linker. A request with links (`#link=self:goCart,self:doAdd`, or `linkSelf()`) whose method `RecordedMethods` records opens a `link_request`, and the requests made to follow the links nest in it. Under `WITH_READS`, around a module that binds a linker following the method each `#[Link]` declares, `ResourceObservationModule` records:
+
+```text
+link_request get 'page://self/index#link=self:goCart,self:doAdd'
+├── resource_request get 'page://self/index'
+│   └── resource_response code=200 body_ref=file://var/es/bodies/000001.json
+├── resource_request get 'page://self/cart?id=1'
+│   └── resource_response code=200 body_ref=file://var/es/bodies/000002.json
+├── resource_request post 'page://self/cart?id=1&qty=2'
+│   └── resource_response code=201 body_ref=file://var/es/bodies/000003.json
+└── link_response code=201 durationMs=1.2
+```
+
+A link is recorded as `type:rel`; the query each request carried is on its own line. `link_response` closes it with the code of the resource object returned; the last request followed is its last child. When the `link_request` is a root, a client opened it and no handler did its work, so the extractor reads each request directly in it as a boundary request: each one `RecordedMethods` records is an event, the POST above included. A `link_request` that a handler opened is nested in the handler's request and stays observation, as any nested request does. The `link_request` itself is never an event. A request with links whose method is not recorded, a GET under the default, opens no `link_request`, so the log is what it would be without links: a write the links reach is a root `resource_request`. bear/resource follows every link with GET; a POST in the middle of the links runs under a linker that follows the method each `#[Link]` declares, as BEAR.DevTools' `DeclaredMethodLinker` does in a test.
 
 ### Ray.MediaQuery observation (optional)
 
@@ -506,7 +523,7 @@ Then ask an agent 「ツリーログを見て」 ("show me the tree log"). The t
 
 - Semantic Logger is the observation source; EventStore is an optional destination.
 - Extraction is deterministic: no fallback clock, no type guessing — the same log always yields the same events.
-- Extraction records boundary requests only; a nested request is observation, never an event.
+- Extraction records boundary requests only; a nested request is observation, never an event. A request directly in a root `link_request` is a boundary request.
 - No automatic persistence during runtime observation; the application owns the flush.
 - No `BEAR\Resource\LoggerInterface` decorator.
 - Ray.MediaQuery and database installation stay in the application, never hidden inside EventSourcing modules.

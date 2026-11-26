@@ -25,7 +25,9 @@ use const JSON_THROW_ON_ERROR;
  * Extracts events from the root `resource_request` entries of a Semantic Logger log.
  *
  * A nested request is work the root's handler performs, so a replayed root
- * re-issues it; recorded as its own event it would be applied twice.
+ * re-issues it; recorded as its own event it would be applied twice. A root
+ * `link_request` is the exception: the requests in it are the ones a client made
+ * one after another to follow links, each a root of its own.
  *
  * @psalm-import-type EventList from Types
  * @psalm-import-type EventParams from Types
@@ -43,6 +45,9 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
      * `uri` fields are never misread as state changes.
      */
     public const RESOURCE_REQUEST_TYPE = 'resource_request';
+
+    /** The Semantic Logger entry type of a request with links, whose requests are extracted as roots */
+    public const LINK_REQUEST_TYPE = 'link_request';
 
     private RecordedMethods $recordedMethods;
 
@@ -76,8 +81,21 @@ final readonly class SemanticLogExtractor implements SemanticLogExtractorInterfa
         }
 
         foreach ($roots as $entry) {
-            if (is_array($entry) && (isset($entry['close']) || isset($entry['log']))) {
+            if (! is_array($entry) || ! (isset($entry['close']) || isset($entry['log']))) {
+                continue;
+            }
+
+            if (($entry['type'] ?? null) !== self::LINK_REQUEST_TYPE) {
                 $this->appendEvent($entry, $events);
+
+                continue;
+            }
+
+            $children = $entry['log'] ?? [];
+            foreach (is_array($children) ? $children : [] as $child) {
+                if (is_array($child) && (isset($child['close']) || isset($child['log']))) {
+                    $this->appendEvent($child, $events);
+                }
             }
         }
 

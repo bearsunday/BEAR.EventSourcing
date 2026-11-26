@@ -37,6 +37,7 @@ $logger->close(ResourceResponseContext::success(201, 'file://var/es/bodies/00000
 
 $formatters = new FormatterRegistry();
 $formatters->register('resource_request', new ResourceNodeFormatter());
+$formatters->register('link_request', new ResourceNodeFormatter());
 
 $config = new RenderConfig(
     showFullTree: false,

@@ -7,6 +7,8 @@ namespace BEAR\EventSourcing\Tests;
 use BEAR\EventSourcing\Event;
 use BEAR\EventSourcing\Exception\InvalidRecordedMethod;
 use BEAR\EventSourcing\RecordedMethods;
+use BEAR\EventSourcing\Resource\LinkRequestContext;
+use BEAR\EventSourcing\Resource\LinkResponseContext;
 use BEAR\EventSourcing\Resource\ResourceResponseContext as BodyResponseContext;
 use BEAR\EventSourcing\SemanticLogExtractor;
 use BEAR\EventSourcing\SemanticLogExtractorInterface;
@@ -210,6 +212,46 @@ final class EventsFromSemanticLogTest extends TestCase
         $outerId = $logger->open(new ResourceRequestContext('app://self/orders/1', 'GET'));
         $innerId = $logger->open(new ResourceRequestContext('app://self/inventory/1', 'PUT'));
         $logger->close(new ResourceResponseContext(200, ['reserved' => true]), $innerId);
+        $logger->close(new ResourceResponseContext(200, ['id' => 1]), $outerId);
+
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
+
+        $this->assertCount(0, $events);
+    }
+
+    public function testEachRequestInALinkRequestIsExtractedAsARoot(): void
+    {
+        $logger = new SemanticLogger();
+        $linkId = $logger->open(
+            new LinkRequestContext('app://self/form', 'GET', ['self:doCreate'], '2026-06-10T12:34:56.123456+00:00'),
+        );
+        $getId = $logger->open(new ResourceRequestContext('app://self/form', 'GET'));
+        $logger->close(new ResourceResponseContext(200, []), $getId);
+        $postId = $logger->open(new ResourceRequestContext('app://self/items', 'POST'));
+        $innerId = $logger->open(new ResourceRequestContext('app://self/inventory/1', 'PUT'));
+        $logger->close(new ResourceResponseContext(200, ['reserved' => true]), $innerId);
+        $logger->close(new ResourceResponseContext(201, ['id' => 1]), $postId);
+        $logger->close(LinkResponseContext::ended(201, 1.0), $linkId);
+
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
+
+        // The GET is not recorded by default, and the PUT is work the POST's handler performs.
+        $this->assertSame(
+            ['app://self/items'],
+            array_map(static fn (Event $event): string => $event->uri, iterator_to_array($events)),
+        );
+    }
+
+    public function testALinkRequestAHandlerOpenedIsNotExtracted(): void
+    {
+        $logger = new SemanticLogger();
+        $outerId = $logger->open(new ResourceRequestContext('app://self/orders/1', 'GET'));
+        $linkId = $logger->open(
+            new LinkRequestContext('app://self/form', 'GET', ['self:doCreate'], '2026-06-10T12:34:56.123456+00:00'),
+        );
+        $postId = $logger->open(new ResourceRequestContext('app://self/items', 'POST'));
+        $logger->close(new ResourceResponseContext(201, ['id' => 1]), $postId);
+        $logger->close(LinkResponseContext::ended(201, 1.0), $linkId);
         $logger->close(new ResourceResponseContext(200, ['id' => 1]), $outerId);
 
         $events = (new SemanticLogExtractor())->extract($logger->flush());

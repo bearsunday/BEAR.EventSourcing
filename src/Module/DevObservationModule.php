@@ -10,10 +10,13 @@ use BEAR\EventSourcing\RecordedMethods;
 use BEAR\EventSourcing\Resource\BodyStoreInterface;
 use BEAR\EventSourcing\Resource\FileBodyStore;
 use BEAR\EventSourcing\Resource\SemanticLogInvoker;
+use BEAR\EventSourcing\Resource\SemanticLogLinker;
 use BEAR\QueryRepository\DevQueryRepositoryLogModule;
 use BEAR\RepositoryModule\Annotation\CacheLog;
 use BEAR\Resource\Invoker;
 use BEAR\Resource\InvokerInterface;
+use BEAR\Resource\Linker;
+use BEAR\Resource\LinkerInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
 
@@ -25,6 +28,7 @@ use Ray\Di\Scope;
 final class DevObservationModule extends AbstractModule
 {
     private const INVOKER = 'bear_event_sourcing_dev_invoker';
+    private const LINKER = 'bear_event_sourcing_dev_linker';
 
     /** @param int $keep log sessions retained; body generations keep one more, so a retained log's body_ref resolves */
     public function __construct(
@@ -46,6 +50,14 @@ final class DevObservationModule extends AbstractModule
                 'recordedMethods' => Recorded::class,
                 'paramsFilter' => Filtered::class,
                 'recordCaller' => SemanticLogInvoker::RECORD_CALLER,
+            ])
+            ->in(Scope::SINGLETON);
+        $this->bind(LinkerInterface::class)->annotatedWith(self::LINKER)->to(Linker::class);
+        $this->bind(LinkerInterface::class)
+            ->toConstructor(SemanticLogLinker::class, [
+                'linker' => self::LINKER,
+                'logger' => CacheLog::class,
+                'recordedMethods' => Recorded::class,
             ])
             ->in(Scope::SINGLETON);
         $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)

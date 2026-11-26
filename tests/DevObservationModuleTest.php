@@ -8,9 +8,11 @@ use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Module\DevObservationModule;
 use BEAR\EventSourcing\Resource\FilteredParams;
 use BEAR\EventSourcing\Resource\ParamsFilterInterface;
+use BEAR\EventSourcing\Resource\SemanticLogLinker;
 use BEAR\EventSourcing\Tests\Fixture\DevContextChainModule;
 use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\Resource\LinkerInterface;
 use BEAR\Resource\ResourceInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
@@ -88,6 +90,23 @@ final class DevObservationModuleTest extends TestCase
         $this->assertSame(['name' => '[APP]'], $context['params'] ?? null);
     }
 
+    public function testARequestWithLinksReadsAsOneLinkRequest(): void
+    {
+        $injector = $this->devContext();
+        $this->assertInstanceOf(SemanticLogLinker::class, $injector->getInstance(LinkerInterface::class));
+
+        $root = $this->requestOnce(
+            $injector,
+            static fn (ResourceInterface $resource): mixed => $resource->uri('app://self/hello?name=koriym')
+                ->linkSelf('greet')(),
+        );
+
+        $this->assertSame('link_request', $root['type']);
+        $log = $root['log'] ?? null;
+        $this->assertIsArray($log);
+        $this->assertCount(2, $log);
+    }
+
     /** A `dev-` context module the way BEAR.Package builds it: constructed with the application chain */
     private function devContext(AbstractModule|null $app = null): Injector
     {
@@ -114,11 +133,15 @@ final class DevObservationModuleTest extends TestCase
         return new Injector($context);
     }
 
-    /** @return array<string, mixed> the first root of the tree the sink wrote */
-    private function requestOnce(Injector $injector): array
+    /**
+     * @param (callable(ResourceInterface): mixed)|null $request the request to make, a GET of the greeting by default
+     *
+     * @return array<string, mixed> the first root of the tree the sink wrote
+     */
+    private function requestOnce(Injector $injector, callable|null $request = null): array
     {
         $resource = $injector->getInstance(ResourceInterface::class);
-        $resource->get->uri('app://self/greeting')(['name' => 'koriym']);
+        $request === null ? $resource->get->uri('app://self/greeting')(['name' => 'koriym']) : $request($resource);
         $sink = $injector->getInstance(LogSinkInterface::class);
         $this->assertInstanceOf(LogSinkInterface::class, $sink);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);

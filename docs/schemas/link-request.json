@@ -1,0 +1,32 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/link-request.json",
+    "title": "Link request observation",
+    "description": "Open context written by SemanticLogLinker for a BEAR.Resource request with links (`#link=`). The resource_request entries of the requests made to follow the links nest in it, the first request's included, each with its own params. SemanticLogExtractor reads each of them as a root, since a client made them one after another; the link_request itself is never an event. The uri is canonical (path only).",
+    "type": "object",
+    "required": ["uri", "method", "links", "timestamp"],
+    "properties": {
+        "uri": {
+            "type": "string",
+            "minLength": 1
+        },
+        "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
+        },
+        "links": {
+            "type": "array",
+            "description": "Each link as type:rel, in the order it is followed. A link query is left out; the request that follows the link records it in its params.",
+            "items": {
+                "type": "string",
+                "pattern": "^(self|new|crawl):.+$"
+            }
+        },
+        "timestamp": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}[+-]\\d{2}:\\d{2}$",
+            "x-volatile": true
+        }
+    },
+    "additionalProperties": false
+}

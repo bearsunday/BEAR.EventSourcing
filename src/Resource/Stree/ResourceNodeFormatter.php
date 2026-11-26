@@ -30,6 +30,7 @@ use function substr;
  * `resource_request post 'app://self/users?id=koriym'`. The method stays lowercase, the only case for which
  * the CLI reads the query, and the URI is single-quoted for a POSIX shell.
  * A recorded caller follows as ` ← file:line`, relative to the working directory unless `--full`.
+ * A `link_request` renders the same way with its links after `#link=`, which the record keeps without their queries.
  *
  * @psalm-suppress MixedAssignment Semantic Logger context values are schema-defined but mixed.
  */
@@ -44,12 +45,27 @@ final class ResourceNodeFormatter implements NodeFormatterInterface
         $method = strtolower(self::stringValue($context, 'method'));
         $line = $method === '' ? $node->getDisplayName() : $node->getDisplayName() . ' ' . $method;
 
-        $request = self::stringValue($context, 'uri') . self::queryString($context, $config->showFullTree);
+        $request = self::stringValue($context, 'uri') . self::queryString($context, $config->showFullTree)
+            . self::fragment($context);
         // POSIX single quotes by hand: escapeshellarg() changes with the platform and the locale
         $line .= " '" . str_replace("'", "'\\''", $request) . "'" . self::caller($context, $config->showFullTree);
 
         // The recorder judged it non-replayable (a withheld credential, say), so it cannot simply run again
         return ($context['replayable'] ?? null) === false ? $line . ' [not replayable]' : $line;
+    }
+
+    /** @param array<string, mixed> $context */
+    private static function fragment(array $context): string
+    {
+        $links = $context['links'] ?? null;
+        $names = [];
+        foreach (is_array($links) ? $links : [] as $link) {
+            if (is_string($link)) {
+                $names[] = $link;
+            }
+        }
+
+        return $names === [] ? '' : '#link=' . implode(',', $names);
     }
 
     /** @param array<string, mixed> $context */

@@ -20,9 +20,9 @@ use const JSON_THROW_ON_ERROR;
 final class ResourceNodeFormatterTest extends TestCase
 {
     /** @param array<string, mixed> $context */
-    private static function format(array $context, bool $full = false): string
+    private static function format(array $context, bool $full = false, string $type = 'resource_request'): string
     {
-        $node = new TreeNode('resource_request_1', 'resource_request', $context);
+        $node = new TreeNode($type . '_1', $type, $context);
         $config = new RenderConfig(showFullTree: $full, timeThreshold: 0.0, maxLines: 0);
 
         return (new ResourceNodeFormatter())->format($node, $config);
@@ -45,6 +45,16 @@ final class ResourceNodeFormatterTest extends TestCase
         $line = self::format(['uri' => 'app://self/users/1', 'method' => 'GET']);
 
         $this->assertSame("resource_request get 'app://self/users/1'", $line);
+    }
+
+    public function testRendersALinkRequestWithItsLinks(): void
+    {
+        $line = self::format(
+            ['uri' => 'page://self/index', 'method' => 'GET', 'links' => ['self:goCart', 'self:doAdd']],
+            type: 'link_request',
+        );
+
+        $this->assertSame("link_request get 'page://self/index#link=self:goCart,self:doAdd'", $line);
     }
 
     public function testCutsEachLongValueAndKeepsEveryName(): void
@@ -155,5 +165,6 @@ final class ResourceNodeFormatterTest extends TestCase
         $composer = json_decode($composerJson, true, 512, JSON_THROW_ON_ERROR);
 
         $this->assertSame(ResourceNodeFormatter::class, $composer['extra']['stree']['formatters']['resource_request']);
+        $this->assertSame(ResourceNodeFormatter::class, $composer['extra']['stree']['formatters']['link_request']);
     }
 }

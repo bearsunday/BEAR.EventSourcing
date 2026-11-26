@@ -4,9 +4,9 @@
 
 This repository implements event sourcing by extracting immutable event facts from Semantic Logger observations.
 
-Semantic Logger is the observation source. BEAR.Resource runtime observation, when needed, must be an optional `InvokerInterface` bridge that writes Semantic Logger open/close entries. Do not decorate `BEAR\Resource\LoggerInterface` to persist events during request execution.
+Semantic Logger is the observation source. BEAR.Resource runtime observation, when needed, must be an optional `InvokerInterface` bridge that writes Semantic Logger open/close entries, with a `LinkerInterface` bridge that frames a request with links in one `link_request`. Do not decorate `BEAR\Resource\LoggerInterface` to persist events during request execution.
 
-Recording and observation are separate roles. Events record what a replay re-executes: the boundary (root) requests, state-changing by default. The log observes everything else — nested requests, reads, failures, durations — and is never flattened into the event stream.
+Recording and observation are separate roles. Events record what a replay re-executes: the boundary (root) requests, state-changing by default. A request directly in a root `link_request` is a boundary request too: a client made it, no handler did. The log observes everything else — nested requests, reads, failures, durations — and is never flattened into the event stream.
 
 Preferred flow:
 
@@ -49,7 +49,7 @@ Core components:
 - Semantic Logger log fixtures and extractor tests
 - `EventStoreInterface`, in-memory implementation, and Ray.MediaQuery SQL implementation
 - `EventSourcingModule` and `MediaQueryEventStoreModule` for optional ES bindings
-- Optional BEAR.Resource observation bridge using `InvokerInterface`
+- Optional BEAR.Resource observation bridge using `InvokerInterface` and `LinkerInterface`
 - Optional Ray.MediaQuery observation adapter using `MediaQueryLoggerInterface`
 - Development `FileBodyStore` / `DevLogModule` for local body refs
 
