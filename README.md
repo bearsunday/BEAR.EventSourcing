@@ -56,7 +56,7 @@ Semantic Logger observations -> Events -> optional EventStore
 
 ## What is an event
 
-An `Event` is a successful resource operation observed at the root of a Semantic Logger log: a boundary request, an open/close pair of type `resource_request` with no parent. State-changing methods qualify by default; a root `GET` qualifies only under the opt-in `WITH_READS` policy below. It carries only the facts it observed:
+An `Event` is a successful resource operation observed at the root of a Semantic Logger log: a boundary request, an open/close pair of type `resource_request` with no parent, or directly inside a root `link_request` (see "Requests with links"). State-changing methods qualify by default; a root `GET` qualifies only under the opt-in `WITH_READS` policy below. It carries only the facts it observed:
 
 | Field | Source |
 | --- | --- |
@@ -434,7 +434,7 @@ link_request get 'page://self/index#link=self:goCart,self:doAdd'
 └── link_response code=201 durationMs=1.2
 ```
 
-A link is recorded as `type:rel`; the query each request carried is on its own line. `link_response` closes it with the code of the resource object returned; the last request followed is its last child. The client opened the `link_request`, no handler did its work, so the extractor reads each request in it as a boundary request: the POST above is an event, and the GETs are not unless `RecordedMethods` records them. The `link_request` itself is never an event.
+A link is recorded as `type:rel`; the query each request carried is on its own line. `link_response` closes it with the code of the resource object returned; the last request followed is its last child. When the `link_request` is a root, a client opened it and no handler did its work, so the extractor reads each request directly in it as a boundary request: the POST above is an event, and the GETs are not unless `RecordedMethods` records them. A `link_request` that a handler opened is nested in the handler's request and stays observation, as any nested request does. The `link_request` itself is never an event.
 
 ### Ray.MediaQuery observation (optional)
 
@@ -523,7 +523,7 @@ Then ask an agent 「ツリーログを見て」 ("show me the tree log"). The t
 
 - Semantic Logger is the observation source; EventStore is an optional destination.
 - Extraction is deterministic: no fallback clock, no type guessing — the same log always yields the same events.
-- Extraction records boundary requests only; a nested request is observation, never an event. A request made to follow a link is a boundary request.
+- Extraction records boundary requests only; a nested request is observation, never an event. A request directly in a root `link_request` is a boundary request.
 - No automatic persistence during runtime observation; the application owns the flush.
 - No `BEAR\Resource\LoggerInterface` decorator.
 - Ray.MediaQuery and database installation stay in the application, never hidden inside EventSourcing modules.

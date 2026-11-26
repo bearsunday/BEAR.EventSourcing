@@ -242,6 +242,23 @@ final class EventsFromSemanticLogTest extends TestCase
         );
     }
 
+    public function testALinkRequestAHandlerOpenedIsNotExtracted(): void
+    {
+        $logger = new SemanticLogger();
+        $outerId = $logger->open(new ResourceRequestContext('app://self/orders/1', 'GET'));
+        $linkId = $logger->open(
+            new LinkRequestContext('app://self/form', 'GET', ['self:doCreate'], '2026-06-10T12:34:56.123456+00:00'),
+        );
+        $postId = $logger->open(new ResourceRequestContext('app://self/items', 'POST'));
+        $logger->close(new ResourceResponseContext(201, ['id' => 1]), $postId);
+        $logger->close(LinkResponseContext::ended(201, 1.0), $linkId);
+        $logger->close(new ResourceResponseContext(200, ['id' => 1]), $outerId);
+
+        $events = (new SemanticLogExtractor())->extract($logger->flush());
+
+        $this->assertCount(0, $events);
+    }
+
     public function testNonReplayableRequestIsStillExtracted(): void
     {
         // A filter withheld a credential, so the recorded params cannot re-execute this request

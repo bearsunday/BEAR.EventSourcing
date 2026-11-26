@@ -19,7 +19,7 @@
             "description": "Each link as type:rel, in the order it is followed. A link query is left out; the request that follows the link records it in its params.",
             "items": {
                 "type": "string",
-                "pattern": "^(self|new|crawl):[A-Za-z0-9_-]+$"
+                "pattern": "^(self|new|crawl):.+$"
             }
         },
         "timestamp": {
