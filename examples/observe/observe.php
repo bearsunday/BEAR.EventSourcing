@@ -72,6 +72,7 @@ echo "[1] Live requests executed (recorded by DevLogModule)\n";
 // ---------------------------------------------------------------------------
 $formatters = new FormatterRegistry();
 $formatters->register('resource_request', new ResourceNodeFormatter());
+$formatters->register('link_request', new ResourceNodeFormatter());
 $config = new RenderConfig(showFullTree: false, timeThreshold: 0.0, maxLines: 0, formatters: $formatters);
 echo "\n[2] Observation log as a tree\n";
 echo (new TreeRenderer($config))->render($log);

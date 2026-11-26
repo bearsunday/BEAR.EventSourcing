@@ -421,7 +421,7 @@ The request line is the intent in the form BEAR's CLI takes: paste `post 'app://
 
 ### Requests with links
 
-`ResourceObservationModule` decorates `LinkerInterface` when the wrapped module binds one, and `DevObservationModule` always does. A request with links (`#link=self:goCart,self:doAdd`, or `linkSelf()`) whose method `RecordedMethods` records opens a `link_request`, and the requests made to follow the links nest in it; under `WITH_READS`, as `DevObservationModule` records:
+`ResourceObservationModule` decorates `LinkerInterface` when the wrapped module binds one, and `DevObservationModule` always decorates the core linker. A request with links (`#link=self:goCart,self:doAdd`, or `linkSelf()`) whose method `RecordedMethods` records opens a `link_request`, and the requests made to follow the links nest in it. Under `WITH_READS`, around a module that binds a linker following the method each `#[Link]` declares, `ResourceObservationModule` records:
 
 ```text
 link_request get 'page://self/index#link=self:goCart,self:doAdd'
