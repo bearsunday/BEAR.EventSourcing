@@ -8,7 +8,9 @@ use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Module\DevObservationModule;
 use BEAR\EventSourcing\Resource\FilteredParams;
 use BEAR\EventSourcing\Resource\ParamsFilterInterface;
+use BEAR\EventSourcing\Resource\SemanticLogInvoker;
 use BEAR\EventSourcing\Resource\SemanticLogLinker;
+use BEAR\EventSourcing\Tests\Fixture\AppInvoker;
 use BEAR\EventSourcing\Tests\Fixture\AppLinker;
 use BEAR\EventSourcing\Tests\Fixture\CountingInterceptor;
 use BEAR\EventSourcing\Tests\Fixture\DevContextChainModule;
@@ -112,17 +114,21 @@ final class DevObservationModuleTest extends TestCase
         $this->assertCount(2, $log);
     }
 
-    public function testTheRecordingWrapsTheLinkerTheAppChainBinds(): void
+    public function testTheRecordingWrapsTheInvokerAndTheLinkerTheAppChainBinds(): void
     {
         $chain = new class (new DevContextChainModule()) extends AbstractModule {
             protected function configure(): void
             {
+                $this->bind(InvokerInterface::class)->to(AppInvoker::class);
                 $this->bind(LinkerInterface::class)->to(AppLinker::class);
             }
         };
+        $injector = $this->devContext(chain: $chain);
 
-        $linker = $this->devContext(chain: $chain)->getInstance(LinkerInterface::class);
-
+        $invoker = $injector->getInstance(InvokerInterface::class);
+        $this->assertInstanceOf(SemanticLogInvoker::class, $invoker);
+        $this->assertInstanceOf(AppInvoker::class, (new ReflectionProperty($invoker, 'invoker'))->getValue($invoker));
+        $linker = $injector->getInstance(LinkerInterface::class);
         $this->assertInstanceOf(SemanticLogLinker::class, $linker);
         $this->assertInstanceOf(AppLinker::class, (new ReflectionProperty($linker, 'linker'))->getValue($linker));
     }

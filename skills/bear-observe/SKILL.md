@@ -10,7 +10,7 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 テストは緑のまま、遅いだけ、あるいは古いだけになる。見るのはコードではなくログで、順番は決まっている。
 
 ```text
-1. 設置     DevModule に DevObservationModule を 1 行で入れる
+1. 設置     DevModule に DevObservationModule を 3 行で入れる
 2. 実証     1 回叩いて、木の形で配線を確かめる
 3. 観測     リクエストを 1 本流して木を読む           (composer tree / vendor/bin/stree)
 4. 照合     宣言した意図が、どのイベント列で現れるか
