@@ -421,7 +421,7 @@ The request line is the intent in the form BEAR's CLI takes: paste `post 'app://
 
 ### Requests with links
 
-`ResourceObservationModule` and `DevObservationModule` also decorate `LinkerInterface` when the wrapped module binds one. A request with links (`#link=self:goCart,self:doAdd`, or `linkSelf()`) opens a `link_request`, and the requests made to follow the links nest in it:
+`ResourceObservationModule` decorates `LinkerInterface` when the wrapped module binds one, and `DevObservationModule` always does. A request with links (`#link=self:goCart,self:doAdd`, or `linkSelf()`) opens a `link_request`, and the requests made to follow the links nest in it:
 
 ```text
 link_request get 'page://self/index#link=self:goCart,self:doAdd'
@@ -434,7 +434,7 @@ link_request get 'page://self/index#link=self:goCart,self:doAdd'
 └── link_response code=201 durationMs=1.2
 ```
 
-A link is recorded as `type:rel`; the query each request carried is on its own line. `link_response` closes it with the code of the resource object returned; the last request followed is its last child. When the `link_request` is a root, a client opened it and no handler did its work, so the extractor reads each request directly in it as a boundary request: the POST above is an event, and the GETs are not unless `RecordedMethods` records them. A `link_request` that a handler opened is nested in the handler's request and stays observation, as any nested request does. The `link_request` itself is never an event.
+A link is recorded as `type:rel`; the query each request carried is on its own line. `link_response` closes it with the code of the resource object returned; the last request followed is its last child. When the `link_request` is a root, a client opened it and no handler did its work, so the extractor reads each request directly in it as a boundary request: the POST above is an event, and the GETs are not unless `RecordedMethods` records them. A `link_request` that a handler opened is nested in the handler's request and stays observation, as any nested request does. The `link_request` itself is never an event. A link is followed with the method its `#[Link]` declares from bear/resource 1.37, and with GET before, so a POST in the middle of the links needs 1.37.
 
 ### Ray.MediaQuery observation (optional)
 

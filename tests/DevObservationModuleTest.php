@@ -8,9 +8,11 @@ use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Module\DevObservationModule;
 use BEAR\EventSourcing\Resource\FilteredParams;
 use BEAR\EventSourcing\Resource\ParamsFilterInterface;
+use BEAR\EventSourcing\Resource\SemanticLogLinker;
 use BEAR\EventSourcing\Tests\Fixture\DevContextChainModule;
 use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\Resource\LinkerInterface;
 use BEAR\Resource\ResourceInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
@@ -86,6 +88,11 @@ final class DevObservationModuleTest extends TestCase
         $context = $root['context'] ?? null;
         $this->assertIsArray($context);
         $this->assertSame(['name' => '[APP]'], $context['params'] ?? null);
+    }
+
+    public function testTheLinkerIsDecorated(): void
+    {
+        $this->assertInstanceOf(SemanticLogLinker::class, $this->devContext()->getInstance(LinkerInterface::class));
     }
 
     /** A `dev-` context module the way BEAR.Package builds it: constructed with the application chain */

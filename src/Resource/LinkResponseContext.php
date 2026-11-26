@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource;
 
+use InvalidArgumentException;
 use JsonSerializable;
 use Koriym\SemanticLogger\AbstractContext;
 use Throwable;
+
+use function sprintf;
 
 final class LinkResponseContext extends AbstractContext implements JsonSerializable
 {
@@ -22,6 +25,12 @@ final class LinkResponseContext extends AbstractContext implements JsonSerializa
         public readonly array|null $exception,
         public readonly float $durationMs,
     ) {
+        if ($this->code !== null && ($this->code < 100 || $this->code > 599)) {
+            throw new InvalidArgumentException(sprintf(
+                'Link response code %d is outside the valid HTTP status range (100-599).',
+                $this->code,
+            ));
+        }
     }
 
     /** @param int $code the code of the resource object the linker returned */

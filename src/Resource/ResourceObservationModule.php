@@ -12,6 +12,7 @@ use BEAR\Resource\LinkerInterface;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Ray\Di\AbstractModule;
+use Ray\Di\Name;
 use Ray\Di\Scope;
 
 final class ResourceObservationModule extends AbstractModule
@@ -59,7 +60,7 @@ final class ResourceObservationModule extends AbstractModule
             ->in(Scope::SINGLETON);
         // A wrapped module made of an invoker alone binds no linker to decorate
         $wrapped = $this->lastModule instanceof AbstractModule ? $this->lastModule->getContainer()->getContainer() : [];
-        if (! isset($wrapped[LinkerInterface::class . '-'])) {
+        if (! isset($wrapped[LinkerInterface::class . '-' . Name::ANY])) {
             return;
         }
 

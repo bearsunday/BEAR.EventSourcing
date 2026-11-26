@@ -4,7 +4,7 @@
 
 ### Added
 
-- `ResourceObservationModule` and `DevObservationModule` record a request with links (`#link=`, `linkSelf()`) as a `link_request` in which the requests made to follow the links nest. The extractor reads each request directly in a root `link_request` as a boundary request, so a POST a client reached through links is an event.
+- `ResourceObservationModule` and `DevObservationModule` record a request with links (`#link=`, `linkSelf()`) as a `link_request` in which the requests made to follow the links nest. The extractor reads each request directly in a root `link_request` as a boundary request, so a POST a client reached through links (bear/resource 1.37 or later) is an event.
 
 ## 0.3.1 - 2026-11-11
 

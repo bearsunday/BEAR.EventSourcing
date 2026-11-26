@@ -50,17 +50,21 @@ final readonly class SemanticLogLinker implements LinkerInterface
         try {
             $ro = $this->linker->invoke($request);
         } catch (Throwable $e) {
+            $durationMs = self::elapsedMs($start);
             $this->safeClose(
-                static fn (): LinkResponseContext => LinkResponseContext::failure($e, self::elapsedMs($start)),
+                static fn (): LinkResponseContext => LinkResponseContext::failure($e, $durationMs),
                 $openId,
+                $durationMs,
             );
 
             throw $e;
         }
 
+        $durationMs = self::elapsedMs($start);
         $this->safeClose(
-            static fn (): LinkResponseContext => LinkResponseContext::ended($ro->code, self::elapsedMs($start)),
+            static fn (): LinkResponseContext => LinkResponseContext::ended($ro->code, $durationMs),
             $openId,
+            $durationMs,
         );
 
         return $ro;
@@ -78,15 +82,26 @@ final readonly class SemanticLogLinker implements LinkerInterface
         }
     }
 
-    /** @param callable(): LinkResponseContext $contextFactory */
-    private function safeClose(callable $contextFactory, string|null $openId): void
+    /**
+     * Closes the link_request whatever happens: left open, it would take every later entry in as its child.
+     *
+     * @param callable(): LinkResponseContext $contextFactory
+     */
+    private function safeClose(callable $contextFactory, string|null $openId, float $durationMs): void
     {
         if ($openId === null) {
             return;
         }
 
         try {
-            $this->logger->close($contextFactory(), $openId);
+            $context = $contextFactory();
+        } catch (Throwable $e) {
+            self::warn(sprintf('Semantic log context build failed: %s', $e->getMessage()));
+            $context = LinkResponseContext::failure($e, $durationMs);
+        }
+
+        try {
+            $this->logger->close($context, $openId);
         } catch (Throwable $e) {
             self::warn(sprintf('Semantic log close failed: %s', $e->getMessage()));
         }
