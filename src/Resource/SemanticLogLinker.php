@@ -1,0 +1,119 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BEAR\EventSourcing\Resource;
+
+use BEAR\Resource\AbstractRequest;
+use BEAR\Resource\LinkerInterface;
+use BEAR\Resource\LinkType;
+use BEAR\Resource\ResourceObject;
+use DateTimeImmutable;
+use Koriym\SemanticLogger\SemanticLoggerInterface;
+use Throwable;
+
+use function array_map;
+use function hrtime;
+use function round;
+use function sprintf;
+use function strtoupper;
+use function trigger_error;
+
+use const E_USER_WARNING;
+
+/**
+ * Records a request with links as one link_request, in which the requests made to follow the links nest
+ *
+ * The requests nest as a log tree, not as one handler's work: SemanticLogExtractor reads each as a boundary of its own.
+ * Like SemanticLogInvoker, it never lets a logging failure break the request it watches.
+ */
+final readonly class SemanticLogLinker implements LinkerInterface
+{
+    private const TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
+
+    public function __construct(
+        private LinkerInterface $linker,
+        private SemanticLoggerInterface $logger,
+    ) {
+    }
+
+    public function invoke(AbstractRequest $request): ResourceObject
+    {
+        $openId = $this->safeOpen(static fn (): LinkRequestContext => new LinkRequestContext(
+            uri: self::canonicalUri($request->resourceObject),
+            method: strtoupper($request->method->value),
+            links: array_map(static fn (LinkType $link): string => $link->type . ':' . $link->key, $request->links),
+            timestamp: (new DateTimeImmutable())->format(self::TIMESTAMP_FORMAT),
+        ));
+
+        $start = hrtime(true);
+        try {
+            $ro = $this->linker->invoke($request);
+        } catch (Throwable $e) {
+            $this->safeClose(
+                static fn (): LinkResponseContext => LinkResponseContext::failure($e, self::elapsedMs($start)),
+                $openId,
+            );
+
+            throw $e;
+        }
+
+        $this->safeClose(
+            static fn (): LinkResponseContext => LinkResponseContext::ended(
+                self::canonicalUri($ro),
+                $ro->code,
+                self::elapsedMs($start),
+            ),
+            $openId,
+        );
+
+        return $ro;
+    }
+
+    /** @param callable(): LinkRequestContext $contextFactory */
+    private function safeOpen(callable $contextFactory): string|null
+    {
+        try {
+            return $this->logger->open($contextFactory());
+        } catch (Throwable $e) {
+            self::warn(sprintf('Semantic log open failed: %s', $e->getMessage()));
+
+            return null;
+        }
+    }
+
+    /** @param callable(): LinkResponseContext $contextFactory */
+    private function safeClose(callable $contextFactory, string|null $openId): void
+    {
+        if ($openId === null) {
+            return;
+        }
+
+        try {
+            $this->logger->close($contextFactory(), $openId);
+        } catch (Throwable $e) {
+            self::warn(sprintf('Semantic log close failed: %s', $e->getMessage()));
+        }
+    }
+
+    private static function warn(string $message): void
+    {
+        try {
+            trigger_error($message, E_USER_WARNING);
+        } catch (Throwable) {
+            // A strict error handler may turn the warning into an exception; observation never breaks the request.
+        }
+    }
+
+    private static function canonicalUri(ResourceObject $ro): string
+    {
+        $uri = $ro->uri;
+
+        return "{$uri->scheme}://{$uri->host}{$uri->path}";
+    }
+
+    private static function elapsedMs(int|float $start): float
+    {
+        return round(((float) hrtime(true) - (float) $start) / 1e6, 3);
+    }
+}

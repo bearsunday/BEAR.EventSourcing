@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://bearsunday.github.io/BEAR.EventSourcing/schemas/link-response.json",
+    "title": "Link response observation",
+    "description": "Close context written by SemanticLogLinker: the resource object the request with links returned. exception replaces uri and code when following the links threw.",
+    "type": "object",
+    "required": ["durationMs"],
+    "anyOf": [{"required": ["uri", "code"]}, {"required": ["exception"]}],
+    "properties": {
+        "uri": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Canonical uri (path only) of the resource object returned: from bear/resource 1.37, the last resource followed or the one that answered 400 or more and stopped the links."
+        },
+        "code": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+        },
+        "exception": {
+            "type": "object",
+            "required": ["class", "message"],
+            "properties": {
+                "class": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "message": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "durationMs": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Wall time of all the requests made to follow the links, in milliseconds.",
+            "x-volatile": true
+        }
+    },
+    "additionalProperties": false
+}

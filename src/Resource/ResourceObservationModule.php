@@ -8,6 +8,7 @@ use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Recorded;
 use BEAR\EventSourcing\RecordedMethods;
 use BEAR\Resource\InvokerInterface;
+use BEAR\Resource\LinkerInterface;
 use Koriym\SemanticLogger\SemanticLogger;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use Ray\Di\AbstractModule;
@@ -16,6 +17,7 @@ use Ray\Di\Scope;
 final class ResourceObservationModule extends AbstractModule
 {
     private const INVOKER = 'bear_event_sourcing_invoker';
+    private const LINKER = 'bear_event_sourcing_linker';
 
     public function __construct(
         private readonly RecordedMethods|null $methods = null,
@@ -54,6 +56,16 @@ final class ResourceObservationModule extends AbstractModule
                 'paramsFilter' => Filtered::class,
                 'recordCaller' => SemanticLogInvoker::RECORD_CALLER,
             ])
+            ->in(Scope::SINGLETON);
+        // A wrapped module made of an invoker alone binds no linker to decorate
+        $wrapped = $this->lastModule instanceof AbstractModule ? $this->lastModule->getContainer()->getContainer() : [];
+        if (! isset($wrapped[LinkerInterface::class . '-'])) {
+            return;
+        }
+
+        $this->rename(LinkerInterface::class, self::LINKER);
+        $this->bind(LinkerInterface::class)
+            ->toConstructor(SemanticLogLinker::class, ['linker' => self::LINKER])
             ->in(Scope::SINGLETON);
     }
 }

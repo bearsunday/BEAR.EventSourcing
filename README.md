@@ -417,7 +417,21 @@ resource_request post 'app://self/orders?order_id=O-1000'
 
 The request line is the intent in the form BEAR's CLI takes: paste `post 'app://self/orders?order_id=O-1000'` after `php bin/app.php` (`bin/page.php` for `page://`) to run it again. Each value is cut at 40 characters of its encoded form (`...(+N)`) unless `--full`; every parameter name stays. A request recorded `replayable: false` (one holding a withheld credential, for example) ends with `[not replayable]`. A request recorded with a `caller` shows where it was made before that, ` ← src/Resource/Page/Index.php:22`, relative to the working directory; `--full` gives the absolute path and the function. The `└──` close line is the result (`code` plus the `body_ref` pointer). Child operations nest under their parent — a resource calling a resource, and a resource embedding a non-resource operation such as a media query, recorded as a leaf event with its intent and wall time (see the Ray.MediaQuery observation below). Every node follows one rule: the intent is inline, the heavy detail sits behind a `*_ref` pointer. The resource shape keeps the tree normalized, and no timestamp noise leaks in. When debugging, follow a node's `*_ref` to its file for the full detail.
 
-`vendor/bin/stree` renders it this way on its own once koriym/semantic-logger reads `extra.stree.formatters` (koriym/Koriym.SemanticLogger#63): this package declares the formatter there in its `composer.json`, which stree reads from Composer's `installed.json`. In process, register `ResourceNodeFormatter` for the `resource_request` type in the `FormatterRegistry` you give `TreeRenderer` — `examples/tree.php` builds a `DevLogModule`-style log (`body_ref` pointers) and renders it, and `examples/semantic-tree.txt` is its output. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson` of the extraction examples.
+`vendor/bin/stree` renders it this way on its own once koriym/semantic-logger reads `extra.stree.formatters` (koriym/Koriym.SemanticLogger#63): this package declares the formatter there in its `composer.json`, which stree reads from Composer's `installed.json`. In process, register `ResourceNodeFormatter` for the `resource_request` and `link_request` types in the `FormatterRegistry` you give `TreeRenderer` — `examples/tree.php` builds a `DevLogModule`-style log (`body_ref` pointers) and renders it, and `examples/semantic-tree.txt` is its output. This package never writes the log to disk itself; `examples/semantic-log.json` is the raw `LogJson` of the extraction examples.
+
+### Requests with links
+
+`ResourceObservationModule` and `DevObservationModule` also decorate `LinkerInterface` when the wrapped module binds one. A request with links (`#link=self:goCart,self:doAdd`, or `linkSelf()`) opens a `link_request`, and the requests made to follow the links nest in it:
+
+```text
+link_request get 'page://self/index#link=self:goCart,self:doAdd'
+├── resource_request get 'page://self/index'
+├── resource_request get 'page://self/cart?id=1'
+├── resource_request post 'page://self/cart?id=1&qty=2'
+└── link_response uri=page://self/cart code=201
+```
+
+A link is recorded as `type:rel`; the query each request carried is on its own line. The client opened the `link_request`, no handler did its work, so the extractor reads each request in it as a boundary request: the POST above is an event, and the GETs are not unless `RecordedMethods` records them. The `link_request` itself is never an event.
 
 ### Ray.MediaQuery observation (optional)
 
@@ -506,7 +520,7 @@ Then ask an agent 「ツリーログを見て」 ("show me the tree log"). The t
 
 - Semantic Logger is the observation source; EventStore is an optional destination.
 - Extraction is deterministic: no fallback clock, no type guessing — the same log always yields the same events.
-- Extraction records boundary requests only; a nested request is observation, never an event.
+- Extraction records boundary requests only; a nested request is observation, never an event. A request made to follow a link is a boundary request.
 - No automatic persistence during runtime observation; the application owns the flush.
 - No `BEAR\Resource\LoggerInterface` decorator.
 - Ray.MediaQuery and database installation stay in the application, never hidden inside EventSourcing modules.

@@ -73,6 +73,7 @@
     "extra": {
         "stree": {
             "formatters": {
+                "link_request": "BEAR\\EventSourcing\\Resource\\Stree\\ResourceNodeFormatter",
                 "resource_request": "BEAR\\EventSourcing\\Resource\\Stree\\ResourceNodeFormatter"
             }
         }

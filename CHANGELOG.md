@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `ResourceObservationModule` and `DevObservationModule` record a request with links (`#link=`, `linkSelf()`) as a `link_request` in which the requests made to follow the links nest. The extractor reads each of those requests as a boundary request, so a POST reached through links is an event.
+
 ## 0.3.1 - 2026-11-11
 
 ### Fixed
