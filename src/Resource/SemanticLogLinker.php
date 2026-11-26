@@ -34,12 +34,15 @@ final readonly class SemanticLogLinker implements LinkerInterface
 {
     private const TIMESTAMP_FORMAT = 'Y-m-d\TH:i:s.uP';
 
+    private RecordedMethods $recordedMethods;
+
     public function __construct(
         private LinkerInterface $linker,
         private SemanticLoggerInterface $logger,
-        #[Recorded]
-        private RecordedMethods $recordedMethods,
+        #[Recorded] RecordedMethods $recordedMethods,
     ) {
+        // Not promoted: #[Recorded] targets a parameter only
+        $this->recordedMethods = $recordedMethods;
     }
 
     public function invoke(AbstractRequest $request): ResourceObject

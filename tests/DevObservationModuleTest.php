@@ -90,9 +90,21 @@ final class DevObservationModuleTest extends TestCase
         $this->assertSame(['name' => '[APP]'], $context['params'] ?? null);
     }
 
-    public function testTheLinkerIsDecorated(): void
+    public function testARequestWithLinksReadsAsOneLinkRequest(): void
     {
-        $this->assertInstanceOf(SemanticLogLinker::class, $this->devContext()->getInstance(LinkerInterface::class));
+        $injector = $this->devContext();
+        $this->assertInstanceOf(SemanticLogLinker::class, $injector->getInstance(LinkerInterface::class));
+
+        $root = $this->requestOnce(
+            $injector,
+            static fn (ResourceInterface $resource): mixed => $resource->uri('app://self/hello?name=koriym')
+                ->linkSelf('greet')(),
+        );
+
+        $this->assertSame('link_request', $root['type']);
+        $log = $root['log'] ?? null;
+        $this->assertIsArray($log);
+        $this->assertCount(2, $log);
     }
 
     /** A `dev-` context module the way BEAR.Package builds it: constructed with the application chain */
@@ -121,11 +133,15 @@ final class DevObservationModuleTest extends TestCase
         return new Injector($context);
     }
 
-    /** @return array<string, mixed> the first root of the tree the sink wrote */
-    private function requestOnce(Injector $injector): array
+    /**
+     * @param (callable(ResourceInterface): mixed)|null $request the request to make, a GET of the greeting by default
+     *
+     * @return array<string, mixed> the first root of the tree the sink wrote
+     */
+    private function requestOnce(Injector $injector, callable|null $request = null): array
     {
         $resource = $injector->getInstance(ResourceInterface::class);
-        $resource->get->uri('app://self/greeting')(['name' => 'koriym']);
+        $request === null ? $resource->get->uri('app://self/greeting')(['name' => 'koriym']) : $request($resource);
         $sink = $injector->getInstance(LogSinkInterface::class);
         $this->assertInstanceOf(LogSinkInterface::class, $sink);
         $logger = $injector->getInstance(SemanticLoggerInterface::class, CacheLog::class);
