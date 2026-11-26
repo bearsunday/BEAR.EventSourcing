@@ -18,35 +18,27 @@ final class LinkResponseContext extends AbstractContext implements JsonSerializa
 
     /** @param array{class: class-string, message: string}|null $exception */
     private function __construct(
-        public readonly string|null $uri,
         public readonly int|null $code,
         public readonly array|null $exception,
         public readonly float $durationMs,
     ) {
     }
 
-    /**
-     * The resource object the linker returned: from bear/resource 1.37, the last one followed or the one that
-     * answered 400 or more and stopped the links
-     */
-    public static function ended(string $uri, int $code, float $durationMs): self
+    /** @param int $code the code of the resource object the linker returned */
+    public static function ended(int $code, float $durationMs): self
     {
-        return new self($uri, $code, null, $durationMs);
+        return new self($code, null, $durationMs);
     }
 
     public static function failure(Throwable $exception, float $durationMs): self
     {
-        return new self(null, null, ['class' => $exception::class, 'message' => $exception->getMessage()], $durationMs);
+        return new self(null, ['class' => $exception::class, 'message' => $exception->getMessage()], $durationMs);
     }
 
     /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
         $context = [];
-        if ($this->uri !== null) {
-            $context['uri'] = $this->uri;
-        }
-
         if ($this->code !== null) {
             $context['code'] = $this->code;
         }

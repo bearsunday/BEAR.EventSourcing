@@ -426,12 +426,15 @@ The request line is the intent in the form BEAR's CLI takes: paste `post 'app://
 ```text
 link_request get 'page://self/index#link=self:goCart,self:doAdd'
 ├── resource_request get 'page://self/index'
+│   └── resource_response code=200 body_ref=file://var/es/bodies/000001.json
 ├── resource_request get 'page://self/cart?id=1'
+│   └── resource_response code=200 body_ref=file://var/es/bodies/000002.json
 ├── resource_request post 'page://self/cart?id=1&qty=2'
-└── link_response uri=page://self/cart code=201
+│   └── resource_response code=201 body_ref=file://var/es/bodies/000003.json
+└── link_response code=201 durationMs=1.2
 ```
 
-A link is recorded as `type:rel`; the query each request carried is on its own line. The client opened the `link_request`, no handler did its work, so the extractor reads each request in it as a boundary request: the POST above is an event, and the GETs are not unless `RecordedMethods` records them. The `link_request` itself is never an event.
+A link is recorded as `type:rel`; the query each request carried is on its own line. `link_response` closes it with the code of the resource object returned; the last request followed is its last child. The client opened the `link_request`, no handler did its work, so the extractor reads each request in it as a boundary request: the POST above is an event, and the GETs are not unless `RecordedMethods` records them. The `link_request` itself is never an event.
 
 ### Ray.MediaQuery observation (optional)
 

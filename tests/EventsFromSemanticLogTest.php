@@ -231,7 +231,7 @@ final class EventsFromSemanticLogTest extends TestCase
         $innerId = $logger->open(new ResourceRequestContext('app://self/inventory/1', 'PUT'));
         $logger->close(new ResourceResponseContext(200, ['reserved' => true]), $innerId);
         $logger->close(new ResourceResponseContext(201, ['id' => 1]), $postId);
-        $logger->close(LinkResponseContext::ended('app://self/items', 201, 1.0), $linkId);
+        $logger->close(LinkResponseContext::ended(201, 1.0), $linkId);
 
         $events = (new SemanticLogExtractor())->extract($logger->flush());
 

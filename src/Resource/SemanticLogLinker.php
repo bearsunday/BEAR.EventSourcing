@@ -59,11 +59,7 @@ final readonly class SemanticLogLinker implements LinkerInterface
         }
 
         $this->safeClose(
-            static fn (): LinkResponseContext => LinkResponseContext::ended(
-                self::canonicalUri($ro),
-                $ro->code,
-                self::elapsedMs($start),
-            ),
+            static fn (): LinkResponseContext => LinkResponseContext::ended($ro->code, self::elapsedMs($start)),
             $openId,
         );
 

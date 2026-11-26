@@ -46,10 +46,7 @@ final class SemanticLogLinkerTest extends TestCase
         );
         $requested = array_column(array_column($root['log'], 'context'), 'uri');
         $this->assertSame(['page://self/form', 'app://self/item'], $requested);
-        // The uri is the resource object the linker returned, which depends on the bear/resource version
-        $close = $root['close']['context'];
-        $this->assertSame(200, $close['code']);
-        $this->assertIsString($close['uri']);
+        $this->assertSame(['code' => 200], array_diff_key($root['close']['context'], ['durationMs' => true]));
     }
 
     public function testALinkThatCannotBeFollowedClosesTheLinkRequestWithItsException(): void
