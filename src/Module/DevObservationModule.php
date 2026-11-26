@@ -54,7 +54,11 @@ final class DevObservationModule extends AbstractModule
             ->in(Scope::SINGLETON);
         $this->bind(LinkerInterface::class)->annotatedWith(self::LINKER)->to(Linker::class);
         $this->bind(LinkerInterface::class)
-            ->toConstructor(SemanticLogLinker::class, ['linker' => self::LINKER, 'logger' => CacheLog::class])
+            ->toConstructor(SemanticLogLinker::class, [
+                'linker' => self::LINKER,
+                'logger' => CacheLog::class,
+                'recordedMethods' => Recorded::class,
+            ])
             ->in(Scope::SINGLETON);
         $this->bind(RecordedMethods::class)->annotatedWith(Recorded::class)
             ->toInstance(new RecordedMethods(RecordedMethods::WITH_READS));

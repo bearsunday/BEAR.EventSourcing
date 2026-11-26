@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BEAR\EventSourcing\Resource;
 
+use BEAR\EventSourcing\Recorded;
+use BEAR\EventSourcing\RecordedMethods;
 use BEAR\Resource\AbstractRequest;
 use BEAR\Resource\LinkerInterface;
 use BEAR\Resource\LinkType;
@@ -25,6 +27,7 @@ use const E_USER_WARNING;
  * Records a request with links as one link_request, in which the requests made to follow the links nest
  *
  * The requests nest as a log tree, not as one handler's work: SemanticLogExtractor reads each as a boundary of its own.
+ * A request whose method is not recorded opens none, so GET-only links leave the log as they would without links.
  * Like SemanticLogInvoker, it never lets a logging failure break the request it watches.
  */
 final readonly class SemanticLogLinker implements LinkerInterface
@@ -34,11 +37,17 @@ final readonly class SemanticLogLinker implements LinkerInterface
     public function __construct(
         private LinkerInterface $linker,
         private SemanticLoggerInterface $logger,
+        #[Recorded]
+        private RecordedMethods $recordedMethods,
     ) {
     }
 
     public function invoke(AbstractRequest $request): ResourceObject
     {
+        if ($this->recordedMethods->normalize($request->method->value) === null) {
+            return $this->linker->invoke($request);
+        }
+
         $openId = $this->safeOpen(static fn (): LinkRequestContext => new LinkRequestContext(
             uri: self::canonicalUri($request->resourceObject),
             method: strtoupper($request->method->value),

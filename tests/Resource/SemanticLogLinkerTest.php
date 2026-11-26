@@ -90,7 +90,7 @@ final class SemanticLogLinkerTest extends TestCase
             {
                 return $this->ro;
             }
-        }, $logger);
+        }, $logger, new RecordedMethods(RecordedMethods::WITH_READS));
         $request = $this->resource(new SemanticLogger())->uri('page://self/form')->linkSelf('goItem');
         $this->assertInstanceOf(AbstractRequest::class, $request);
 
@@ -100,6 +100,16 @@ final class SemanticLogLinkerTest extends TestCase
         $this->assertStringContainsString('context build failed', $warnings[0] ?? '');
         // Closed, so it takes no later entry in as its child
         $this->assertSame(TypeError::class, $this->roots($logger)[0]['close']['context']['exception']['class']);
+    }
+
+    public function testGetOnlyLinksUnderTheDefaultMethodsWriteNothing(): void
+    {
+        $logger = new SemanticLogger();
+        $injector = new Injector(new ResourceObservationModule(logger: $logger, module: new LinkAppModule()));
+
+        $injector->getInstance(ResourceInterface::class)->uri('page://self/form')->linkSelf('goItem')();
+
+        $this->assertSame([], $this->roots($logger));
     }
 
     #[DataProvider('failingLoggerMethods')]

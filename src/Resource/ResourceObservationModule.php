@@ -66,7 +66,7 @@ final class ResourceObservationModule extends AbstractModule
 
         $this->rename(LinkerInterface::class, self::LINKER);
         $this->bind(LinkerInterface::class)
-            ->toConstructor(SemanticLogLinker::class, ['linker' => self::LINKER])
+            ->toConstructor(SemanticLogLinker::class, ['linker' => self::LINKER, 'recordedMethods' => Recorded::class])
             ->in(Scope::SINGLETON);
     }
 }

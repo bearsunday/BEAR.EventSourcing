@@ -67,7 +67,7 @@ An `Event` is a successful resource operation observed at the root of a Semantic
 | `timestamp` | request `timestamp` — absolute ISO-8601 with an explicit offset; an entry without one is not extracted |
 | `result` | `close.context.body` when present |
 
-Extraction is deterministic: it never invents facts. There is no fallback clock for a missing `timestamp`, and only root entries of type `resource_request` qualify — another subsystem's open/close pair that happens to carry `method` and `uri` fields is never misread as a state change, and a request nested inside another request is never extracted (see [Recording and observation](#recording-and-observation)). Extracting the same log twice yields the same events.
+Extraction is deterministic: it never invents facts. There is no fallback clock for a missing `timestamp`, and only root entries of type `resource_request`, and those directly in a root `link_request`, qualify — another subsystem's open/close pair that happens to carry `method` and `uri` fields is never misread as a state change, and a request nested inside another request is never extracted (see [Recording and observation](#recording-and-observation)). Extracting the same log twice yields the same events.
 
 Recorded methods by default — `GET` is observation data, not a state change, so it is ignored:
 
@@ -90,7 +90,7 @@ Identity is what makes the store a source of truth. Re-extraction reproduces the
 
 The log and the event stream answer different questions. The event stream records what can be **reproduced**: the boundary write requests (root reads only when opted in), the input a replay re-executes. The log observes what **happened**: every node — reads, failures, nested requests, `durationMs` — for transparency, debugging, and checking a replay against the original run.
 
-Extraction therefore takes root entries only. A `POST app://self/orders` whose handler issues `PUT app://self/inventory/SKU-1` yields one event, the POST. Replaying it re-executes the handler, which issues the PUT again; had the PUT been recorded as well, replay would apply it twice. This is the same boundary MySQL statement-based replication draws when it logs a statement but not the writes its triggers perform. The nested PUT is still in the log, as observation.
+Extraction therefore takes root entries only, and the requests directly in a root `link_request`, which a client made one after another (see [Requests with links](#requests-with-links)). A `POST app://self/orders` whose handler issues `PUT app://self/inventory/SKU-1` yields one event, the POST. Replaying it re-executes the handler, which issues the PUT again; had the PUT been recorded as well, replay would apply it twice. This is the same boundary MySQL statement-based replication draws when it logs a statement but not the writes its triggers perform. The nested PUT is still in the log, as observation.
 
 The mechanism itself is one call, using only `ResourceInterface`'s public, typed surface:
 
@@ -421,7 +421,7 @@ The request line is the intent in the form BEAR's CLI takes: paste `post 'app://
 
 ### Requests with links
 
-`ResourceObservationModule` decorates `LinkerInterface` when the wrapped module binds one, and `DevObservationModule` always does. A request with links (`#link=self:goCart,self:doAdd`, or `linkSelf()`) opens a `link_request`, and the requests made to follow the links nest in it:
+`ResourceObservationModule` decorates `LinkerInterface` when the wrapped module binds one, and `DevObservationModule` always does. A request with links (`#link=self:goCart,self:doAdd`, or `linkSelf()`) whose method `RecordedMethods` records opens a `link_request`, and the requests made to follow the links nest in it; under `WITH_READS`, as `DevObservationModule` records:
 
 ```text
 link_request get 'page://self/index#link=self:goCart,self:doAdd'
@@ -434,7 +434,7 @@ link_request get 'page://self/index#link=self:goCart,self:doAdd'
 └── link_response code=201 durationMs=1.2
 ```
 
-A link is recorded as `type:rel`; the query each request carried is on its own line. `link_response` closes it with the code of the resource object returned; the last request followed is its last child. When the `link_request` is a root, a client opened it and no handler did its work, so the extractor reads each request directly in it as a boundary request: the POST above is an event, and the GETs are not unless `RecordedMethods` records them. A `link_request` that a handler opened is nested in the handler's request and stays observation, as any nested request does. The `link_request` itself is never an event. A link is followed with the method its `#[Link]` declares from bear/resource 1.37, and with GET before, so a POST in the middle of the links needs 1.37.
+A link is recorded as `type:rel`; the query each request carried is on its own line. `link_response` closes it with the code of the resource object returned; the last request followed is its last child. When the `link_request` is a root, a client opened it and no handler did its work, so the extractor reads each request directly in it as a boundary request: each one `RecordedMethods` records is an event, the POST above included. A `link_request` that a handler opened is nested in the handler's request and stays observation, as any nested request does. The `link_request` itself is never an event. A request with links whose method is not recorded, a GET under the default, opens no `link_request`, so the log is what it would be without links: a write the links reach is a root `resource_request`. A link is followed with the method its `#[Link]` declares from bear/resource 1.37, and with GET before, so a POST in the middle of the links needs 1.37.
 
 ### Ray.MediaQuery observation (optional)
 
