@@ -9,6 +9,7 @@ use BEAR\EventSourcing\Module\DevObservationModule;
 use BEAR\EventSourcing\Resource\FilteredParams;
 use BEAR\EventSourcing\Resource\ParamsFilterInterface;
 use BEAR\EventSourcing\Resource\SemanticLogLinker;
+use BEAR\EventSourcing\Tests\Fixture\AppLinker;
 use BEAR\EventSourcing\Tests\Fixture\DevContextChainModule;
 use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
@@ -18,6 +19,7 @@ use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use ReflectionProperty;
 
 use function file_get_contents;
 use function glob;
@@ -66,28 +68,14 @@ final class DevObservationModuleTest extends TestCase
         $this->assertSame(__FILE__, $caller, 'the request records where it was made');
     }
 
-    public function testAnAppBoundParamsFilterReachesTheInvoker(): void
+    public function testAParamsFilterTheAppChainBindsReachesTheInvoker(): void
     {
-        $filter = new class extends AbstractModule {
-            protected function configure(): void
-            {
-                $this->bind(ParamsFilterInterface::class)->annotatedWith(Filtered::class)->toInstance(
-                    new class implements ParamsFilterInterface {
-                        /** {@inheritDoc} */
-                        public function __invoke(array $params): FilteredParams
-                        {
-                            return new FilteredParams(['name' => '[APP]']);
-                        }
-                    },
-                );
-            }
-        };
+        $this->assertTheAppFilterIsUsed($this->devContext(self::appFilter(new DevContextChainModule())));
+    }
 
-        $root = $this->requestOnce($this->devContext($filter));
-
-        $context = $root['context'] ?? null;
-        $this->assertIsArray($context);
-        $this->assertSame(['name' => '[APP]'], $context['params'] ?? null);
+    public function testAParamsFilterInstalledBeforeItReachesTheInvoker(): void
+    {
+        $this->assertTheAppFilterIsUsed($this->devContext(before: self::appFilter()));
     }
 
     public function testARequestWithLinksReadsAsOneLinkRequest(): void
@@ -107,13 +95,30 @@ final class DevObservationModuleTest extends TestCase
         $this->assertCount(2, $log);
     }
 
-    /** A `dev-` context module the way BEAR.Package builds it: constructed with the application chain */
-    private function devContext(AbstractModule|null $app = null): Injector
+    public function testTheRecordingWrapsTheLinkerTheAppChainBinds(): void
     {
-        $context = new class ($this->logDir, $app, new DevContextChainModule()) extends AbstractModule {
+        $app = new class (new DevContextChainModule()) extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(LinkerInterface::class)->to(AppLinker::class);
+            }
+        };
+
+        $linker = $this->devContext($app)->getInstance(LinkerInterface::class);
+
+        $this->assertInstanceOf(SemanticLogLinker::class, $linker);
+        $this->assertInstanceOf(AppLinker::class, (new ReflectionProperty($linker, 'linker'))->getValue($linker));
+    }
+
+    /** A `dev-` context module the way BEAR.Package builds it: constructed with the application chain */
+    private function devContext(
+        AbstractModule $chain = new DevContextChainModule(),
+        AbstractModule|null $before = null,
+    ): Injector {
+        $context = new class ($this->logDir, $before, $chain) extends AbstractModule {
             public function __construct(
                 private readonly string $logDir,
-                private readonly AbstractModule|null $app,
+                private readonly AbstractModule|null $before,
                 AbstractModule $chain,
             ) {
                 parent::__construct($chain);
@@ -121,16 +126,41 @@ final class DevObservationModuleTest extends TestCase
 
             protected function configure(): void
             {
-                $this->install(new DevObservationModule($this->logDir . '/events', 10));
-                if ($this->app === null) {
-                    return;
+                if ($this->before !== null) {
+                    $this->install($this->before);
                 }
 
-                $this->install($this->app);
+                $this->install(new DevObservationModule($this->logDir . '/events', $this->lastModule, 10));
             }
         };
 
         return new Injector($context);
+    }
+
+    /** A module binding a params filter that records the params as `['name' => '[APP]']` */
+    private static function appFilter(AbstractModule|null $module = null): AbstractModule
+    {
+        return new class ($module) extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(ParamsFilterInterface::class)->annotatedWith(Filtered::class)->toInstance(
+                    new class implements ParamsFilterInterface {
+                        /** {@inheritDoc} */
+                        public function __invoke(array $params): FilteredParams
+                        {
+                            return new FilteredParams(['name' => '[APP]']);
+                        }
+                    },
+                );
+            }
+        };
+    }
+
+    private function assertTheAppFilterIsUsed(Injector $injector): void
+    {
+        $context = $this->requestOnce($injector)['context'] ?? null;
+        $this->assertIsArray($context);
+        $this->assertSame(['name' => '[APP]'], $context['params'] ?? null);
     }
 
     /**

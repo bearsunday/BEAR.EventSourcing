@@ -109,14 +109,14 @@ sink が拒否したら黙る、という意味。並行実行時にセッショ
 
 | 見えたもの | すること |
 |---|---|
-| `DevObservationModule` を install している | 設置済み。§2 へ |
+| `DevObservationModule` を install している | 設置済み。第 2 引数に `$this->lastModule` が無ければ足す。§2 へ |
 | `DevModule` が無い | 下の 1 行だけの `DevModule` を書く。何を書くかを先に 1 行で言う |
-| ある、`DevObservationModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める)。その行で `keep` を変えていたなら、同じ数を `DevObservationModule` の第 2 引数に渡す(ボディは 1 世代以上を残すので、0 なら 1)。第 3 引数でモジュールを包んでいたなら、そのモジュールは `DevObservationModule` の行の後に `install()` して残す。古い置き場所を読む `tree` スクリプトがあれば、下の形に直す |
+| ある、`DevObservationModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める)。その行で `keep` を変えていたなら、同じ数を `DevObservationModule` の第 3 引数に渡す(ボディは 1 世代以上を残すので、0 なら 1)。第 3 引数でモジュールを包んでいたなら、そのモジュールは `DevObservationModule` の行の後に `install()` して残す。古い置き場所を読む `tree` スクリプトがあれば、下の形に直す |
 
 書くのはこの 1 行だけ。invoker の包み方、logger、書き出し、body の保存はモジュールの中にある:
 
 ```php
-$this->install(new DevObservationModule($this->appMeta->logDir . '/events'));
+$this->install(new DevObservationModule($this->appMeta->logDir . '/events', $this->lastModule));
 ```
 
 木もボディも `var/log/<context>/events/` に落ちる(ボディは `bodies/` の下。直近 10 セッション分を残す)。
@@ -184,7 +184,7 @@ CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に�
 | 根に `resource_request` が無く、キャッシュのスコープが宙に浮く | invoker が包まれていないか、別の logger に記録している |
 | 木が `DevObservationModule` に渡したディレクトリではなく、別の場所(`query-repository/` など)に出る | 先に install された `DevQueryRepositoryLogModule` の行が残っている。その行を消す(第 3 引数で包んでいたモジュールは、§1 のとおり `install()` して残す) |
 
-崩れているなら、アプリの `AppModule` が `InvokerInterface` か `#[CacheLog]` の logger を後から上書きしていないかを見る
+崩れているなら、`DevModule` が `DevObservationModule` の横で `InvokerInterface` を束縛するモジュール(`HaloModule` など)を install していないか、アプリが `#[CacheLog]` の logger を後から上書きしていないかを見る
 (`install()` は既存を上書きしないが、`bind()` は上書きする)。到達しない理由が束縛に無ければ
 `error_log`(FPM なら SAPI のエラーログ)を見る。sink の拒否・二重 arm・書けない先は全部そこに出る。
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **BREAKING — `DevObservationModule` takes the context module's chain as its second argument** and records through the invoker and linker that chain binds, so an application's own invoker or linker is recorded too. Write `new DevObservationModule($dir, $this->lastModule)`; `keep` moves to the third argument.
+- `ResourceObservationModule` uses a `#[Filtered]` params filter that the module it wraps binds, in place of its default.
+- Under `DevObservationModule`, bind a `#[Filtered]` params filter in the application's modules, or install the module binding it before `DevObservationModule`; one installed after it is not used.
+
+### Added
+
+- `ResourceObservationModule(loggerQualifier: …)` records into the logger bound under that qualifier, such as `#[CacheLog]`.
+
 ## 0.4.0 - 2026-11-27
 
 ### Added
