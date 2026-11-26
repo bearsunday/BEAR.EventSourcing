@@ -4,7 +4,7 @@
 
 ### Added
 
-- `ResourceObservationModule` and `DevObservationModule` record a request with links (`#link=`, `linkSelf()`) as a `link_request` in which the requests made to follow the links nest. The extractor reads each request directly in a root `link_request` as a boundary request, so a POST a client reached through links, under a linker that follows the declared method such as BEAR.DevTools' `DeclaredMethodLinker`, is an event.
+- A request with links (`#link=`, `linkSelf()`) is recorded as one `link_request` with the requests that follow the links nested in it; a POST reached through links is an event.
 
 ## 0.3.1 - 2026-11-11
 
