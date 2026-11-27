@@ -29,6 +29,11 @@ final class EventStoreLogWriter implements LogWriterInterface
     #[Override]
     public function write(LogJson $log): void
     {
-        $this->store->get()->appendAll($this->extractor->extract($log));
+        $events = $this->extractor->extract($log);
+        if ($events->count() === 0) {
+            return;
+        }
+
+        $this->store->get()->appendAll($events);
     }
 }
