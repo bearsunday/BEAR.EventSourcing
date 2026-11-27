@@ -13,9 +13,7 @@ use BEAR\EventSourcing\Resource\SemanticLogInvoker;
 use BEAR\EventSourcing\Resource\SemanticLogLinker;
 use BEAR\QueryRepository\DevQueryRepositoryLogModule;
 use BEAR\RepositoryModule\Annotation\CacheLog;
-use BEAR\Resource\Invoker;
 use BEAR\Resource\InvokerInterface;
-use BEAR\Resource\Linker;
 use BEAR\Resource\LinkerInterface;
 use Ray\Di\AbstractModule;
 use Ray\Di\Scope;
@@ -23,26 +21,33 @@ use Ray\Di\Scope;
 /**
  * Writes requests and their cache scopes as one tree in the given directory, with response bodies under bodies/
  *
- * It installs DevQueryRepositoryLogModule there; an app installing that module too gets the first one's directory.
+ * It records through the invoker and linker the installing module's chain binds, and installs
+ * DevQueryRepositoryLogModule in that directory; an app installing that module too gets the first one's directory.
  */
 final class DevObservationModule extends AbstractModule
 {
     private const INVOKER = 'bear_event_sourcing_dev_invoker';
     private const LINKER = 'bear_event_sourcing_dev_linker';
 
-    /** @param int $keep log sessions retained; body generations keep one more, so a retained log's body_ref resolves */
+    /**
+     * @param AbstractModule $module the module installing this one, `$this`
+     * @param int            $keep   log sessions retained; body generations keep one more, so a retained log's
+     *                               body_ref resolves
+     */
     public function __construct(
         private readonly string $dir,
+        AbstractModule $module,
         private readonly int $keep = 10,
     ) {
+        $module->rename(InvokerInterface::class, self::INVOKER);
+        $module->rename(LinkerInterface::class, self::LINKER);
+
         parent::__construct();
     }
 
     protected function configure(): void
     {
         $this->install(new DevQueryRepositoryLogModule($this->dir, $this->keep));
-        // An installed module cannot rename the app chain's invoker binding, so the inner invoker is named here.
-        $this->bind(InvokerInterface::class)->annotatedWith(self::INVOKER)->to(Invoker::class);
         $this->bind(InvokerInterface::class)
             ->toConstructor(SemanticLogInvoker::class, [
                 'invoker' => self::INVOKER,
@@ -52,7 +57,6 @@ final class DevObservationModule extends AbstractModule
                 'recordCaller' => SemanticLogInvoker::RECORD_CALLER,
             ])
             ->in(Scope::SINGLETON);
-        $this->bind(LinkerInterface::class)->annotatedWith(self::LINKER)->to(Linker::class);
         $this->bind(LinkerInterface::class)
             ->toConstructor(SemanticLogLinker::class, [
                 'linker' => self::LINKER,

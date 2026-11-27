@@ -421,7 +421,7 @@ The request line is the intent in the form BEAR's CLI takes: paste `post 'app://
 
 ### Requests with links
 
-`ResourceObservationModule` decorates `LinkerInterface` when the wrapped module binds one, and `DevObservationModule` always decorates the core linker. A request with links (`#link=self:goCart,self:doAdd`, or `linkSelf()`) whose method `RecordedMethods` records opens a `link_request`, and the requests made to follow the links nest in it. Under `WITH_READS`, around a module that binds a linker following the method each `#[Link]` declares, `ResourceObservationModule` records:
+`ResourceObservationModule` decorates `LinkerInterface` when the wrapped module binds one, and `DevObservationModule` decorates the linker of the modules the context module wraps. A request with links (`#link=self:goCart,self:doAdd`, or `linkSelf()`) whose method `RecordedMethods` records opens a `link_request`, and the requests made to follow the links nest in it. Under `WITH_READS`, around a module that binds a linker following the method each `#[Link]` declares, `ResourceObservationModule` records:
 
 ```text
 link_request get 'page://self/index#link=self:goCart,self:doAdd'
@@ -483,17 +483,17 @@ $this->bind(SemanticLoggerInterface::class)->annotatedWith(CacheLog::class)->toI
 
 Share the instance with `toInstance()`: two separate `to(...)->in(Scope::SINGLETON)` bindings would create one singleton per binding key and split the tree in two. Extraction stays safe in the merged tree — only `resource_request` entries become events, so cache scopes are never misread as state changes. `tests/UnifiedLogTest.php` proves both properties.
 
-Under a compiled injector (a BEAR.Sunday context), do not share an instance — the compiler would serialize it and each process would get its own copy, splitting the tree again. Install `DevObservationModule` instead. It installs `DevQueryRepositoryLogModule` in the directory it is given, records every resource request into that module's `#[CacheLog]` logger, and stores response bodies under `bodies/` there; one `keep` covers both, so no retained log points at a pruned body:
+Under a compiled injector (a BEAR.Sunday context), do not share an instance — the compiler would serialize it and each process would get its own copy, splitting the tree again. Install `DevObservationModule` instead, passing the context module itself. It installs `DevQueryRepositoryLogModule` in the directory it is given, records every resource request into that module's `#[CacheLog]` logger, and stores response bodies under `bodies/` there; one `keep` covers both, so no retained log points at a pruned body:
 
 ```php
 use BEAR\EventSourcing\Module\DevObservationModule;
 
-$this->install(new DevObservationModule($this->appMeta->logDir . '/events'));
+$this->install(new DevObservationModule($this->appMeta->logDir . '/events', $this));
 ```
 
 Drop a separate `DevQueryRepositoryLogModule` line: with both installed, the first one decides where the tree goes.
 
-`DevObservationModule` decorates BEAR.Resource's `Invoker` directly. An application whose app chain binds `InvokerInterface` to a class of its own — a decorator or a replacement — copies `DevObservationModule::configure()` into its own context module, where `rename()` reaches the app chain, with its log directory, retention count and a name of its own in place of `$this->dir`, `$this->keep` and `self::INVOKER`. It replaces the line binding that name to `Invoker` with `$this->rename(InvokerInterface::class, <that name>)`; the recording then wraps the application's invoker. `rename()` does not reach a module installed in the same context module, such as BEAR.DevTools' `HaloModule` installed in `DevModule`: observe in a context without that module.
+`DevObservationModule` renames, through the context module it is given, the invoker and linker of the modules that context module wraps, as BEAR.DevTools' `HaloModule` does for the renderer, and records through them: an application's own invoker or linker is recorded too. A module installed beside it in the same context module, such as `HaloModule` in `DevModule`, is not reached: observe in a context without that module.
 
 `MediaQueryObservationModule` records through the unqualified `SemanticLoggerInterface`, which this wiring leaves unbound. To put `media_query` events in the same tree, bind the media query logger the same way instead of installing the module:
 

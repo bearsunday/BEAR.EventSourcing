@@ -8,16 +8,23 @@ use BEAR\EventSourcing\Filtered;
 use BEAR\EventSourcing\Module\DevObservationModule;
 use BEAR\EventSourcing\Resource\FilteredParams;
 use BEAR\EventSourcing\Resource\ParamsFilterInterface;
+use BEAR\EventSourcing\Resource\SemanticLogInvoker;
 use BEAR\EventSourcing\Resource\SemanticLogLinker;
+use BEAR\EventSourcing\Tests\Fixture\AppInvoker;
+use BEAR\EventSourcing\Tests\Fixture\AppLinker;
+use BEAR\EventSourcing\Tests\Fixture\CountingInterceptor;
 use BEAR\EventSourcing\Tests\Fixture\DevContextChainModule;
 use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
+use BEAR\Resource\InvokerInterface;
 use BEAR\Resource\LinkerInterface;
 use BEAR\Resource\ResourceInterface;
 use Koriym\SemanticLogger\SemanticLoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Ray\Di\AbstractModule;
 use Ray\Di\Injector;
+use Ray\Di\Scope;
+use ReflectionProperty;
 
 use function file_get_contents;
 use function glob;
@@ -107,10 +114,51 @@ final class DevObservationModuleTest extends TestCase
         $this->assertCount(2, $log);
     }
 
-    /** A `dev-` context module the way BEAR.Package builds it: constructed with the application chain */
-    private function devContext(AbstractModule|null $app = null): Injector
+    public function testTheRecordingWrapsTheInvokerAndTheLinkerTheAppChainBinds(): void
     {
-        $context = new class ($this->logDir, $app, new DevContextChainModule()) extends AbstractModule {
+        $chain = new class (new DevContextChainModule()) extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(InvokerInterface::class)->to(AppInvoker::class);
+                $this->bind(LinkerInterface::class)->to(AppLinker::class);
+            }
+        };
+        $injector = $this->devContext(chain: $chain);
+
+        $invoker = $injector->getInstance(InvokerInterface::class);
+        $this->assertInstanceOf(SemanticLogInvoker::class, $invoker);
+        $this->assertInstanceOf(AppInvoker::class, (new ReflectionProperty($invoker, 'invoker'))->getValue($invoker));
+        $linker = $injector->getInstance(LinkerInterface::class);
+        $this->assertInstanceOf(SemanticLogLinker::class, $linker);
+        $this->assertInstanceOf(AppLinker::class, (new ReflectionProperty($linker, 'linker'))->getValue($linker));
+    }
+
+    public function testAnInterceptorTheAppChainBindsRunsOncePerCall(): void
+    {
+        $chain = new class (new DevContextChainModule()) extends AbstractModule {
+            protected function configure(): void
+            {
+                $this->bind(CountingInterceptor::class)->in(Scope::SINGLETON);
+                $this->bindInterceptor(
+                    $this->matcher->any(),
+                    $this->matcher->startsWith('onGet'),
+                    [CountingInterceptor::class],
+                );
+            }
+        };
+        $injector = $this->devContext(chain: $chain);
+
+        $this->requestOnce($injector);
+
+        $this->assertSame(1, $injector->getInstance(CountingInterceptor::class)->calls);
+    }
+
+    /** A `dev-` context module the way BEAR.Package builds it: constructed with the application chain */
+    private function devContext(
+        AbstractModule|null $app = null,
+        AbstractModule $chain = new DevContextChainModule(),
+    ): Injector {
+        $context = new class ($this->logDir, $app, $chain) extends AbstractModule {
             public function __construct(
                 private readonly string $logDir,
                 private readonly AbstractModule|null $app,
@@ -121,7 +169,7 @@ final class DevObservationModuleTest extends TestCase
 
             protected function configure(): void
             {
-                $this->install(new DevObservationModule($this->logDir . '/events', 10));
+                $this->install(new DevObservationModule($this->logDir . '/events', $this, 10));
                 if ($this->app === null) {
                     return;
                 }

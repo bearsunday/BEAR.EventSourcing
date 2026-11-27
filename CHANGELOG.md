@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **BREAKING — `DevObservationModule` takes the context module installing it, `new DevObservationModule($dir, $this)`,** and records through the invoker and linker of the modules that context module wraps, so an application's own invoker or linker is recorded too. `keep` moves to the third argument.
+
 ## 0.4.0 - 2026-11-27
 
 ### Added
