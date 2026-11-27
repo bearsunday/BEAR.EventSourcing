@@ -178,7 +178,7 @@ CLI 入口(`bin/page.php` など)を読み、どの文脈で動くかを先に�
 | 根が `resource_request`(キャッシュするリソースなら、その中に `get` などのスコープ) | 配線は生きている |
 | いちばん新しいセッションの名前が変わらない(`latest.json` も無いか、前のまま) | その文脈に `DevModule` が載っていない(文脈名に `dev` が無い)か、sink が書き出しを拒否した。何も記録されなかったセッションはファイルにならないので、invoker が包まれておらず叩いたリソースにキャッシュの宣言も無いときも変わらない(次の行の原因を見る) |
 | 根に `resource_request` が無く、キャッシュのスコープが宙に浮く | invoker が包まれていないか、別の logger に記録している |
-| 木が `DevObservationModule` に渡したディレクトリではなく、別の場所(`query-repository/` など)に出る | 先に install された `DevQueryRepositoryLogModule` の行が残っている。その行を消す(第 3 引数で包んでいたモジュールは、§1 のとおり `install()` して残す) |
+| 木が `DevObservationModule` に渡したディレクトリではなく、別の場所(`query-repository/` など)に出る | 先に install された `DevQueryRepositoryLogModule` の行が残っている。その行を消す(その行の第 3 引数で包んでいたモジュールは、§1 のとおり `install()` して残す) |
 
 崩れているなら、同じ `DevModule` に `InvokerInterface` を束縛するモジュール(`HaloModule` など)を install していないか、アプリが `#[CacheLog]` の logger を後から上書きしていないかを見る
 (`install()` は既存を上書きしないが、`bind()` は上書きする)。到達しない理由が束縛に無ければ
