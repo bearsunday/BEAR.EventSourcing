@@ -169,9 +169,7 @@ final class DevObservationModuleTest extends TestCase
 
             protected function configure(): void
             {
-                $this->rename(InvokerInterface::class, DevObservationModule::INVOKER);
-                $this->rename(LinkerInterface::class, DevObservationModule::LINKER);
-                $this->install(new DevObservationModule($this->logDir . '/events', 10));
+                $this->install(new DevObservationModule($this->logDir . '/events', $this, 10));
                 if ($this->app === null) {
                     return;
                 }

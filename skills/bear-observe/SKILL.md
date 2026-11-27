@@ -10,7 +10,7 @@ BEAR.Sunday の欠陥の多くは沈黙する。**キャッシュが一度も効
 テストは緑のまま、遅いだけ、あるいは古いだけになる。見るのはコードではなくログで、順番は決まっている。
 
 ```text
-1. 設置     DevModule に DevObservationModule を 3 行で入れる
+1. 設置     DevModule に DevObservationModule を 1 行で入れる
 2. 実証     1 回叩いて、木の形で配線を確かめる
 3. 観測     リクエストを 1 本流して木を読む           (composer tree / vendor/bin/stree)
 4. 照合     宣言した意図が、どのイベント列で現れるか
@@ -109,16 +109,14 @@ sink が拒否したら黙る、という意味。並行実行時にセッショ
 
 | 見えたもの | すること |
 |---|---|
-| `DevObservationModule` を install している | 設置済み。`rename()` の 2 行が無ければ足す。§2 へ |
-| `DevModule` が無い | 下の 3 行だけの `DevModule` を書く。何を書くかを先に 1 行で言う |
-| ある、`DevObservationModule` を含まない | アプリ自身の `DevModule`。下の 3 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める)。その行で `keep` を変えていたなら、同じ数を `DevObservationModule` の第 2 引数に渡す(ボディは 1 世代以上を残すので、0 なら 1)。第 3 引数でモジュールを包んでいたなら、そのモジュールは `DevObservationModule` の行の後に `install()` して残す。古い置き場所を読む `tree` スクリプトがあれば、下の形に直す |
+| `DevObservationModule` を install している | 設置済み。第 2 引数に `$this` が無ければ足す。§2 へ |
+| `DevModule` が無い | 下の 1 行だけの `DevModule` を書く。何を書くかを先に 1 行で言う |
+| ある、`DevObservationModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める)。その行で `keep` を変えていたなら、同じ数を `DevObservationModule` の第 3 引数に渡す(ボディは 1 世代以上を残すので、0 なら 1)。`DevQueryRepositoryLogModule` の第 3 引数でモジュールを包んでいたなら、そのモジュールは `DevObservationModule` の行の後に `install()` して残す。古い置き場所を読む `tree` スクリプトがあれば、下の形に直す |
 
-書くのはこの 3 行だけ。包む invoker と linker は `rename()` が決め、logger、書き出し、body の保存はモジュールの中にある:
+書くのはこの 1 行だけ。invoker と linker の包み方、logger、書き出し、body の保存はモジュールの中にある:
 
 ```php
-$this->rename(InvokerInterface::class, DevObservationModule::INVOKER);
-$this->rename(LinkerInterface::class, DevObservationModule::LINKER);
-$this->install(new DevObservationModule($this->appMeta->logDir . '/events'));
+$this->install(new DevObservationModule($this->appMeta->logDir . '/events', $this));
 ```
 
 木もボディも `var/log/<context>/events/` に落ちる(ボディは `bodies/` の下。直近 10 セッション分を残す)。
@@ -127,8 +125,8 @@ namespace は `composer.json` の psr-4 で `src/` に対応する接頭辞に `
 `public/index.php` は**変えない**。flush はキャッシュログモジュールの shutdown sink が持つので、
 アプリが自分で書き出す行は要らない。
 
-`rename()` はアプリの鎖(`AppModule` 側)の束縛に届くので、アプリが `InvokerInterface` や `LinkerInterface` を自前のクラスに
-束縛していれば、そのクラスのまま記録される。同じ文脈モジュールに install したモジュール(`DevModule` の `HaloModule` など。
+モジュールは渡した `DevModule` を通してアプリの鎖(`AppModule` 側)の束縛に届くので、アプリが `InvokerInterface` や `LinkerInterface` を
+自前のクラスに束縛していれば、そのクラスのまま記録される。同じ文脈モジュールに install したモジュール(`DevModule` の `HaloModule` など。
 `HaloModule` は `InvokerInterface` を `DevInvoker` に束縛する)の束縛には届かないので、そのモジュールを入れない文脈で観測する。
 
 **dev 文脈で叩く。** 文脈名はアプリの文脈の前に `dev-` を付けたもの(`cli-hal-app` なら `dev-cli-hal-app`)。

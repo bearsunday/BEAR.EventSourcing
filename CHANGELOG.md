@@ -4,7 +4,7 @@
 
 ### Changed
 
-- **BREAKING — `DevObservationModule` records through the invoker and linker the context module renames to `DevObservationModule::INVOKER` and `DevObservationModule::LINKER`,** so an application's own invoker or linker is recorded too. Add `$this->rename(InvokerInterface::class, DevObservationModule::INVOKER);` and `$this->rename(LinkerInterface::class, DevObservationModule::LINKER);` before installing it.
+- **BREAKING — `DevObservationModule` takes the context module installing it, `new DevObservationModule($dir, $this)`,** and records through the invoker and linker of the modules that context module wraps, so an application's own invoker or linker is recorded too. `keep` moves to the third argument.
 
 ## 0.4.0 - 2026-11-27
 

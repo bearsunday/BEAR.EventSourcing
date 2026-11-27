@@ -21,19 +21,27 @@ use Ray\Di\Scope;
 /**
  * Writes requests and their cache scopes as one tree in the given directory, with response bodies under bodies/
  *
- * It records through the bindings the installing module renames to INVOKER and LINKER, and installs
+ * It records through the invoker and linker the installing module's chain binds, and installs
  * DevQueryRepositoryLogModule in that directory; an app installing that module too gets the first one's directory.
  */
 final class DevObservationModule extends AbstractModule
 {
-    public const INVOKER = 'bear_event_sourcing_dev_invoker';
-    public const LINKER = 'bear_event_sourcing_dev_linker';
+    private const INVOKER = 'bear_event_sourcing_dev_invoker';
+    private const LINKER = 'bear_event_sourcing_dev_linker';
 
-    /** @param int $keep log sessions retained; body generations keep one more, so a retained log's body_ref resolves */
+    /**
+     * @param AbstractModule $module the module installing this one, `$this`
+     * @param int            $keep   log sessions retained; body generations keep one more, so a retained log's
+     *                               body_ref resolves
+     */
     public function __construct(
         private readonly string $dir,
+        AbstractModule $module,
         private readonly int $keep = 10,
     ) {
+        $module->rename(InvokerInterface::class, self::INVOKER);
+        $module->rename(LinkerInterface::class, self::LINKER);
+
         parent::__construct();
     }
 
