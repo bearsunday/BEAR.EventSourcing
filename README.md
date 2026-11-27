@@ -509,6 +509,24 @@ $this->bind(MediaQueryLoggerInterface::class)
     ->in(Scope::SINGLETON);
 ```
 
+## Recording events in production
+
+`ProdObservationModule` stores the write requests of a BEAR.Sunday context as events. Install it in the `prod-` context module, passing the module itself, beside a module that binds `EventStoreInterface`:
+
+```php
+use BEAR\EventSourcing\Module\MediaQueryEventStoreModule;
+use BEAR\EventSourcing\Module\ProdObservationModule;
+
+$this->install(new MediaQueryEventStoreModule()); // with AuraSqlModule and MediaQuerySqlModule, as in Storage
+$this->install(new ProdObservationModule($this));
+```
+
+It records `POST`, `PUT`, `PATCH` and `DELETE` without bodies, filters sensitive params, and wraps the invoker and linker of the modules the context module wraps, as `DevObservationModule` does. It installs `ProdQueryRepositoryLogModule`, which flushes the log when the process ends; the events extracted from that log are appended to the store then.
+
+- On a concurrent runtime (Swoole, RoadRunner), `ProdQueryRepositoryLogModule` turns recording off, so no events are stored.
+- A failing append is reported to `error_log` and leaves the response as it was; that request's events are lost.
+- `ProdQueryRepositoryLogModule` writes its cache log to `php://stdout`. Install it with another stream before `ProdObservationModule` to send the log there.
+
 ## Agent skill: bear-observe
 
 `skills/bear-observe/` is a Claude Code skill that installs `DevObservationModule` in an application's `DevModule`, runs one request in the dev context, and reads the tree: the cache event vocabulary, what each `#[Cacheable]`-family declaration is supposed to look like in the log, and app-vs-library triage. Install it into a project:
