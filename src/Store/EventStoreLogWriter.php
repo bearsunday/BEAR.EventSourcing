@@ -15,7 +15,10 @@ use Ray\Di\ProviderInterface;
 /** Appends the events extracted from a flushed log to the EventStoreInterface the application binds */
 final class EventStoreLogWriter implements LogWriterInterface
 {
-    /** @param ProviderInterface<EventStoreInterface> $store taken when writing, so a serialized log sink holds no store */
+    /**
+     * @param ProviderInterface<EventStoreInterface> $store taken when writing, so the writer holds no store (a
+     *                                                      PDO-backed one cannot be serialized)
+     */
     public function __construct(
         private readonly SemanticLogExtractorInterface $extractor,
         #[Set(EventStoreInterface::class)]
