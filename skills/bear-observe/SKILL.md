@@ -46,7 +46,7 @@ composer show bear/event-sourcing bear/query-repository 2>&1 | head -3
 どちらか無ければ入れる:
 
 ```bash
-composer require --dev bear/event-sourcing:^0.3 bear/query-repository:^1.20
+composer require --dev bear/event-sourcing:^0.5 bear/query-repository:^1.20
 ```
 
 ## 正典ドキュメント(推測で補完しない)
@@ -109,7 +109,7 @@ sink が拒否したら黙る、という意味。並行実行時にセッショ
 
 | 見えたもの | すること |
 |---|---|
-| `DevObservationModule` を install している | 設置済み。第 2 引数に `$this` が無ければ足す。§2 へ |
+| `DevObservationModule` を install している | 設置済み。第 2 引数に `$this` が無ければ足す(`keep` を渡していたなら第 3 引数に移す)。§2 へ |
 | `DevModule` が無い | 下の 1 行だけの `DevModule` を書く。何を書くかを先に 1 行で言う |
 | ある、`DevObservationModule` を含まない | アプリ自身の `DevModule`。下の 1 行を足す。`DevQueryRepositoryLogModule` の行があれば、その行と置き換える(両方あると、先に install した方が木の置き場所を決める)。その行で `keep` を変えていたなら、同じ数を `DevObservationModule` の第 3 引数に渡す(ボディは 1 世代以上を残すので、0 なら 1)。`DevQueryRepositoryLogModule` の第 3 引数でモジュールを包んでいたなら、そのモジュールは `DevObservationModule` の行の後に `install()` して残す。古い置き場所を読む `tree` スクリプトがあれば、下の形に直す |
 
