@@ -524,7 +524,7 @@ $this->install(new ProdObservationModule($this));
 It records `POST`, `PUT`, `PATCH` and `DELETE` without bodies, filters sensitive params, and wraps the invoker and linker of the modules the context module wraps, as `DevObservationModule` does. It installs `ProdQueryRepositoryLogModule`, which flushes the log when the process ends; the events extracted from that log are appended to the store then.
 
 - If nothing binds `EventStoreInterface`, the injector still builds; a flush with events to store reports the missing binding to `error_log` and stores nothing.
-- A failing append is reported to `error_log` and leaves the response as it was; the events of that flush are lost.
+- A failing append is reported to `error_log` and leaves the response as it was. The flush is not retried: the events the store had not appended are lost, and with a store whose `appendAll` is not atomic, such as `MediaQueryEventStore` (see Storage), those appended before the failure stay stored.
 - Long-running workers are not supported. `ProdQueryRepositoryLogModule` turns recording off only on the runtimes it detects (RoadRunner, Swoole coroutines).
 - `ProdQueryRepositoryLogModule` writes its cache log to `php://stdout`. To send it elsewhere, install it with another stream in the same context module, before `ProdObservationModule`.
 
