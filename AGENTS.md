@@ -52,11 +52,12 @@ Core components:
 - Optional BEAR.Resource observation bridge using `InvokerInterface` and `LinkerInterface`
 - Optional Ray.MediaQuery observation adapter using `MediaQueryLoggerInterface`
 - Development `FileBodyStore` / `DevLogModule` for local body refs
+- `ProdObservationModule`: persistence of write events at the end of the process, only where the application installs it
 
 Keep out of this package:
 
 - BEAR.Resource logger decorator
-- Runtime auto-persistence
+- Persistence the application has not installed
 - Inline BEAR.Resource response-body persistence policy; use `BodyStoreInterface` and `body_ref`
 - Application-specific BEAR module wiring
 - Hidden installation of application-owned MediaQuery or database modules from ES modules

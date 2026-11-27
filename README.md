@@ -112,7 +112,7 @@ Replay by re-execution rests on two conditions the package assumes but does not 
 - **Handlers are deterministic.** A replay reproduces the original run only when the handler's outcome depends solely on its recorded `params`. A clock, a random value, or an external read the handler consults on its own makes the request unsafe to replay; pass such values in as params so they are recorded.
 - **A request is a transaction boundary.** All of a request's writes commit or none of them do. Without this, a handler whose nested `PUT` committed before the root request failed with a `500` leaves a state change that no event records — the root failed, so nothing was extracted.
 
-Two natural extensions are not implemented: verifying determinism by diffing the observation tree a replay produces against the original, and appending events inside the request's own transaction (an outbox). Runtime auto-persistence remains out of scope.
+Two natural extensions are not implemented: verifying determinism by diffing the observation tree a replay produces against the original, and appending events inside the request's own transaction (an outbox). Events are persisted only where the application asks: an explicit `appendAll`, `EventCollector`, or an installed `ProdObservationModule`.
 
 ## Redacting sensitive params (secure by default)
 
@@ -212,7 +212,7 @@ See `examples/extract.php`, `examples/filter.php`, and `examples/store.php` for 
 
 ## Storage (optional)
 
-Persist extracted events explicitly when an application needs storage. `EventStoreInterface` is a small persistence port (`append`, `appendAll`, `all`), not a runtime hook. Appending is idempotent per `Event::$id` in every implementation, so replaying or retrying a batch is always safe.
+Persist extracted events explicitly when an application needs storage, or install `ProdObservationModule` to append them when the process ends (see [Recording events in production](#recording-events-in-production)). `EventStoreInterface` is a small persistence port (`append`, `appendAll`, `all`), not a runtime hook. Appending is idempotent per `Event::$id` in every implementation, so replaying or retrying a batch is always safe.
 
 The SQL store and the BEAR.Resource bridge are optional features: `ray/media-query` and `bear/resource` are suggested dependencies, required only when you use them.
 
@@ -509,6 +509,25 @@ $this->bind(MediaQueryLoggerInterface::class)
     ->in(Scope::SINGLETON);
 ```
 
+## Recording events in production
+
+`ProdObservationModule` stores the write requests of a BEAR.Sunday context as events. Install it in the `prod-` context module, passing the module itself, beside a module that binds `EventStoreInterface`:
+
+```php
+use BEAR\EventSourcing\Module\MediaQueryEventStoreModule;
+use BEAR\EventSourcing\Module\ProdObservationModule;
+
+$this->install(new MediaQueryEventStoreModule()); // with AuraSqlModule and MediaQuerySqlModule, as in Storage
+$this->install(new ProdObservationModule($this));
+```
+
+It records `POST`, `PUT`, `PATCH` and `DELETE` without bodies, filters sensitive params, and wraps the invoker and linker of the modules the context module wraps, as `DevObservationModule` does. It installs `ProdQueryRepositoryLogModule`, which flushes the log when the process ends; the events extracted from that log are appended to the store then.
+
+- If nothing binds `EventStoreInterface`, the injector still builds; a flush with events to store reports the missing binding to `error_log` and stores nothing.
+- A failing append is reported to `error_log` and leaves the response as it was. The flush is not retried: the events the store had not appended are lost, and with a store whose `appendAll` is not atomic, such as `MediaQueryEventStore` (see Storage), those appended before the failure stay stored.
+- Long-running workers are not supported. `ProdQueryRepositoryLogModule` turns recording off only on the runtimes it detects (RoadRunner, Swoole coroutines).
+- `ProdQueryRepositoryLogModule` writes its cache log to `php://stdout`. To send it elsewhere, install it with another stream in the same context module, before `ProdObservationModule`.
+
 ## Agent skill: bear-observe
 
 `skills/bear-observe/` is a Claude Code skill that installs `DevObservationModule` in an application's `DevModule`, runs one request in the dev context, and reads the tree: the cache event vocabulary, what each `#[Cacheable]`-family declaration is supposed to look like in the log, and app-vs-library triage. Install it into a project:
@@ -523,8 +542,8 @@ Then ask an agent 「ツリーログを見て」 ("show me the tree log"). The t
 
 - Semantic Logger is the observation source; EventStore is an optional destination.
 - Extraction is deterministic: no fallback clock, no type guessing — the same log always yields the same events.
-- Extraction records boundary requests only; a nested request is observation, never an event. A request directly in a root `link_request` is a boundary request.
-- No automatic persistence during runtime observation; the application owns the flush.
+- Extraction records boundary requests only; a nested request is observation, never an event. A request directly in a root `link_request` is a boundary request. Under the default `RecordedMethods` a `GET` is not recorded, so a write its handler makes is a root and becomes an event; replaying it runs that write once.
+- Persistence runs only where the application installs it: an explicit append, `EventCollector`, or `ProdObservationModule` at the end of the process.
 - No `BEAR\Resource\LoggerInterface` decorator.
 - Ray.MediaQuery and database installation stay in the application, never hidden inside EventSourcing modules.
 - `bear/resource` and `ray/media-query` are suggested dependencies — the core requires only `koriym/semantic-logger` and `ray/di`.
