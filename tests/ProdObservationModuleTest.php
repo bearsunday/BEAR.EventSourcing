@@ -11,6 +11,7 @@ use BEAR\EventSourcing\Resource\SemanticLogLinker;
 use BEAR\EventSourcing\Store\InMemoryEventStore;
 use BEAR\EventSourcing\Tests\Fixture\AppInvoker;
 use BEAR\EventSourcing\Tests\Fixture\AppLinker;
+use BEAR\EventSourcing\Tests\Fixture\SpyEventStore;
 use BEAR\EventSourcing\Tests\Fixture\UnserializableEventStore;
 use BEAR\QueryRepository\Log\LogSinkInterface;
 use BEAR\RepositoryModule\Annotation\CacheLog;
@@ -52,6 +53,18 @@ final class ProdObservationModuleTest extends TestCase
         $events = iterator_to_array($store->all(), false);
         $this->assertCount(1, $events);
         $this->assertSame(['POST', 'app://self/order'], [$events[0]->method, $events[0]->uri]);
+    }
+
+    public function testAReadOnlyFlushLeavesTheStoreAlone(): void
+    {
+        $injector = $this->prodContext(SpyEventStore::class);
+        $injector->getInstance(ResourceInterface::class)->get->uri('app://self/order')(['orderId' => 'O-1']);
+
+        $this->flush($injector);
+
+        $store = $injector->getInstance(EventStoreInterface::class);
+        $this->assertInstanceOf(SpyEventStore::class, $store);
+        $this->assertSame(0, $store->appends);
     }
 
     public function testTheLogSinkSerializesBesideAStoreThatCannot(): void
